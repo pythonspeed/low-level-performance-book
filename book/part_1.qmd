@@ -1,8 +1,25 @@
-# A simple mental model for computing speed
+# Speeding up your code by doing less work
 
-Implementation matters for speed (NumPy vs Python code example?), you can't ignore how underlying system works.
+When it comes to writing correct software, the only thing that matters are the results of your calculations.
+If you add 2 and 3 and get back 5, that's all you care about.
+But if you care about speed, implementation details do matter: adding 2 and 3 in C++ is going to be a lot faster than doing so in Python.
+And since all your code runs on a CPU, this implies you need to understand how CPUs works if you want to write fast code.
 
-We'll start with simple model. Later we'll see how this model is wrong, but it's a reasonable starting point.
+There's a problem with this approach: modern CPUs have billions of transistors.
+No human being, even the chips' designers, can truly comprehend _exactly_ how they work.
+But luckily, to write fast software you don't need to understand everything about how the CPU works, you just need a reasonable mental model.
 
-At this point our mental model of the CPU doesn't have to be particularly accurate.
-For now we'll just make the reasonable assumption that if we ask the CPU to run 10× as many instructions, the CPU will take longer to do so.
+In this part of the book we'll rely on what is probably the most common mental model of CPU cores:
+
+1. A CPU core executes a series of instructions.
+   Examples include adding two numbers, or reading a value from a memory.
+2. Only one instruction is executed at a time.
+3. Each kind of instruction—whether it's arithmetic, a memory read or write of a single value, or some other operation—takes approximately the same amount of time.
+
+This model is wrong, and in later parts of the book we'll make it more realistic (but still wrong).
+But even this simplistic model is useful.
+It tells us that if we want our software to run faster, we need to use fewer CPU instructions.
+We can do this in one of two ways:
+
+1. Figuring out a more efficient way to get the same results.
+2. Accepting somewhat different results in exchange for using fewer instructions.
