@@ -1,3 +1,4 @@
 /.quarto/
 _book/
 .jupyter_cache
+*.ipynb  # temporary files
