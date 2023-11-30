@@ -1,0 +1,17 @@
+import os
+os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
+
+from numba import njit
+import numpy as np
+
+@njit
+def generate_random_numbers(n):
+    result = np.empty((n,), dtype=np.uint64)
+    random_number = 1
+    for i in range(n):
+        random_number = (random_number * 437799614237992725) % (2 ** 61 - 1)
+        result[i] = random_number
+    return result
+
+for i in range(5000):
+    generate_random_numbers(1_000_000)

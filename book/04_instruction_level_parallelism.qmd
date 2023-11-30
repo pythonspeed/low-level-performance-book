@@ -1,0 +1,288 @@
+# Instruction-level parallelism and branch prediction
+
+Choosing more scalable algorithms and removing redundant work don't require a particularly sophisticated mental model of how CPUs or compilers work.
+But if you're going to write faster code, you need a more realistic model of CPUs work.
+
+Let's do our initial setup, and then learn about:
+
+1. Instruction-level parallelism (ILP).
+2. Branch prediction, and the cost of misprediction.
+3. How to take advantage of these CPU features.
+
+In order to better demonstrate the effects of these CPU features, we will disable SIMD code generation in the code examples in this chapter; we'll talk about what SIMD means and what it does in the next chapter.
+
+```{python}
+# Disable SIMD, so it doesn't hide other effects:
+import os
+os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
+
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+```
+
+## Faster results with instruction-level parallelism
+
+A reasonable minimal mental model of CPUs is that they execute one instruction at a time.
+Putting aside parallelism between multiple CPU cores, which results in some very complex interactions that we won't be getting into, from the outside the CPU will indeed operate _as if_ it were executing one instruction at a time, in order.
+
+Consider the following function:
+
+```{python}
+#| eval: false
+from math import sqrt
+
+@njit
+def pythagorean_theorem(x_length, y_length):
+    x_squared = x_length ** 2
+    y_squared = y_length ** 2
+    return sqrt(x_squared + y_squared)
+```
+
+Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
+And all things being equal, faster results are better.
+Thus we don't care how the CPU executes the resulting code: so long as we get the same results, faster is better.
+
+A simplistic CPU will execute each instruction in order: first a multiply, then another, then an addition, the calculation of the square root.
+But the CPUs you are using in laptops, desktops, and servers can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
+
+In this case, calculating `x_squared` and `y_squared` is completely independent, so your CPU is likely to run both at once if it can.
+This happens transparently: the compiler doesn't have to do anything special, the CPU will do this all on its own.
+Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes: this is parallelism within a single core.
+If you later switch to a parallel implementation, each individual CPU core will still be able to do instruction-level parallelism.
+
+## Bottleneck #1: Data dependencies
+
+Not all code can be transparently run in parallel.
+For one thing, a calculation can't be run if its inputs aren't yet available.
+In our example above, the CPU cannot run the instructions for `x_squared + y_squared` until both inputs have been calculated, and this addition blocks the square root from being calculated.
+
+To see the speed impact of ILP, let's look at an example: generating an array of random numbers.
+For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node7.html) and write the following code:
+
+```{python}
+@njit
+def generate_random_numbers(n):
+    result = np.empty((n,), dtype=np.uint64)
+    random_number = 1
+    for i in range(n):
+        random_number = (random_number * 437799614237992725) % (2 ** 61 - 1)
+        result[i] = random_number
+    return result
+
+generate_random_numbers(3)
+```
+
+Unfortunately, this calculation does not have a lot of parallelism: `result[i+1]` cannot be calculated without knowing `result[i]`.
+
+### Removing a data dependency
+
+Let's try a different variant, where we calculate the random number based just on `i`, making `result[i+1]` independent of `result[i]`:
+
+```{python}
+@njit
+def generate_random_numbers_2(n):
+    result = np.empty((n,), dtype=np.uint64)
+    for i in range(n):
+        random_number = (i * 437799614237992725) % (2 ** 61 - 1)
+        result[i] = random_number
+    return result
+
+generate_random_numbers_2(3)
+```
+
+A little thought will suggest this is a terrible way to generate random numbers, so we won't want to use this code in practice.
+However, this change does enable a massive speedup; the number of instructions isn't that different, but the speed at which they run drops dramatically thanks to ILP:
+
+```{python}
+%timeit generate_random_numbers(1_000_000)
+```
+
+```{python}
+%timeit generate_random_numbers_2(1_000_000)
+```
+
+### Loop unrolling
+
+Our compiler know about the CPU's ILP feature, and so it often uses "loop unrolling" to transform our code into an equivalent form that enables more instruction-level parallelism.
+Instead of doing one execution of the core logic of the loop, it restructures the code to do 2 or more steps within each loop iteration.
+We can do so manually, with code that looks like this:
+
+```{python}
+#| eval: false
+# This is usually not necessary; the compiler will do it for you:
+@njit
+def generate_random_numbers_unrolled(n):
+    result = np.empty((n,), dtype=np.uint64)
+    for i in range(n // 2):
+        random_number1 = ((i * 2) * 437799614237992725) % (2 ** 61 - 1)
+        result[i * 2] = random_number1
+        random_number2 = ((i * 2 + 1) * 437799614237992725) % (2 ** 61 - 1)
+        result[i * 2 + 1] = random_number2
+
+    result[-1] = ((n - 1) * 437799614237992725) % (2 ** 61 - 1)
+    return result
+```
+
+Notice that depending how smart the CPU is, we now have more opportunity for parallelism, as more code paths in each loop iteration are independent of each other.
+You can do loop unrolling manually, but in practice the compiler will often do it for you, which means you can stick to more readable code.
+
+::: {.callout-note}
+For Numba, you can see the underlying compiler's optimized output—specifically, the LLVM intermediate representation—by setting this option before you import `numba` for the first time:
+
+```{python}
+#| eval: false
+os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
+```
+
+You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
+:::
+
+## Bottleneck #2: Conditionals and failed branch prediction
+
+Another code structure that potentially prevents instruction-level parallelism is a conditional statement: an `if` or equivalent.
+Given there are two possible sets of future instructions, the two branches of the `if`, how can the CPU know which set it should be executing in parallel?
+
+Instead of just stopping execution until the `if` statement can be calculated, the CPU will instead make a guess, a "branch prediction".
+Based on this prediction, the CPU keeps executing in parallel as if that prediction is correct.
+If it turns out to be correct, all is well.
+If the guess turns out to be wrong—a branch misprediction—then the work done so far has to be undone.
+And that can get expensive.
+
+However, many conditionals have very consistent answers for long stretches of time, so branch prediction will end up being very accurate.
+For example, if we're iterating over a range of numbers from `0` to `N`, the CPU keeps asking "is `i` smaller than `N`?"
+
+* Is 0 smaller than `N`?
+* Is 1 smaller than `N`?
+* Is 3 smaller than `N`?
+* etc.
+
+The conditional will be true for the first `N` times; only when the iteration ends does the conditional go the other way.
+Given how common this sort of loop is, you can assume the branch predictor will get things right.
+
+Nonetheless, branches can still be a problem:
+
+* There is a limit to how many branch locations the CPU can track and predict.
+* There are potential benefits to branchless code when trying to use SIMD auto-vectorization, which we'll discuss in the next chapter.
+* Most significantly, in some situations branches cannot be accurately predicted, leading to misprediction and therefore slow code execution.
+
+Let's dig a little deeper into that last problem.
+
+### Unpredictable branches slow down your code
+
+When your conditionals' outcomes are hard to predict, quite frequently the CPU will speculatively execute the wrong branch, and therefore have to do the expensive work of switching to a different branch.
+And that will slow down your code's execution.
+
+Let's see an example: we have a time series of numbers, and want to record how many times values went up, stayed the same, or went down compared to the previous value.
+
+```{python}
+@njit
+def count_increasing_decreasing(arr):
+    previous = 0
+    increasing = 0
+    unchanged = 0
+    for value in arr:
+        if value == previous:
+            unchanged += 1
+        elif value > previous:
+            increasing += 1
+        previous = value
+    decreasing = len(arr) - increasing - unchanged
+    return increasing, unchanged, decreasing
+
+count_increasing_decreasing([1, 2, 3, 2, 2, 4])
+```
+
+We can run this on data that is always increasing, which means branch prediction will work well, and randomized data where branch prediction is impossible:
+
+```{python}
+# Increases linearly from 1 to 1,000,000:
+PREDICTABLE_DATA = np.linspace(1, 1_000_000, 1_000_000, dtype=np.uint64)
+# Shuffled randomly:
+RANDOM_DATA = PREDICTABLE_DATA.copy()
+np.random.shuffle(RANDOM_DATA)
+
+%timeit count_increasing_decreasing(PREDICTABLE_DATA)
+%timeit count_increasing_decreasing(RANDOM_DATA)
+```
+
+As you can see, random data results in much slower execution even though the number of CPU instruction should be basically the same.
+The problem: branch misprediction.
+
+::: {.callout-note}
+I validated this hypothesis by using the `perf` tool on Linux.
+Among [many other useful abilities](https://perf.wiki.kernel.org/index.php/Main_Page), it lets you run a program and get runtime statistics about where time was spent:
+
+```
+$ perf stat python yourscript.py
+```
+
+In this case, a script that ran on the random data had far more branch mispredictions than the same version running on the predictable data.
+:::
+
+### Avoiding branch mispredictions with branchless programming
+
+Compilers can often avoid generating branches in the machine code they generate, often by using special CPU instructions that were created for this purpose.
+The key is to give the compiler hints that allow it to generate suitable code.
+
+In our example, the issue is that are updating the `unchanged` variable, but only in one branch (and similarly for `increasing`).
+The compiler is unlikely to add additional writes.
+But we could restructure the code so we always write to these variables, regardless of the outcome:
+
+```{python}
+@njit 
+def count_increasing_decreasing_avoid_conditionals(arr):
+    previous = 0
+    increasing = 0
+    unchanged = 0
+    for value in arr:
+        unchanged += 1 if value == previous else 0
+        increasing += 1 if value > previous else 0
+        previous = value
+    decreasing = len(arr) - increasing - unchanged
+    return increasing, unchanged, decreasing
+
+count_increasing_decreasing_avoid_conditionals([1, 2, 3, 2, 2, 4])
+```
+
+Now, regardless of the result of comparing `value` and `previous` we add a value to `unchanged` and `increasing`.
+This gives the compiler sufficient information to generate code that doesn't use a conditional at all.
+
+We can can measure the performance with predictable data and random data:
+
+```{python}
+%timeit count_increasing_decreasing_avoid_conditionals(PREDICTABLE_DATA)
+%timeit count_increasing_decreasing_avoid_conditionals(RANDOM_DATA)
+```
+
+In the predictable case, the code runs slightly slower: we're doing extra work.
+But in the random case, the code is much faster.
+And importantly, performance is consistent, so we know how much time the code will take to run.
+Depending on the data we expect to encounter this implementation may be much better.
+
+In general, making sure that both branches end up writing to the same memory location can help the compiler generate branchless code.
+There are also various arithmetic tricks you can do, for example by treating a boolean (the result of some condition) as an integer with either values `0` or `1`:
+
+```{python}
+#| eval: false
+from numba import uint64
+
+# ...
+unchanged += uint64(value == previous)
+increasing += uint64(value > previous)
+# ...
+```
+
+Whether or not branchless code is actually faster depends on the data and how predictable the branches are.
+
+### Hidden sources of branching
+
+In addition to explicit branches you might add to your code, there are other less obvious sources of branching that can be added by the compiler, including handling division by zero and bounds checking.
+
+Dividing by zero is mathematically meaningless, so programming languages need to decide how to handle it for different data types.
+For example, in Python you get a `ZeroDivisionError` by default, whereas NumPy floats return the special value `inf`/`-inf`/`nan` when divided by zero (for positive numbers, negative numbers, and zero, respectively).
+
+If your programming language has any sort of graceful handling for divide by zero, behind the scenes that will require generating an `if` statement any time division by a variable happens.
+Numba, for example, will raise a `ZeroDivisionError` by default.
+
+Another potential source of auto-generated branches is bounds checking, which we will discuss in a later chapter.

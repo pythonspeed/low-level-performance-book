@@ -1,0 +1,240 @@
+# Memory as a performance bottleneck
+
+So far we've been assuming that reading and writing from memory:
+
+1. Takes a fixed amount of time.
+2. Is fast enough that we could focus on computation only.
+
+Neither of these assumptions is necessarily true.
+In fact, access to RAM is vastly slower than CPU instructions.
+As we'll see, CPUs are designed to mitigate this slowness, so in many cases you can ignore memory access, but if those mitigations don't help memory access can become a significant bottleneck.
+Which means you need to think about not just your computation, but also how you access memory.
+
+## Same number of operations, different performance
+
+Let's see the impact of memory access on performance.
+We'll set up our normal imports:
+
+```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+```
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+And implement the following function.
+We pass the multiplier in explicitly so the compiler doesn't optimize things away as it would with a constant.
+
+```{python}
+@njit
+def scan_memory(array_size, multiplier):
+    data = np.ones((array_size,), dtype=np.uint8)
+
+    index = 0
+    for _ in range(10_000_000):
+        data[index] += 1
+        index = (multiplier * index + 1) % array_size
+    return data[0]
+
+LINEAR = 1
+RANDOM = 22695477
+```
+
+Depending on the value of the multiplier, the memory will be traversed in different ways:
+
+1. If the multiplier is 1, this is just a linear scan of memory.
+2. If you pass in a large number like 22695477, this is a pseudo-random traversal of the array, bouncing around in memory.
+
+Here's the time it takes to reach each variation:
+
+```{python}
+#| echo: false
+%%compare_timing
+scan_memory(100_000_000, LINEAR)
+scan_memory(100_000_000, RANDOM)
+```
+
+Bouncing around memory is slower than a linear scan of memory—but why?
+In both cases we're running the same number of CPU instructions.
+If the CPU were the only bottleneck, both variations should have taken the same amount of time because they're doing the same amount of work.
+
+## Slow memory and the CPU cache hierarchy
+
+From a CPU's perspective, reading from RAM—the active memory of the computer—is actually quite slow.
+To speed things up, CPU designers provide a series of caches to reduce the need to access RAM.
+
+To simplify dramatically, here's how the CPU talks to RAM:
+
+```{dot}
+digraph G {
+  rankdir = "LR"
+  node [shape = "box"]
+  l1i [label="L1 cache (instructions)"]
+  l1d [label="L1 cache (data)"]
+  l2 [label="L2 cache"]
+  l3 [label="L3 cache"]
+  CPU -> l1i
+  CPU -> l1d
+  l1i -> l2
+  l1d -> l2
+  l2 -> l3 -> RAM
+}
+```
+
+From fastest to slowest:
+
+1. The L1 caches are very fastest and very small, and might be per-CPU or per-core.
+   There's one for instructions (i.e. the code you're running) and one for the data your program is using.
+2. The L2 cache is bigger but slower, and can store both instructions and data.
+3. The L3 cache is even bigger and even slower, and can store both instructions and data.
+4. Finally, there's RAM, which is even slower to access.
+
+My CPU, for example, has 12 cores with:
+
+1. 512KiB L1 data cache and 512KiB L1 instruction per core.
+2. 12MiB L2 cache for each of 9 of the cores (this particular CPU has two different kinds of cores.)
+3. 25MiB L3 cache shared by all the cores.
+
+If the data isn't in L1, that's a cache miss, and you'll need to load from the slower L2.
+If it's not in L2, you need to load from the even slower L3.
+If it's not in L3, you need to load from RAM, which is even slower.
+
+## Caches and memory access performance
+
+Let's get back to our code example.
+Why is a linear scan of memory faster than randomly jumping around?
+
+### Cache lines
+
+Memory is loaded into the caches in chunks known as "cache lines", often 64 bytes at a time.
+Each of the values in the example above is a 32-bit integer, i.e. it takes 4 bytes.
+So if we're loading 64 bytes at a time, we'll also load the 2nd, 3rd, 4th up to the 15th consecutive value into the L1 cache.
+
+Comparing our two variations:
+
+* **Linear scan:** Each load of an integer also loads the next 15 consecutive integers.
+  This is helpful, since we're doing a linear scan, so we're going to be inspecting these integers next.
+* **Random scan:** Each load of an integer also loads the next 15 consecutive integers, but they're of no immediate use to us since the next value we'll inspect will be elsewhere in the array.
+  Quite possibly they'll be dropped from the cache before we actually need to see them.
+
+As a result, in the linear scan case the data we need is much more likely to already be in the cache.
+
+### Pre-fetching
+
+Modern CPUs will also pre-fetch memory into the cache as an optimization technique, even before the running code asks for it.
+When this works well, by the time you've gotten to the point of needing to read the next chunk of memory it will already be in the cache.
+
+Linear memory scans are a common usage pattern in software, and they're also easy to detect.
+So if you're doing a linear scan it's very likely the CPU will notice and prefetch the data you need into the cache.
+Random scans are, of course, much harder to predict, and so prefetching is less likely to help.
+
+If data is being prefetched, there will be fewer cache misses because the CPU will already have loaded the data into the memory caches.
+And that means fewer loads from slower caches, or even slower RAM.
+
+:::{.callout-info}
+On Linux, you can use the [`perf stat`](https://perf.wiki.kernel.org/index.php/Tutorial#Counting_with_perf_stat) tool to measure cache misses.
+You can often do it down to the level of specific caches (L1 vs L3, say), but even just cache misses in general are often sufficient to see what's going on.
+
+For example, you can do `perf stat -e cache-misses yourprogram` to run `yourprogram` and see how many cache misses it had.
+:::
+
+## Relying on memory caches to write faster software
+
+In order to write fast software, we want as much of our data reads and writes to fit in the L1 cache.
+
+### Stick to linear scans
+
+As we saw, scanning memory linearly is the fastest way to do so.
+Whether or not you're scanning memory linearly becomes a little less obvious when you're dealing with N-dimensional arrays: the memory address space is linear, so there's different ways to map the different dimensions on.
+For example, if you have a 2-dimensional array, you can iterate over the first dimension first or the second dimension first:
+
+```{python}
+two_d = np.ones((2_000, 2_000), dtype=np.int64)
+
+@njit
+def scan_y_first(arr):
+    total = 0
+    for y in range(arr.shape[0]):
+        for x in range(arr.shape[1]):
+            total += arr[y, x]
+    return total
+
+@njit
+def scan_x_first(arr):
+    total = 0
+    for x in range(arr.shape[1]):
+        for y in range(arr.shape[0]):
+            total += arr[y, x]
+    return total
+```
+
+Given NumPy's default memory layout, scanning the dimensions in order is faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+scan_y_first(two_d)
+scan_x_first(two_d)
+```
+
+### Be aware of the impact of NumPy views
+
+
+### Keep your working set in memory
+
+The other thing you can do keep your code running quickly, especially when linear scans aren't possible, is to keep your working set smaller.
+The smaller your memory footprint, the more likely it is to be in one of the smaller, faster caches.
+
+Previously we scanned an array using 100MB of memory, which was too big to fit in cache once enough random lookups happened.
+With a smaller array of 1MB, however, the whole array can be kept in the L3 or probably even L2 cache.
+And that means switching from a linear scan to random access isn't as expensive:
+
+```{python}
+#| echo: false
+%%compare_timing
+scan_memory(1_000_000, LINEAR)
+scan_memory(1_000_000, RANDOM)
+scan_memory(100_000_000, LINEAR)
+scan_memory(100_000_000, RANDOM)
+```
+
+## Registers: even faster than the L1 cache
+
+The diagram above of the memory hierarchy leaves out one form of memory that is even faster than the L1 cache: CPU registers.
+The registers are where the CPU can store temporary values that it is running instructions on.
+Registers typically store at most a 64-bit value; SIMD is implemented with special registers that can store 128, 256, or 512-bit values.
+
+Register are used as part of the way function calls are implemented, for arguments to functions and the return result of a function.
+As a simplification, you can assume local function variables of 64 bits or less are stored in registers: numbers, and maybe other small values depending on the programming language.
+For our purposes, that means it's faster to read and write numbers from a local variable than it is to and from memory.
+
+```{python}
+@njit
+def multiply_in_array(arr):
+    for i in range(1_000):
+        arr[0] *= 1.1
+
+@njit
+def multiply_with_local(arr):
+    temp = arr[0]
+    for i in range(1_000):
+        temp *= 1.1
+    arr[0] = temp
+
+ARR = np.ones((1,), dtype=np.float64)
+```
+
+If we compare the two:
+
+```{python}
+#| echo: false
+%%compare_timing
+ARR[0] = 1; multiply_in_array(ARR)
+ARR[0] = 1; multiply_with_local(ARR)
+```
+
+TODO swap

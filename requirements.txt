@@ -1,0 +1,5 @@
+numba==0.58
+jupyter
+jupyter-cache
+pytablewriter==1.0.0
+scikit-image

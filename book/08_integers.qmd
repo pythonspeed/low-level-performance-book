@@ -1,0 +1,11 @@
+# Integers
+
+faster than floats, typically
+
+Wrapping behavior
+
+signed integer overflow is undefined behavior in C
+
+In Numba, documentation says "arithmetic operations can wrapround or produce undefined results or overflow."
+
+TODO maybe restructure? this doesn't quite belong here: smaller types can result in speed ups for multiple reason - possibly faster math, can fit more operations into single SIMD instruction, reduced memory accesses

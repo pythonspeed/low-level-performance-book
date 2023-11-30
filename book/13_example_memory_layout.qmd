@@ -1,0 +1,263 @@
+# Example: Choosing a memory layout
+
+Let's do some DNA sequencing, or at least a very simplified version; my sincere apologies to any biologists reading this.
+
+The really short and inaccurate version is that after doing some biological pre-processing, we're shooting four different lasers frequencies at a sample.
+Depending on the base (A, C, G, or T) a different color will fluoresce, corresponding to one color.
+We now have four channels, with different brightness values, one for each base; we pick the channel brightest (highest) value, which tells us which base this is.
+We do this repeatedly for each item in the DNA sequence, until we've sequenced the whole ting.
+
+There are two phases to processing the data:
+
+1. **Normalization:** Normalize each of the color channels to brightness values between 0 and 1.
+2. **Choosing the brightest of the four normalized channels.**
+
+We're going to implement the second phase, and optimize it so it's 20× faster than our initial implementation:
+
+```{python}
+#| echo: false
+load_ext book_magics
+```
+
+## Choosing a data layout depends on the access pattern
+
+You'll recall that we are likely to get the highest speed from processing contiguous memory in a linear fashion.
+This is for two reasons:
+
+1. Memory access is faster when done linearly on contiguous memory.
+2. If we tell the compiler that it is processing contiguous memory, it can sometimes use SIMD instructions, allowing us to process multiple pieces of data at the same time.
+
+If we think about memory representation of this data as an array, there are two ways to approach this, using an example with a DNA sequence of length 10,000:
+
+* **Column-oriented:** Each color channel has its own 1-dimensional array.
+  The overall structure is an array with shape `(4, 10_000)`, where the data for a particular channel is laid out contiguously in memory.
+  We could alternatively store this as a Pandas or Polars dataframe, with each column being one of the channels.
+* **Row-oriented**: Each position in the DNA sequence gets a set of 4 channel values.
+  The overall structure is an array with shape `(10_000, 4)`, where the data for a particular position in the sequence is laid out contiguously in memory.
+
+For the normalization phase, the processing is done separately for each channel.
+That suggests the column-oriented memory representation is likely to be faster.
+
+On the other hand, when we choose the brightest of four values, we are repeatedly comparing four values from four different channels.
+That suggests the row-oriented memory representation might be faster.
+
+So which should we choose?
+Given the first phase is likely better suited to a column orientation, we'll just use that layout for now, and assume that's what normalization spits out.
+
+Next, let's try to implement a fast version of choosing the brightest channel.
+
+## Choosing the brightest channel
+
+We'll simulate the data using channels 0, 1, 2 and 3, corresponding to A, C, G, and T respectively.
+The winning channels will have values between 0.9 and 1.0, and the losing channels will have values between 0 and 0.2.
+Real data may be messier; one can imagine one channel having a normalized brightness of 0.55 and another with a normalized brightness of 0.75.
+
+```{python}
+import numpy as np
+from numpy.random import random_integers
+np.random.seed(0)
+from numba import njit
+
+def create_simulated_data(size):
+    result = np.empty((4, size), dtype=np.float64)
+    for i in range(size):
+        # Pick which base is bright:
+        base = np.random.randint(0, 4)
+        for channel in range(4):
+            result[channel, i] = (
+                np.random.random_sample() / 5
+                if channel != base else
+                0.9 + (np.random.random_sample() / 10)
+            )
+    return result
+
+COL_NORMALIZED = create_simulated_data(1_000_000)
+```
+
+Here's what the simulated data looks like:
+
+```{python}
+COL_NORMALIZED[:5]
+```
+
+NumPy has a built-in function that does actually what we want: `argmax()`.
+Let's try it out:
+
+```{python}
+COL_NORMALIZED[:5].argmax(0)
+```
+
+How fast is it?
+
+```{python}
+#| echo: false
+%%compare_timing
+COL_NORMALIZED.argmax(0)
+```
+
+Let's see if we can do better.
+
+## Switching to Numba
+
+Here's a first pass implementation with a low-level language:
+
+```{python}
+@njit
+def col_choose_brightest(normalized_data):
+    result = np.empty((normalized_data.shape[1],), dtype=np.uint8)
+    for i in range(normalized_data.shape[1]):
+        max_value = max(normalized_data[:,i])
+        for channel in range(4):
+            if normalized_data[channel, i] == max_value:
+                result[i] = channel
+                break
+
+    return result
+
+assert np.array_equal(
+    COL_NORMALIZED.argmax(0),
+    col_choose_brightest(COL_NORMALIZED)
+)
+```
+
+We can measure the speed:
+
+```{python}
+#| echo: false
+%%compare_timing
+COL_NORMALIZED.argmax(0)
+col_choose_brightest(COL_NORMALIZED)
+```
+
+It's a little faster!
+
+### Getting rid of branch mispredictions
+
+Our first attempt has some issues, however:
+
+1. We have a branch in the code that exits the loop... and it's an _unpredictable_ branch.
+   That's bad!
+   It means we'll pay a performance cost for mispredictions, and we won't be able to use instruction-level parallelism.
+2. We're going over the channel values twice, once to do the `max()`, and once to find the index.
+   This may or may not be a performance issue.
+
+The first problem seems more problematic, so let's fix it:
+
+```{python}
+@njit
+def col_choose_brightest_2(normalized_data):
+    result = np.empty((normalized_data.shape[1],), dtype=np.uint8)
+    for i in range(normalized_data.shape[1]):
+        max_value = max(normalized_data[:,i])
+        chosen_channel = 0
+        for channel in range(4):
+            chosen_channel = (
+                channel if normalized_data[channel, i] == max_value
+                else chosen_channel
+            )
+        result[i] = chosen_channel
+    return result
+
+assert np.array_equal(
+    COL_NORMALIZED.argmax(0),
+    col_choose_brightest_2(COL_NORMALIZED)
+)
+```
+
+We can measure the speed:
+
+```{python}
+#| echo: false
+%%compare_timing
+COL_NORMALIZED.argmax(0)
+col_choose_brightest_2(COL_NORMALIZED)
+```
+
+That's a lot faster!
+
+## A single loop
+
+Next, we'll fix the second problem we identified: we're doing two loops over each set of channels.
+
+```{python}
+@njit
+def col_choose_brightest_3(normalized_data):
+    assert normalized_data.shape[0] == 4
+    result = np.empty((normalized_data.shape[1],), dtype=np.uint8)
+    for i in range(normalized_data.shape[1]):
+        max_channel = 0
+        max_value = 0
+        for channel in range(4):
+            value = normalized_data[channel, i]
+            max_channel, max_value = (
+                (channel, value) if value > max_value
+                else (max_channel, max_value)
+            )
+        result[i] = max_channel
+    return result
+
+assert np.array_equal(
+    COL_NORMALIZED.argmax(0),
+    col_choose_brightest_3(COL_NORMALIZED)
+)
+```
+
+We can measure the speed:
+
+```{python}
+#| echo: false
+%%compare_timing
+COL_NORMALIZED.argmax(0)
+col_choose_brightest_3(COL_NORMALIZED)
+```
+
+That's even faster!
+
+## What about a row-based memory layout?
+
+Earlier we hypothesized that a row-based memory layout would be faster for this task.
+So now that we have a fast version, let's try that experiment out.
+
+```{python}
+ROW_NORMALIZED = np.ascontiguousarray(
+    np.swapaxes(COL_NORMALIZED, 0, 1)
+)
+
+@njit
+def row_choose_brightest(normalized_data):
+    assert normalized_data.shape[1] == 4
+    result = np.empty((normalized_data.shape[0],), dtype=np.uint8)
+    for i in range(normalized_data.shape[0]):
+        max_channel = 0
+        max_value = 0
+        for channel in range(4):
+            value = normalized_data[i, channel]
+            max_channel, max_value = (
+                (channel, value) if value > max_value
+                else (max_channel, max_value)
+            )
+        result[i] = max_channel
+    return result
+
+assert np.array_equal(
+    row_choose_brightest(ROW_NORMALIZED),
+    col_choose_brightest(COL_NORMALIZED)
+)
+```
+
+Next, we can measure the speed of row-based variants compared to column-based variants:
+
+```{python}
+#| echo: false
+%%compare_timing
+COL_NORMALIZED.argmax(0)
+ROW_NORMALIZED.argmax(1)
+col_choose_brightest_3(COL_NORMALIZED)
+row_choose_brightest(ROW_NORMALIZED)
+```
+
+For the `argmax()` version, the row-based version is faster, as predicted.
+For the faster implementation we've come up with, the row-based version is slightly slower!
+This is why we measure: sometimes our predictions are wrong.
+
+Given the column-based representation is more convenient for previous processing phases (i.e. normalization of the raw data on a per-channel basis), it's nice that we don't have to pay a speed penalty by using it.

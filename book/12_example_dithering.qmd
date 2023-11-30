@@ -1,0 +1,526 @@
+# Example: Code that has to be written as low-level code
+
+While NumPy and similar libraries' "vectorized" batch operations can often allow you to implement your algorithm, sometimes they won't help.
+In particular, some algorithms effectively require iterating over individual values, and don't fit well into the "vectorization" paradigm.
+What's more, these sort of algorithms also won't be amenable to parallelization, so using multiple cores can be difficult.
+
+So how do you implement a fast version given these problems?
+First, by using low-level code.
+Second, by optimizing that code as much as possible.
+
+## Dithering an image from grayscale to black and white
+
+As an example, in this chapter we'll be optimizing Floyd-Steinberg dithering.
+We'll use this algorithm to convert a grayscale image with values of 0 to 255 into an image with just two colors, black and white.
+
+As explained in the [Wikipedia article](https://en.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering), this algorithm rounds a pixel's value to the nearest of the two extremes (0 for black or 255 for white).
+The difference between the original value and the rounded value, known as the error, is added to neighboring pixels, with the following distribution:
+
+```
+[  ...            , current pixel (rounded), + 7/16 of error, ... ]
+[  + 3/16 of error, + 5/16 of error        , + 1/16 of error, ... ]
+```
+
+So the next pixel on the row gets 7/16th of the error, and the pixel one row down gets 5/16th of the error, and so on.
+Once the current pixel is processed, the algorithm moves on to the next pixel, which now includes some of the error from the previous pixel.
+
+One key issue with optimizing this algorithm is that because each pixel's final value is impacted by the calculations done on previous pixels:
+
+* It's unclear how to implement this with NumPy or SciPy full-array operations.
+* It's likely impossible to process pixels in parallel, which suggests that use of SIMD might be difficult.
+
+Still, given a naive implementation there are some ways to speed things up.
+
+## Getting started
+
+Let's load the libraries we'll be using, as well as a test image, a 400×400 NumPy array of `uint8`s.
+
+```{python}
+from numba import njit
+import numpy as np
+from skimage import io
+
+image = io.imread("images/hallway.jpg")
+```
+
+Here's what the original image looks like:
+
+```{python}
+#| echo: false
+%load_ext book_magics
+%display_image image
+```
+
+If this was more than an example, we'd want to benchmark the code with a variety of images and sizes, matching the variety of inputs we expect to encounter.
+For simplicity's sake, however, we'll stick to this single image.
+
+In the following section you'll follow along as I start with a naive implementation, make it faster, reduce memory usage, and then optimize it some more.
+Some intermediate steps and failed experiments were omitted for clarity.
+Nonetheless, this is a real optimization exercise: these are all optimization ideas I came up with as I went along, as I had never optimized this algorithm before.
+
+## A naive implementation
+
+Here's the first version I implemented.
+I didn't try to make it slow or fast: I just tried to implement the algorithm.
+
+The code stores temporary results in 16-bit integers, because adding the error might make some pixels either negative or bigger than 255.
+Both those cases won't fit in an unsigned 8-bit integer.
+At the end I turn the result into an 8-bit image, which is what the function is supposed to return.
+
+```{python}
+@njit
+def dither(img):
+    # int16 to allow negative values and a wider range than a
+    # uint8 has. This will start as copy of the input but will
+    # get modified with diffused errors:
+    staging = img.astype(np.int16)
+    y_size = img.shape[0]
+    x_size = img.shape[1]
+    last_y = y_size - 1
+    last_x = x_size - 1
+    for y in range(y_size):
+        for x in range(x_size):
+            old_value = staging[y, x]
+            if old_value < 0:
+                new_value = 0
+            elif old_value > 255:
+                new_value = 255
+            else:
+                new_value = np.uint8(np.round(old_value / 255.0)) * 255
+            staging[y, x] = new_value
+            # We might get a negative value for the error:
+            error = np.int16(old_value) - new_value
+            if x < last_x:
+                staging[y, x + 1] += error * 7 // 16
+            if y < last_y and x > 0:
+                staging[y + 1, x - 1] += error * 3 // 16
+            if y < last_y:
+                staging[y + 1, x] += error * 5 // 16
+            if y < last_y and x < last_x:
+                staging[y + 1, x + 1] += error // 16
+
+    return staging.astype(np.uint8)
+
+baseline_result = dither(image)
+```
+
+Here's what the dithered image looks like:
+
+```{python}
+#| echo: false
+%display_image baseline_result
+```
+
+And here's how long it takes to run `dither(image)`:
+
+```{python}
+#| echo: false
+%%compare_timing
+dither(image)
+```
+
+## Considering what to optimize
+
+In general, we want to make the inner part of the loop as fast as possible.
+Looking at the error diffusion part of the part of the code, instruction-level parallelism ought to help speed up running the code, given that each calculation is independent:
+
+```{python}
+#| eval: false
+if x < last_x:
+    staging[y, x + 1] += error * 7 // 16
+if y < last_y and x > 0:
+    staging[y + 1, x - 1] += error * 3 // 16
+if y < last_y:
+    staging[y + 1, x] += error * 5 // 16
+if y < last_y and x < last_x:
+    staging[y + 1, x + 1] += error // 16
+```
+
+What about all those branches—will branch misprediction make them slow?
+A little thought suggests that these branches are very predictable because they depend only on the pixel location.
+Consider a 6×6 image: depending on the location of a pixel in the image, different combinations of branches will be taken.
+
+```
+1 2 2 2 2 3
+1 2 2 2 2 3
+1 2 2 2 2 3
+1 2 2 2 2 3
+1 2 2 2 2 3
+4 5 5 5 5 6
+```
+
+For example, pixels in zones 1 and 4 won't be able to diffuse the error to the previous column, because there is no previous column.
+Therefore the relevant branch (`if y < last_y and x > 0`) won't be taken.
+
+In larger images, virtually all the pixels will be in zone 2, with the exact same branches taken, so the CPU ought to be able to reliably predict those branches.
+Thus a reasonable assumption is that the diffusion part of the code is running at a decent speed even in its current state.
+
+In contrast, the calculation of the error itself seems potentially slow:
+
+```{python}
+#| eval: false
+if old_value < 0:
+    new_value = 0
+elif old_value > 255:
+    new_value = 255
+else:
+    new_value = np.uint8(np.round(old_value / 255.0)) * 255
+```
+
+First, the branches depend on the values of the pixels, so they may be hard for the CPU to predict, and it's not clear whether the compiler will generate branchless code.
+Second, there's some relatively complex math going on: rounding a float seems like it would be slow.
+
+## Optimizing rounding
+
+The naive rounding implementation addresses three possible cases for intermediate pixel values:
+
+1. Negative numbers should be rounded to 0 (black).
+2. Numbers larger than 255 should be rounded 255 (white).
+3. Numbers in between should be rounded to the closest of 0 to 255.
+
+All of this can be simplified into a single simple check: measuring whether the pixel value is smaller or bigger than the middle point.
+In Python: `new_value = 0 if old_value < 128 else 255`.
+Since `new_value` gets a value set in either case, the hope is that the compiler will turn this into branchless code, so we don't have to worry about the cost of branch misprediction.
+
+```{python}
+@njit
+def dither2(img):
+    staging = img.astype(np.int16)
+    y_size = img.shape[0]
+    x_size = img.shape[1]
+    last_y = y_size - 1
+    last_x = x_size - 1
+    for y in range(y_size):
+        for x in range(x_size):
+            old_value = staging[y, x]
+            # Branchless, simple rounding:
+            new_value = 0 if old_value < 128 else 255
+            staging[y, x] = new_value
+            error = old_value - new_value
+            if x < last_x:
+                staging[y, x + 1] += error * 7 // 16
+            if y < last_y and x > 0:
+                staging[y + 1, x - 1] += error * 3 // 16
+            if y < last_y:
+                staging[y + 1, x] += error * 5 // 16
+            if y < last_y and x < last_x:
+                staging[y + 1, x + 1] += error // 16
+    return staging.astype(np.uint8)
+
+assert np.array_equal(dither2(image), baseline_result)
+```
+
+Here's how long it takes to run:
+
+```{python}
+#| echo: false
+%%compare_timing
+dither2(image)
+```
+
+That's a lot better!
+Remember, 1000 microseconds is 1 millisecond.
+
+## Optimizing memory usage
+
+While the code is now a lot faster, there's another problem to consider: it's using quite a lot of memory.
+The input image uses N bytes of memory, one `uint8` per pixel.
+`dither()` and `dither2()` both allocate 3N bytes: an `int16` array costs 2 bytes per pixel, and the final `uint8` result array is an additional byte per pixel.
+
+We can improve this by noticing that intermediate error accumulation only happens on the current row and the next row.
+And once we're done with a row it always fits in 8 bits and never changes again.
+So we really only need to keep 2 rows worth of memory as `int16`, and we can reuse the same memory as we traverse the image:
+
+```{python}
+@njit
+def dither3(img):
+    result = np.empty(img.shape, dtype=np.uint8)
+    # Temporary storage of current and next row's intermediate values:
+    staging = img[0:2].astype(np.int16)
+    y_size = img.shape[0]
+    x_size = img.shape[1]
+    last_x = x_size - 1
+    for y in range(y_size):
+        for x in range(x_size):
+            old_value = staging[0, x]
+            new_value = 0 if old_value < 128 else 255
+            staging[0, x] = new_value
+            error = old_value - new_value
+            if x < last_x:
+                staging[0, x + 1] += error * 7 // 16
+            if x > 0:
+                staging[1, x - 1] += error * 3 // 16
+            staging[1, x] += error * 5 // 16
+            if x < last_x:
+                staging[1, x + 1] += error // 16
+
+        # Copy current row of staging into result:
+        result[y,:] = staging[0,:]
+        # Prepare staging area for next iteration:
+        staging[0,:] = staging[1,:]
+        if y < y_size - 2:
+            staging[1,:] = img[y + 2,:]
+    return result
+
+assert np.array_equal(dither3(image), baseline_result)
+```
+
+Here's how long it takes to run:
+
+```{python}
+#| echo: false
+%%compare_timing
+dither3(image)
+```
+
+That's a little slower than `dither2()`, but still a lot faster than the original naive implementation.
+And now new memory used is approximately N bytes, since the staging array doesn't use much memory.
+Put another way, this version cuts memory usage by two-thirds.
+
+## Reducing memory copying
+
+The new version is probably slower because it does a bunch of copying.
+Once processing the current row is done, the contents of the next row (`staging[1]`) has to be copied into the current row (`staging[0]`), in order to preserve the errors diffused to the next row.
+If we split our staging array into two, one for the current row and one for the next row, we can just swap those two arrays instead of copying the data.
+
+```{python}
+@njit
+def dither4(img):
+    result = np.empty(img.shape, dtype=np.uint8)
+    # Two arrays, one for staging the current row and one for the next:
+    staging_current = img[0].astype(np.int16)
+    staging_next = img[1].astype(np.int16)
+    y_size = img.shape[0]
+    x_size = img.shape[1]
+    last_x = x_size - 1
+    for y in range(y_size):
+        for x in range(x_size):
+            old_value = staging_current[x]
+            new_value = 0 if old_value < 128 else 255
+            staging_current[x] = new_value
+            error = old_value - new_value
+            if x < last_x:
+                staging_current[x + 1] += error * 7 // 16
+            if x > 0:
+                staging_next[x - 1] += error * 3 // 16
+            staging_next[x] += error * 5 // 16
+            if x < last_x:
+                staging_next[x + 1] += error // 16
+
+        # Copy current row of staging into result:
+        result[y,:] = staging_current[:]
+        # Switch the next row to be the current one, and copy in the next row's
+        # initial data from the original image:
+        staging_current, staging_next = staging_next, staging_current
+        if y < y_size - 2:
+            staging_next[:] = img[y + 2,:]
+
+    return result
+
+assert np.array_equal(dither4(image), baseline_result)
+```
+
+Here's how long it takes to run:
+
+```{python}
+#| echo: false
+%%compare_timing
+dither4(image)
+```
+
+That's slightly better.
+
+## Getting rid of conditionals
+
+We still have all those annoying `if` statements in the main loop, which are used to handle edge pixels.
+For example, if you're in the first column, it's not possible to diffuse the errors to the previous column.
+
+We can get rid of those conditionals, though.
+The code currently has temporary staging arrays for accumulating errors, and there's no reason they have to be the same size as the input or the result.
+We can just add an extra item at the start and end.
+As a result edge pixels can behave the same way as non-edge pixels, and we can get rid of the conditionals.
+
+As an additional optimization, notice that copying `staging_current` into the `result` array isn't actually necessary.
+Once a pixel is finalized, it won't change, so we can just write directly to `result` and skip updating `staging_current`.
+
+```{python}
+@njit
+def dither5(img):
+    result = np.empty(img.shape, dtype=np.uint8)
+    y_size = img.shape[0]
+    x_size = img.shape[1]
+    # The staging arrays have an extra entry at the start and at the end, so
+    # that we don't need conditionals to handle edge pixels.
+    staging_current = np.zeros(x_size + 2, np.int16)
+    staging_current[1:-1] = img[0]
+    staging_next = np.zeros(x_size + 2, np.int16)
+
+    for y in range(y_size):
+        # Copy in the next row's data:
+        if y < y_size - 1:
+            staging_next[1:-1] = img[y + 1,:]
+
+        for x in range(x_size):
+            old_value = staging_current[x + 1]
+            new_value = 0 if old_value < 128 else 255
+            # This is the final result, so we can store it directly in the
+            # result:
+            result[y, x] = new_value
+            error = old_value - new_value
+            staging_current[x + 2] += error * 7 // 16
+            staging_next[x] += error * 3 // 16
+            staging_next[x + 1] += error * 5 // 16
+            staging_next[x + 2] += error // 16
+
+        # Switch the next row to be the current one:
+        staging_current, staging_next = staging_next, staging_current
+
+    return result
+
+assert np.array_equal(dither5(image), baseline_result)
+```
+
+Here's how long it takes to run:
+
+```{python}
+#| echo: false
+%%compare_timing
+dither5(image)
+```
+
+## Reducing memory reads and writes
+
+We can do even better!
+We're doing a lot of reading and writing from `staging_current` and `staging_next`, and this isn't strictly necessary.
+If we can move some of the temporary integer values we're accumulating to variables on the stack, they will likely end up being stored in CPU registers.
+Reading and writing from registers is faster than reading and writing memory, even when the CPU is using a fast cache to speed up the latter.
+
+```{python}
+@njit
+def dither6(img):
+    result = np.empty(img.shape, dtype=np.uint8)
+    y_size = img.shape[0]
+    x_size = img.shape[1]
+    staging_current = np.zeros(x_size + 2, np.int16)
+    staging_current[1:-1] = img[0]
+    staging_next = np.zeros(x_size + 2, np.int16)
+
+    for y in range(y_size):
+        right_pixel_error = 0
+        downleft_prev_error = 0
+        downleft_prevprev_error = 0
+        for x in range(x_size):
+            old_value = staging_current[x + 1] + right_pixel_error
+            new_value = 0 if old_value < 128 else 255
+            result[y, x] = new_value
+            error = old_value - new_value
+            right_pixel_error = error * 7 // 16
+            # Now that we have all three sets of errors accumulated, store
+            # them:
+            staging_next[x] = (
+                img[y + 1, x - 1] + downleft_prev_error + error * 3 // 16
+            )
+            # Accumulate errors for the next iteration:
+            downleft_prev_error = downleft_prevprev_error + error * 5 // 16
+            downleft_prevprev_error = error // 16
+
+        # Update the final pixel in the next row; it only gets two diffused
+        # errors, not three, so it doesn't get updated in the inner loop.
+        staging_next[x_size] = img[y + 1, x_size - 1] + downleft_prev_error
+
+        staging_current, staging_next = staging_next, staging_current
+
+    return result
+
+assert np.array_equal(dither6(image), baseline_result)
+```
+
+Comparing our updated code to the previous version:
+
+* Previously we read twice and wrote once to `staging_current` in every inner loop iteration.
+  Now we only read once, and don't write at all.
+* Previously we read and wrote to `staging_next` three times in every inner loop iteration, and overwrote it once per outer loop.
+  Now we only write once in every inner loop iteration, and don't read at all.
+
+Here's how long it takes to run:
+
+```{python}
+#| echo: false
+%%compare_timing
+dither6(image)
+```
+
+This version of the code is slightly harder to understand, but hopefully it's not too bad.
+
+## Getting rid of division
+
+Reader Michael Dunphy suggested replacing the division in the code with bitshifting.
+You'll recall from earlier in the book that division is a relatively expensive CPU instruction, and that since we're dividing by a power of 2, a cheaper bitshift instruction is a fine replacement.
+I expected the compiler to do this automatically, but it seems that in some cases it won't; [I filed a bug against Numba](https://github.com/numba/numba/issues/9211).
+
+```{python}
+@njit
+def dither7(img):
+    result = np.empty(img.shape, dtype=np.uint8)
+    y_size = img.shape[0]
+    x_size = img.shape[1]
+    staging_current = np.zeros(x_size + 2, np.int16)
+    staging_current[1:-1] = img[0]
+    staging_next = np.zeros(x_size + 2, np.int16)
+
+    for y in range(y_size):
+        right_pixel_error = 0
+        downleft_prev_error = 0
+        downleft_prevprev_error = 0
+        for x in range(x_size):
+            old_value = staging_current[x + 1] + right_pixel_error
+            new_value = 0 if old_value < 128 else 255
+            result[y, x] = new_value
+            error = old_value - new_value
+            # Replace division with bitshift:
+            right_pixel_error = (error * 7) >> 4
+            staging_next[x] = (
+                # Replace division with bitshift:
+                img[y + 1, x - 1] + downleft_prev_error + ((error * 3) >> 4)
+            )
+            # Replace division with bitshift:
+            downleft_prev_error = downleft_prevprev_error + ((error * 5) >> 4)
+            # Replace division with bitshift:
+            downleft_prevprev_error = error >> 4
+
+        staging_next[x_size] = img[y + 1, x_size - 1] + downleft_prev_error
+
+        staging_current, staging_next = staging_next, staging_current
+
+    return result
+
+assert np.array_equal(dither7(image), baseline_result)
+```
+
+Here's the results compared to previous versions:
+
+```{python}
+#| echo: false
+%%compare_timing
+dither(image)
+dither2(image)
+dither3(image) # Bit slower, but reduces memory usage by 2/3rds
+dither4(image)
+dither5(image)
+dither6(image)
+dither7(image)
+```
+
+## Can you do better?
+
+Can _you_ make this code even faster? Some ideas:
+
+* Reader Michael Dunphy also suggested replacing the conditional rounding code with explicit arithmetic operations.
+* Reader Szabolcs Dombi suggested replacing multiplication with equivalent operations based on bitshifting and addition.
+* Some optimizations may be easier to identify and try if you go back and start from an earlier version of the code.
+* So far each optimized version made sure the results exactly matched the original version.
+  However, dithering is a visual effect; most of the time, as long as it looks right, that's all that matters.
+  If we're willing to accept slightly different results, perhaps we can do better.
+
+If you give it a try and find some additional tricks, [let me know](mailto:itamar@pythonspeed.com).
+Note that some tweaks will be faster on one CPU but not another, and the version of Numba can make a difference too.

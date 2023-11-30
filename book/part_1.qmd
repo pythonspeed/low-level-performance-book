@@ -1,0 +1,8 @@
+# A simple mental model for computing speed
+
+Implementation matters for speed (NumPy vs Python code example?), you can't ignore how underlying system works.
+
+We'll start with simple model. Later we'll see how this model is wrong, but it's a reasonable starting point.
+
+At this point our mental model of the CPU doesn't have to be particularly accurate.
+For now we'll just make the reasonable assumption that if we ask the CPU to run 10× as many instructions, the CPU will take longer to do so.

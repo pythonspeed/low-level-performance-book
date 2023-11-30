@@ -1,0 +1,70 @@
+# Use a scalable algorithm
+
+TODO O(N) as function of how code _changes_ as input changes.
+MAYBE For small N, sometimes a worse O() function can be actually faster
+For large N, a bad function overwhelms benefits of switching from Python to compiled language.
+
+## Choosing a scalable algorithm
+
+Let's say you want to find the median.
+One way to do that is by sorting the array and then looking at the middle item; this is `O(n logn)`.
+Another way is using NumPy's built-in `median()` function; it's possible to do the median calculation in `O(n)` (on average) so hopefully that's what they did.
+
+```{python}
+array = np.random.random((1_000_000,))
+
+def sort_median(arr):
+    return np.sort(arr)[len(arr) // 2]
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+sort_median(array)
+np.median(array)
+```
+
+And, as we'd hoped, a better algorithm gets results faster.
+
+### Fix accidentally quadratic code
+
+It's very easy to accidentally end up writing code that is `O(N ^ 2)`, to the point that there is [a blog showcasing examples](https://accidentallyquadratic.tumblr.com/).
+The typical mistake is to have a loop, and then call a function that doesn't look like a loop but actually causes another loop over the same data.
+
+Here's an example from the blog, with just pure Python, calculating the intersection of two lists:
+
+```{python}
+def accidentally_quadratic(l1, l2):
+    result = []
+    # This is O(N):
+    for item in l1:
+        # Checking if a list contains an item is also O(N):
+        if item in l2:
+            result.append(item)
+    return result
+
+def linear(l1, l2):
+    result = []
+    l2_as_set = set(l2)
+    for item in l1:
+        # Checking if a set contains an item is O(1):
+        if item in l2_as_set:
+            result.append(item)
+    return result
+
+DATA = list(range(1_000))
+DATA2 = list(range(3, 1_003))
+assert accidentally_quadratic(DATA, DATA2) == linear(DATA, DATA2)
+```
+
+The second implementation is faster, because it is linear:
+
+```{python}
+#| echo: false
+%%compare_timing
+
+accidentally_quadratic(DATA, DATA2)
+linear(DATA, DATA2)
+```
+
+This example is pure Python, but using a faster language won't help solve the problem once N is big enough: every time you 10× N, the execution time will be 100× longer.

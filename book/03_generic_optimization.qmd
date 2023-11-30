@@ -1,0 +1,86 @@
+# Speeding up your code by doing less work
+
+You've picked a good algorithm, your implementation language is now faster, but your code still isn't fast enough.
+The next step is to make your implementation more efficient by doing less work.
+Put another way, if your algorithm is `O(n log n)`, you can model the performance as being `k·n·log(n)`, and your goal is to try to shrink `k`.
+
+## Focusing your efforts: loops
+
+If the three most important factors in real estate are location, location, location, the three most important factors in the speed of your data processing code are loops, loops, loops.
+Consider the problem domain this book addresses: processing relatively large amounts of data.
+At the core of the low-level code to process this data you will inevitably either write or call functions with the following structure:
+
+```{python}
+#| eval: false
+for item in large_amount_of_data:
+    do_something(item)
+```
+
+Given large amounts of data, and data structures like NumPy arrays or Arrow that are designed for fast access from low-level languages, the bulk of your processing will happen here, in these so-called "hot" loops.
+You can speed up this sort of code by looping over less data (perhaps there's data you don't need to process at all?) and by reducing the work you repeatedly do inside the loop, the code you will be calling over and over again.
+
+## Reducing repetitive work
+
+Beyond helping the compiler optimize the code automatically, by avoiding code patterns that make the compiler's life harder, there are other optimizations that only a human can do.
+
+### Don't process data you don't need to
+
+The fastest code is code you don't run at all.
+If you can avoid doing expensive processing on data where it's unnecessary, that can provide significant speeds.
+
+For example, imagine 90% of your data is irrelevant and needs to be dropped early in processing.
+You have two ways to filter out this irrelevant data:
+
+1. A fast filter that has some false negatives.
+2. A slow filter that catches all irrelevant data.
+
+If having a little bit irrelevant data mixed in is not a problem, you can just use the fast filter.
+If you really do need to get rid of all irrelevant data, you can run the fast filter first, and then the slow filter on all remaining data, so you don't have to run the slow filter on everything.
+
+### Avoid allocations in the hot loop
+
+Allocating memory can happen explicitly—for example, in C you might call `malloc()`—or implicitly by creating new objects.
+For example, every time you create a new array in Numba you are allocating memory; creating a view of an existing array does not allocate, however.
+Allocating and freeing memory inside a loop can both make it harder for the compiler to optimize your code, and may be just wasted effort.
+Instead, see if you can reuse allocations.
+
+For example:
+
+```{python}
+@njit
+def allocate_in_loop(arr):
+    total = 0
+    for i in range(len(arr) // 4):
+        # This is just a view, so it doesn't allocate:
+        slice_of_4 = arr[i * 4:(i + 1) * 4]
+        # Doing power of 2 on the array view creates a temporary array! Oops.
+        total += (slice_of_4 ** 2).mean()
+    return total
+
+@njit
+def no_allocate_in_loop(arr):
+    total = 0
+    temp = np.zeros((4, ), dtype=arr.dtype)
+    for i in range(len(arr) // 4):
+        # This is just a view, so it doesn't allocate:
+        slice_of_4 = arr[i * 4:(i + 1) * 4]
+        # Replace temporary with values in slice_of_4:
+        temp[:] = slice_of_4
+        temp *= slice_of_4
+        total += temp.mean()
+    return total
+
+DATA = np.linspace(1_000_000, 0, 1_000_000, dtype=np.uint64)
+assert allocate_in_loop(DATA) == no_allocate_in_loop(DATA)
+```
+
+The second implementation is faster, because it does no allocations in the hot inner loop, both reducing work and possibly enabling additional optimizations:
+
+```{python}
+#| echo: false
+%%compare_timing
+
+allocate_in_loop(DATA)
+no_allocate_in_loop(DATA)
+```
+

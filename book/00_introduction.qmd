@@ -1,0 +1,152 @@
+# Introduction
+
+This book is designed to help you improve your understanding of how compilers and CPUs work, so that you can write faster low-level code.
+Because it's aimed at Python developers, I've tried to minimize the non-Python knowledge you need.
+
+Nonetheless, there is a little bit of knowledge you will need to understand the examples in later chapters, which we'll quickly cover here.
+
+## A quick intro to NumPy arrays
+
+Many of the examples in this book will use NumPy arrays; this is not a book about NumPy, but a quick introduction will be helpful.
+A NumPy array is a contiguous chunk of memory with a specific shape and a specific data type.
+For example, here we create a 2-dimensional 600×400 arrays of `float64`s filled respectively with zeros, ones, and random values between 0 and 1:
+
+```{python}
+import numpy as np
+
+print("Zeros:")
+arr_of_zeros = np.zeros((600, 400), dtype=np.float64)
+print("Shape:", arr_of_zeros.shape)
+print("Sum:", arr_of_zeros.sum())
+print()
+
+print("Ones:")
+arr_of_ones = np.ones((600, 400), dtype=np.float64)
+print("Shape:", arr_of_ones.shape)
+print("Sum:", arr_of_ones.sum())
+print()
+
+print("Random values between 0 and 1:")
+arr_of_random = np.random.random((600, 400))
+print("Shape:", arr_of_random.shape)
+print("Sum:", arr_of_random.sum())
+```
+
+You can slice arrays in various ways:
+
+```{python}
+two_by_three = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.uint64)
+print(two_by_three)
+print(two_by_three[0, 1])
+print(two_by_three[1, :])
+print(two_by_three[1])
+print(two_by_three[1, 0:2])
+print(two_by_three[:, 1])
+```
+
+When you slice an array, you don't get a copy of the data, you get a _view_ onto the original memory.
+Depending on the direction of the slice, the view might not be contiguous in memory.
+Externally NumPy won't differentiate between those views and arrays that are contiguous and those that are non-contiguous, but as we will see this can make a difference to performance.
+
+TODO do we want to cover this?
+
+## A quick intro to Numba
+
+The concepts in this book should apply to C, C++, Rust, and other low-level languages.
+However, to make it easy to follow the code, the examples will all use Numba.
+
+Numba is a programming language that implements a subset of Python, but compiles to machine code.
+And as we'll see, it's very easy to integrate into any Python environment.
+That makes it an excellent language for teaching about low-level programming, since you don't need to learn a new programming language or a new development environment.
+
+**Keep in mind that this is not a book about Numba:**
+
+* Many Numba features won't be covered.
+* The underlying principles you learn will apply in other languages as well.
+
+That being said, you do need to know a little bit about Numba in order to understand the examples in this book.
+
+### How Numba works
+
+To install Numba, you can use `pip` in a virtualenv just as you would for any Python package:
+
+```
+$ pip install numba
+```
+
+Numba takes Python code and compiles it to machine code using the LLVM compiler toolchain, which is also used in the `clang` C/C++ compiler and Rust.
+In particular, it compiles any function decorated with the `numba.njit` function:
+
+```{python}
+from numba import njit
+
+def a_normal_python_function(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+
+@njit
+def a_function_compiled_with_numba(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+```
+
+The first time you call a function decorated with `@njit` with a specific set of typed parameters, Numba will compile the function.
+We can use the Jupyter/IPython `%time` magic to measure how long a function call takes; notice the first call to `a_function_compiled_with_numba()` takes much longer, because it needs to compile the code.
+
+```{python}
+arr = np.ones((1_000_000,), dtype=np.uint64)
+```
+
+```{python}
+%time a_normal_python_function(arr)
+```
+
+```{python}
+# Slower because it needs to compile the Numba code:
+%time a_function_compiled_with_numba(arr)
+```
+
+```{python}
+# The second time around the code is already compiled, so it should run faster:
+%time a_function_compiled_with_numba(arr)
+```
+
+> **Note:** Compilation is done _before_ the function is run, so while it says "JIT" in the decorator name, this is not a just-in-time compiler in the way that PyPy, JavaScript, or Java JVMs are.
+> JIT compilers compile the code after observing it actually running.
+> Numba, in contrast, only looks at the source code of the function and the types of its arguments in order to compile it, so it's really an ahead-of-time compiler as is used for C++ or Rust.
+> When it talks about just-in-time compilation, this is a description of the developer experience, not the compiler technique.
+
+### Numba variable types
+
+As we'll discuss in following chapters, low-level languages always have a specific type for each variable at some point in the compilation process.
+This is true for Numba as well.
+
+By default, Numba will automatically infer the types of variables.
+Unless you tell it otherwise, integers will typically be 64-bit, and floats will typically be 64-bit as well.
+
+### Numba re-implements NumPy APIs
+
+Numba is designed to closely interoperate with NumPy, and as such, NumPy arrays are a built-in type in Numba: you can just pass them in as arguments to a Numba function.
+In addition, Numba _reimplements_ large parts of the NumPy API.
+
+When you call a NumPy API inside a function decorated with `numba.njit`, you are not actually calling the NumPy API.
+Instead, you are calling a re-implemented version specifically written for Numba.
+Sometimes that re-implemented version may work slightly differently, or give slightly different results, especially if floating-point numbers are involved.
+
+```{python}
+def sum_numpy(arr):
+    return arr.sum()
+
+@njit
+def sum_numba(arr):
+    return arr.sum()
+
+floats = np.random.random((1_000_000,))
+print("NumPy sum():", sum_numpy(floats))
+print("Numba sum():", sum_numba(floats))
+print("Equal?", sum_numpy(floats) == sum_numba(floats))
+```

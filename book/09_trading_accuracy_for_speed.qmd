@@ -1,0 +1,5 @@
+# Trading accuracy for speed
+
+switching from float64 to float32
+
+example: sub-pixel image shifts switching from quadratic to bilinear.

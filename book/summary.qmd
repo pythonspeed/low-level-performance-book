@@ -1,0 +1,8 @@
+# Summary
+
+If this isn't enough: parallelism.
+
+Can parallelize inside the low-level compiled code, or can parallelize at higher level.
+Often will want to release the GIL if you're sure no other Python thread will touch the low-level data..
+
+You can also hand-write SIMD, or build an even more realistic mental model of CPU and hand-tune your code for a specific CPU's timing.
