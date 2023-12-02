@@ -62,4 +62,6 @@ def display_image(line, local_ns):
 
 
 def load_ipython_extension(ipython):
-    pass  # Just being imported is sufficient
+    # Make sure turboboost is disabled; TODO add AMD, non-Linux?
+    with open("/sys/devices/system/cpu/intel_pstate/no_turbo") as f:
+        assert f.read().strip() == "1"
