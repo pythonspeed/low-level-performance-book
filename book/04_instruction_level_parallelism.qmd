@@ -21,6 +21,11 @@ import numpy as np
 from numba import njit
 ```
 
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
 ## Faster results with instruction-level parallelism
 
 A reasonable minimal mental model of CPUs is that they execute one instruction at a time.
@@ -95,11 +100,9 @@ A little thought will suggest this is a terrible way to generate random numbers,
 However, this change does enable a massive speedup; the number of instructions isn't that different, but the speed at which they run drops dramatically thanks to ILP:
 
 ```{python}
-%timeit generate_random_numbers(1_000_000)
-```
-
-```{python}
-%timeit generate_random_numbers_2(1_000_000)
+%%compare_timing
+generate_random_numbers(1_000_000)
+generate_random_numbers_2(1_000_000)
 ```
 
 ### Loop unrolling
@@ -181,7 +184,8 @@ def count_increasing_decreasing(arr):
     previous = 0
     increasing = 0
     unchanged = 0
-    for value in arr:
+    for i in range(len(arr)):
+        value = arr[i]
         if value == previous:
             unchanged += 1
         elif value > previous:
@@ -201,9 +205,12 @@ PREDICTABLE_DATA = np.linspace(1, 1_000_000, 1_000_000, dtype=np.uint64)
 # Shuffled randomly:
 RANDOM_DATA = PREDICTABLE_DATA.copy()
 np.random.shuffle(RANDOM_DATA)
+```
 
-%timeit count_increasing_decreasing(PREDICTABLE_DATA)
-%timeit count_increasing_decreasing(RANDOM_DATA)
+```{python}
+%%compare_timing
+count_increasing_decreasing(PREDICTABLE_DATA)
+count_increasing_decreasing(RANDOM_DATA)
 ```
 
 As you can see, random data results in much slower execution even though the number of CPU instruction should be basically the same.
@@ -230,12 +237,13 @@ The compiler is unlikely to add additional writes.
 But we could restructure the code so we always write to these variables, regardless of the outcome:
 
 ```{python}
-@njit 
+@njit
 def count_increasing_decreasing_avoid_conditionals(arr):
     previous = 0
     increasing = 0
     unchanged = 0
-    for value in arr:
+    for i in range(len(arr)):
+        value = arr[i]
         unchanged += 1 if value == previous else 0
         increasing += 1 if value > previous else 0
         previous = value
@@ -251,8 +259,9 @@ This gives the compiler sufficient information to generate code that doesn't use
 We can can measure the performance with predictable data and random data:
 
 ```{python}
-%timeit count_increasing_decreasing_avoid_conditionals(PREDICTABLE_DATA)
-%timeit count_increasing_decreasing_avoid_conditionals(RANDOM_DATA)
+%%compare_timing
+count_increasing_decreasing_avoid_conditionals(PREDICTABLE_DATA)
+count_increasing_decreasing_avoid_conditionals(RANDOM_DATA)
 ```
 
 In the predictable case, the code runs slightly slower: we're doing extra work.
@@ -261,6 +270,9 @@ And importantly, performance is consistent, so we know how much time the code wi
 Depending on the data we expect to encounter this implementation may be much better.
 
 In general, making sure that both branches end up writing to the same memory location can help the compiler generate branchless code.
+
+### Branchless programming with more than one branch
+
 There are also various arithmetic tricks you can do, for example by treating a boolean (the result of some condition) as an integer with either values `0` or `1`:
 
 ```{python}
@@ -271,6 +283,110 @@ from numba import uint64
 unchanged += uint64(value == previous)
 increasing += uint64(value > previous)
 # ...
+```
+
+```{python}
+@njit
+def count_sequences(arr):
+    DECREASE, UNCHANGED, INCREASE = 1, 2, 3
+    prev_value = 0
+    prev_status = UNCHANGED
+    decreased = 0
+    increased = 0
+    unchanged = 0
+    for i in range(len(arr)):
+        value = arr[i]
+        if value > prev_value:
+            status = INCREASE
+        elif value == prev_value:
+            status = UNCHANGED
+        else:
+            status = DECREASE
+        if status != prev_status:
+            if status == INCREASE:
+                increased += 1
+            elif status == UNCHANGED:
+                unchanged += 1
+            else:
+                decreased += 1
+        prev_status = status
+        prev_value = value
+    return decreased, unchanged, increased
+
+count_sequences(PREDICTABLE_DATA)
+```
+
+```{python}
+%%compare_timing
+count_sequences(PREDICTABLE_DATA)
+count_sequences(RANDOM_DATA)
+```
+
+```{python}
+@njit
+def count_sequences_2(arr):
+    # We'll use these as indexes into the result array:
+    DECREASE, UNCHANGED, INCREASE = 0, 1, 2
+    prev_value = 0
+    prev_status = UNCHANGED
+    result = np.zeros((3,), dtype=np.uint64)
+
+    for i in range(len(arr)):
+        value = arr[i]
+        if value > prev_value:
+            status = INCREASE
+        elif value == prev_value:
+            status = UNCHANGED
+        else:
+            status = DECREASE
+        if status != prev_status:
+            result[status] += 1
+        prev_status = status
+        prev_value = value
+    return result[0], result[1], result[2]
+
+assert np.array_equal(
+    count_sequences(RANDOM_DATA),
+    count_sequences_2(RANDOM_DATA)
+)
+```
+
+```{python}
+%%compare_timing
+count_sequences_2(PREDICTABLE_DATA)
+count_sequences_2(RANDOM_DATA)
+```
+
+```{python}
+@njit
+def count_sequences_3(arr):
+    DECREASE, UNCHANGED, INCREASE = 0, 1, 2
+    prev_value = 0
+    prev_status = UNCHANGED
+    result = np.zeros((3,), dtype=np.uint64)
+
+    for i in range(len(arr)):
+        value = arr[i]
+        #status = INCREASE if value > prev_value else UNCHANGED
+        #status = DECREASE if value < prev_value else status
+        status = 1 + int(value > prev_value) - int(value < prev_value)
+        result[status] += 1 if status != prev_status else 0
+        prev_status = status
+        prev_value = value
+    return result[0], result[1], result[2]
+
+assert np.array_equal(
+    count_sequences(RANDOM_DATA),
+    count_sequences_3(RANDOM_DATA)
+)
+```
+
+```{python}
+%%compare_timing
+count_sequences_3(PREDICTABLE_DATA) # TODO why aren't these two the same?
+count_sequences_3(RANDOM_DATA)
+count_sequences_3(PREDICTABLE_DATA) # TODO why aren't these two the same?
+count_sequences_3(RANDOM_DATA)
 ```
 
 Whether or not branchless code is actually faster depends on the data and how predictable the branches are.
