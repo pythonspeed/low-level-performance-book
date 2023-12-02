@@ -4,6 +4,17 @@ You've picked a good algorithm, your implementation language is now faster, but 
 The next step is to make your implementation more efficient by doing less work.
 Put another way, if your algorithm is `O(n log n)`, you can model the performance as being `k·n·log(n)`, and your goal is to try to shrink `k`.
 
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+```
+
 ## Focusing your efforts: loops
 
 If the three most important factors in real estate are location, location, location, the three most important factors in the speed of your data processing code are loops, loops, loops.
