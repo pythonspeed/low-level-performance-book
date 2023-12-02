@@ -1,70 +1,65 @@
 # Use a scalable algorithm
 
-TODO O(N) as function of how code _changes_ as input changes.
-MAYBE For small N, sometimes a worse O() function can be actually faster
-For large N, a bad function overwhelms benefits of switching from Python to compiled language.
+How long it takes your program to run depends on two sets of decisions embedded in your code:
 
-## Choosing a scalable algorithm
+1. The choice of algorithm.
+2. The implementation.
+   For example, as we'll be repeating repeatedly, low-level languages like C can run the same algorithm much faster than Python can.
 
-Let's say you want to find the median.
-One way to do that is by sorting the array and then looking at the middle item; this is `O(n logn)`.
-Another way is using NumPy's built-in `median()` function; it's possible to do the median calculation in `O(n)` (on average) so hopefully that's what they did.
-
-```{python}
-array = np.random.random((1_000_000,))
-
-def sort_median(arr):
-    return np.sort(arr)[len(arr) // 2]
-```
+In the rest of the book we'll focus on the implementation, but in this chapter we'll focus on choice of algorithm.
 
 ```{python}
 #| echo: false
-%%compare_timing
-sort_median(array)
-np.median(array)
+%load_ext book_magics
 ```
 
-And, as we'd hoped, a better algorithm gets results faster.
+## The 
 
-### Fix accidentally quadratic code
+How long your program runs depends on the size of the input: processing a 1,000,000-base DNA sequence will probably take longer than processing a 1,000-base sequence.
+And once you're dealing with large input sizes, an algorithm that scales badly will be so slow that your implementation speed won't matter.
 
-It's very easy to accidentally end up writing code that is `O(N ^ 2)`, to the point that there is [a blog showcasing examples](https://accidentallyquadratic.tumblr.com/).
-The typical mistake is to have a loop, and then call a function that doesn't look like a loop but actually causes another loop over the same data.
-
-Here's an example from the blog, with just pure Python, calculating the intersection of two lists:
+Let's consider an example: quadratic algorithms, which are very easy to write accidentally, to the point that there is [a blog showcasing examples](https://accidentallyquadratic.tumblr.com/).
+A typical mistake is to have a loop, and then call a function that doesn't look like a loop but actually causes another loop over the same data.
+Here's an example from the blog, with just pure Python, calculating the intersection of two lists of length `N`:
 
 ```{python}
-def accidentally_quadratic(l1, l2):
+def slow_algorithm(l1, l2):
     result = []
-    # This is O(N):
+    # This has N steps:
     for item in l1:
-        # Checking if a list contains an item is also O(N):
+        # Checking if an item is contained in a list requires N comparisons:
         if item in l2:
             result.append(item)
     return result
 
-def linear(l1, l2):
+def fast_algorithm(l1, l2):
     result = []
     l2_as_set = set(l2)
     for item in l1:
-        # Checking if a set contains an item is O(1):
+        # Checking if an item is contained in a Python set takes a fixed amount
+        # of time:
         if item in l2_as_set:
             result.append(item)
     return result
 
 DATA = list(range(1_000))
 DATA2 = list(range(3, 1_003))
-assert accidentally_quadratic(DATA, DATA2) == linear(DATA, DATA2)
+assert slow_algorithm(DATA, DATA2) == fast_algorithm(DATA, DATA2)
 ```
 
-The second implementation is faster, because it is linear:
+The second implementation is much faster:
 
 ```{python}
 #| echo: false
 %%compare_timing
-
-accidentally_quadratic(DATA, DATA2)
-linear(DATA, DATA2)
+slow_algorithm(DATA, DATA2)
+fast_algorithm(DATA, DATA2)
 ```
 
-This example is pure Python, but using a faster language won't help solve the problem once N is big enough: every time you 10× N, the execution time will be 100× longer.
+## Big O notation is a way of modeling algorithm scalability
+
+Let's compare 
+The `slow_algorithm()` above does $N^{2}$ operations: for each item in the first list it may need to iterate over every item in the second list.
+So assuming both lists are of size $N$, that's $N^{2}$ operations.
+
+## A fast implementation is useless if your algorithm doesn't scale
