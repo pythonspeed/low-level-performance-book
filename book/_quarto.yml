@@ -15,6 +15,7 @@ book:
         - 03_generic_optimization.qmd
         - 02_low_level_compilation.qmd
         - 04_the_compiler_optimizes_for_you.qmd
+        - 09_trading_accuracy_for_speed.qmd
     - part: "TODO more sophisticated mental model of CPU"
       chapters:
         - 04_instruction_level_parallelism.qmd
@@ -22,7 +23,6 @@ book:
         - 06_memory_heirarchy.qmd
     - 07_floating_point.qmd
     - 08_integers.qmd
-    - 09_trading_accuracy_for_speed.qmd
     - 10_undefined_behavior.qmd
     - 11_example_rescale_contrast.qmd
     - 12_example_dithering.qmd
