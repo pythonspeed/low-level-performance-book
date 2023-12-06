@@ -126,3 +126,6 @@ https://research.swtch.com/ub
 
 ## Rust+Python
 https://dora.carsmos.ai/blog/rust-python/ - covers tracing/opentelemetry, among other things
+
+## General
+https://www.reddit.com/r/rust/comments/18br7d0/best_way_to_learn_how_to_write_blazing_fast_code/
