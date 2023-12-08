@@ -29,29 +29,10 @@ from numba import njit
 %load_ext book_magics
 ```
 
-We'll also set up a horrible hack to let us disable SIMD on the fly.
-You can just skip reading this code, I'm just making it visible for completeness, in case you want to run the code yourself:
+We'll also import a context manager that let us disable SIMD on the fly when defining functions:
 
 ```{python}
-from contextlib import contextmanager
-import sys
-import os
-
-@contextmanager
-def disable_simd():
-    def clear_numba():
-        for mod in list(sys.modules):
-            if mod.startswith("numba") or mod.startswith("llvmlite"):
-                del sys.modules[mod]
-
-    clear_numba()
-    os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
-    try:
-        from numba import njit
-        yield njit
-    finally:
-        os.environ["NUMBA_LOOP_VECTORIZE"] = "1"
-        clear_numba()
+from book_utilities import disabled_simd
 ```
 
 ## SIMD vs. instruction-level parallelism
@@ -184,7 +165,9 @@ def simd(x, y):
 assert simd(DATA_UINT64, DATA_UINT64)[0] == 2
 assert simd(DATA_UINT16, DATA_UINT16)[0] == 2
 
-with disable_simd() as njit_no_simd:
+# This is like doing @njit, with some behind-the-scenes magic to disable
+# usage of SIMD for this function only.
+with disabled_simd() as njit_no_simd:
     @njit_no_simd
     def no_simd(x, y):
         out = np.empty(x.shape, dtype=x.dtype)
