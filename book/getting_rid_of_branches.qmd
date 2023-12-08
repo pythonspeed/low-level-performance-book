@@ -35,13 +35,16 @@ Imagine you're getting 16-bit images from a digital microscope, and you only car
 Dark areas have no information, and have lots of noise.
 If we want to clean those areas up, a simplistic algorithm is setting all values below a certain threshold to complete black, i.e. 0.
 
-To test our implementations, I generated a simulated image:
+To test our implementations, I generated two simulated images:
 
 ```{python}
 rng = np.random.default_rng(12345)
 noise = rng.integers(0, high=1000, size=(4096, 4096), dtype=np.uint16)
 signal = rng.integers(0, high=5000, size=(4096, 4096), dtype=np.uint16)
-IMAGE = noise | signal
+# A noisy, hard to predict image:
+NOISY_IMAGE = noise | signal
+# An image with same value, 0, for all pixels:
+PREDICTABLE_IMAGE = np.zeros((4096, 4096), dtype=np.uint16)
 ```
 
 Here's a first pass implementation using Numba.
@@ -53,6 +56,10 @@ from book_utilities import disabled_simd
 with disabled_simd() as njit_no_simd:
     @njit
     def remove_noise_naive(arr, noise_threshold):
+        # Ensure noise_threshold has some data type as the values in the arr,
+        # to make it as easy as possible for the compiler to find
+        # optimizations.
+        noise_threshold = arr.dtype.type(noise_threshold)
         result = arr.copy()
         for i in range(result.shape[0]):
             for j in range(result.shape[1]):
@@ -60,7 +67,7 @@ with disabled_simd() as njit_no_simd:
                     result[i, j] = 0
         return result
 
-    denoised = remove_noise_naive(IMAGE, 1000)
+    denoised = remove_noise_naive(NOISY_IMAGE, 1000)
 ```
 
 Notice that whether a specific pixel is above or below the noise threshold may be difficult to predict, depending on the image.
@@ -70,7 +77,8 @@ Here's how long this version takes to run:
 
 ```{python}
 %%compare_timing
-remove_noise_naive(IMAGE, 1000)
+remove_noise_naive(NOISY_IMAGE, 1000)
+remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 ```
 
 ### Switching to branchless programming
@@ -108,7 +116,7 @@ with disabled_simd() as njit_no_simd:
 
     assert np.array_equal(
         denoised,
-        remove_noise_branchless_1(IMAGE, 1000)
+        remove_noise_branchless_1(NOISY_IMAGE, 1000)
     )
 ```
 
@@ -118,6 +126,7 @@ As an alternative, we can express the same thing with a ternary operator; for Nu
 with disabled_simd() as njit_no_simd:
     @njit
     def remove_noise_branchless_2(arr, noise_threshold):
+        noise_threshold = arr.dtype.type(noise_threshold)
         result = arr.copy()
         for i in range(result.shape[0]):
             for j in range(result.shape[1]):
@@ -127,7 +136,7 @@ with disabled_simd() as njit_no_simd:
 
     assert np.array_equal(
         denoised,
-        remove_noise_branchless_2(IMAGE, 1000)
+        remove_noise_branchless_2(NOISY_IMAGE, 1000)
     )
 ```
 
@@ -136,9 +145,17 @@ Here's the difference in performance:
 ```{python}
 #| echo: false
 %%compare_timing
-remove_noise_naive(IMAGE, 1000)
-remove_noise_branchless_1(IMAGE, 1000)
-remove_noise_branchless_2(IMAGE, 1000)
+remove_noise_naive(NOISY_IMAGE, 1000)
+remove_noise_branchless_1(NOISY_IMAGE, 1000)
+remove_noise_branchless_2(NOISY_IMAGE, 1000)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+remove_noise_naive(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_2(PREDICTABLE_IMAGE, 1000)
 ```
 
 The two branchless versions are seemingly doing more work: they write to every pixel in the result image, not just some of them.
@@ -152,6 +169,7 @@ Now that we're overwriting all the values in the result, we don't actually have 
 with disabled_simd() as njit_no_simd:
     @njit
     def remove_noise_branchless_3(arr, noise_threshold):
+        noise_threshold = arr.dtype.type(noise_threshold)
         result = np.empty(arr.shape, dtype=arr.dtype)
         for i in range(result.shape[0]):
             for j in range(result.shape[1]):
@@ -161,26 +179,80 @@ with disabled_simd() as njit_no_simd:
 
     assert np.array_equal(
         denoised,
-        remove_noise_branchless_3(IMAGE, 1000)
+        remove_noise_branchless_3(NOISY_IMAGE, 1000)
     )
 ```
 
 ```{python}
 #| echo: false
 %%compare_timing
-remove_noise_naive(IMAGE, 1000)
-remove_noise_branchless_1(IMAGE, 1000)
-remove_noise_branchless_3(IMAGE, 1000)
+remove_noise_naive(NOISY_IMAGE, 1000)
+remove_noise_branchless_1(NOISY_IMAGE, 1000)
+remove_noise_branchless_3(NOISY_IMAGE, 1000)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+remove_noise_naive(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
 ```
 
 ### What happens if you enable SIMD?
 
-On my computer, which has an x86-64 CPU with support for AVX2 SIMD instructions, the branchless versions get much faster with SIMD enabled.
-A reader with a CPU that had AVX-512 actually got a huge speedup on the naive version too: the compiler was able to use SIMD instructions to remove the branch altogether.
-It was probably using a SIMD instruction that supports masking, conditionally doing an operation.
-A smarter compiler might be able to use SIMD with AVX2 as well.
+On my computer, which has an x86-64 CPU with support for AVX2 SIMD instructions, the naive version gets slower.
+Sometimes the compiler's auto-vectorization just makes things worse.
+However, the branchless versions gets even faster with SIMD enabled:
 
-Nonethelss, the more complex your code, the harder it will be for the CPU to automatically convert branches to masked SIMD instructions.
+```{python}
+@njit
+def remove_noise_naive_simd(arr, noise_threshold):
+    noise_threshold = arr.dtype.type(noise_threshold)
+    result = arr.copy()
+    for i in range(result.shape[0]):
+        for j in range(result.shape[1]):
+            if result[i, j] < noise_threshold:
+                result[i, j] = 0
+    return result
+
+@njit
+def remove_noise_branchless_3_simd(arr, noise_threshold):
+    noise_threshold = arr.dtype.type(noise_threshold)
+    result = np.empty(arr.shape, dtype=arr.dtype)
+    for i in range(result.shape[0]):
+        for j in range(result.shape[1]):
+            value = arr[i, j]
+            result[i, j] = 0 if value < noise_threshold else value
+    return result
+
+assert np.array_equal(
+    denoised,
+    remove_noise_naive_simd(NOISY_IMAGE, 1000)
+)
+assert np.array_equal(
+    denoised,
+    remove_noise_branchless_3_simd(NOISY_IMAGE, 1000)
+)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+remove_noise_naive(NOISY_IMAGE, 1000)
+remove_noise_naive_simd(NOISY_IMAGE, 1000)
+remove_noise_branchless_3(NOISY_IMAGE, 1000)
+remove_noise_branchless_3_simd(NOISY_IMAGE, 1000)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+remove_noise_naive(PREDICTABLE_IMAGE, 1000)
+remove_noise_naive_simd(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_3_simd(PREDICTABLE_IMAGE, 1000)
+```
 
 ## Branchless programming with more than two branches
 
