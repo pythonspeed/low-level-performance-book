@@ -1,20 +1,19 @@
 # Get rid of branches with branchless programming
 
 In general, branches can make it harder for both the compiler and CPU to generate and run your code quickly, for a number of reasons.
+Some of the reasons depend on the CPU's ability to predict branches, which means you will get different performance results depending on the data:
 
-**Mispredicting branches in the CPU is very expensive.**
-Recall that your CPU tries to predict which branch your code will take, so it can speculatively continue with executing instructions in parallel.
-When your conditionals' outcomes are hard to predict, the CPU may speculatively execute the wrong branch, and then have to undo all that work and go back and execute the other branch.
+* **Mispredicting branches in the CPU is very expensive.**
+  Recall that your CPU tries to predict which branch your code will take, so it can speculatively continue with executing instructions in parallel.
+  When your conditionals' outcomes are hard to predict, the CPU may speculatively execute the wrong branch, and then have to undo all that work and go back and execute the other branch.
 
-**There are only so many branches the CPU can predict.**
-The CPU has limited hardware available for branch prediction; too many branches can make your code hit that limit.
+In addition, the compiler may generate less efficient code, with slow downs that are broader and less dependent on the specific data:
 
-**The compiler may have harder time using auto-vectorization to generate SIMD code.**
-SIMD instructions do the same thing to multiple data values, and a branch might make it impossible to do the same thing.
-There are SIMD instructions designed to help in these situations, but there's a limit to how much they can do.
-
-**The compiler might have a harder time optimizing your code in general.**
-If your code has two branches, it is harder for the compiler to combine that code with previous and later code.
+* **The compiler may have harder time using auto-vectorization to generate SIMD code.**
+  SIMD instructions do the same thing to multiple data values, and a branch might make it impossible to do the same thing.
+  There are SIMD instructions designed to help in these situations, but there's a limit to how much they can do.
+* **The compiler might have a harder time optimizing your code in general.**
+  If your code has two branches, it is harder for the compiler to combine that code with previous and later code.
 
 One solution to these problems is branchless programming, where we restructure code to get rid of branches altogether.
 
@@ -229,14 +228,15 @@ We can run this on data that is always increasing, which means branch prediction
 # Increases linearly from 1 to 1,000,000:
 PREDICTABLE_DATA = np.linspace(1, 1_000_000, 1_000_000, dtype=np.uint64)
 # Shuffled randomly:
-RANDOM_DATA = PREDICTABLE_DATA.copy()
-np.random.shuffle(RANDOM_DATA)
+SHUFFLED_DATA = PREDICTABLE_DATA.copy()
+np.random.shuffle(SHUFFLED_DATA)
 ```
 
 ```{python}
+#| echo: false
 %%compare_timing
 count_sequences(PREDICTABLE_DATA)
-count_sequences(RANDOM_DATA)
+count_sequences(SHUFFLED_DATA)
 ```
 
 As you can see, random data results in much slower execution even though the number of CPU instruction should be basically the same.
@@ -271,20 +271,23 @@ def count_sequences_2(arr):
     return result[0], result[1], result[2]
 
 assert np.array_equal(
-    count_sequences(RANDOM_DATA),
-    count_sequences_2(RANDOM_DATA)
+    count_sequences(SHUFFLED_DATA),
+    count_sequences_2(SHUFFLED_DATA)
 )
 ```
 
 ```{python}
+#| echo: false
 %%compare_timing
 count_sequences(PREDICTABLE_DATA)
 count_sequences_2(PREDICTABLE_DATA)
 ```
 
 ```{python}
-count_sequences(RANDOM_DATA)
-count_sequences_2(RANDOM_DATA)
+#| echo: false
+%%compare_timing
+count_sequences(SHUFFLED_DATA)
+count_sequences_2(SHUFFLED_DATA)
 ```
 
 ### Switching to branchless code
@@ -310,34 +313,40 @@ def count_sequences_branchless_1(arr):
     return result[0], result[1], result[2]
 
 assert np.array_equal(
-    count_sequences(RANDOM_DATA),
-    count_sequences_branchless_1(RANDOM_DATA)
+    count_sequences(SHUFFLED_DATA),
+    count_sequences_branchless_1(SHUFFLED_DATA)
 )
 ```
 
 ```{python}
+#| echo: false
 %%compare_timing
 count_sequences(PREDICTABLE_DATA)
 count_sequences_branchless_1(PREDICTABLE_DATA)
 ```
 
 ```{python}
-count_sequences(RANDOM_DATA)
-count_sequences_branchless_1(RANDOM_DATA)
+#| echo: false
+%%compare_timing
+count_sequences(SHUFFLED_DATA)
+count_sequences_branchless_1(SHUFFLED_DATA)
 ```
 
-By getting rid of branches, we've signifcantly sped up the `RANDOM_DATA` case.
-However, the `PREDICTABLE_DATA` case is actually slower.
-Can you figure out why?
-Hint: It's got nothing to do with branch prediction.
+By getting rid of branches, we've signifcantly sped up the `SHUFFLED_DATA` case.
+The `PREDICTABLE_DATA` case is slower, which is a common outcome of branchless programming: we're doing more work on every iteration, since we can't shortcut out with a branch.
+However, what is less expected is that `count_sequences_branchless_1(PREDICTABLE_DATA)` runs much slower than `count_sequences_branchless_1(SHUFFLED_DATA)`.
+This can't be because of branch prediction, though, since we've gotten rid of all the branches!
 
-### Fixing our performance regression
+Can you figure out what is causing the difference in performance?
+
+### Fixing our inconsistent performance
 
 The reason our latest version is slower on `PREDICTABLE_DATA` is that `result[INCREASE]` has become a data dependency.
-Because it gets written to in every loop, the CPU can't use instruction-level parallelism to do multiple iterations of the loop in paralle.
-For `RANDOM_DATA` this is less of a problem because loop iterations don't always write to the same place.
+It gets written to in every loop iteration, because `PREDITABLE_DATA`'s has continuously increasing time series.
+That means the CPU can't use instruction-level parallelism to do multiple iterations of the loop in parallel.
+For `SHUFFLED_DATA` this is less of a problem because loop iterations don't always write to the same place: sometimes the sequence increases, sometimes it decreases.
 
-We can fix this by having multiple accumulators:
+We can fix, or at least reduce, the data dependency problem by having multiple accumulators:
 
 ```{python}
 @njit
@@ -358,21 +367,27 @@ def count_sequences_branchless_2(arr):
     return result[0].sum(), result[1].sum(), result[2].sum()
 
 assert np.array_equal(
-    count_sequences(RANDOM_DATA),
-    count_sequences_branchless_2(RANDOM_DATA)
+    count_sequences(SHUFFLED_DATA),
+    count_sequences_branchless_2(SHUFFLED_DATA)
 )
 ```
 
 ```{python}
+#| echo: false
 %%compare_timing
 count_sequences(PREDICTABLE_DATA)
 count_sequences_branchless_2(PREDICTABLE_DATA)
 ```
 
 ```{python}
-count_sequences(RANDOM_DATA)
-count_sequences_branchless_2(RANDOM_DATA)
+#| echo: false
+%%compare_timing
+count_sequences(SHUFFLED_DATA)
+count_sequences_branchless_2(SHUFFLED_DATA)
 ```
+
+Our latest code now has consistent performance for different inputs.
+And for cases where the time series isn't predictable, it runs 3.5× as fast as the original version.
 
 ## When should you use branchless programming?
 
