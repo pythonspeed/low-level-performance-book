@@ -1,6 +1,4 @@
-# Get rid of branches with branchless programmin
-
-## Why branches can slow down your code
+# Get rid of branches with branchless programming
 
 In general, branches can make it harder for both the compiler and CPU to generate and run your code quickly, for a number of reasons.
 
@@ -18,9 +16,17 @@ There are SIMD instructions designed to help in these situations, but there's a 
 **The compiler might have a harder time optimizing your code in general.**
 If your code has two branches, it is harder for the compiler to combine that code with previous and later code.
 
-## An example of branch misprediction
+One solution to these problems is branchless programming, where we restructure code to get rid of branches altogether.
 
-Let's see an example of how an unpredictable branch can slow down your code.
+## A simple example of branch misprediction
+
+Let's see an example of code where branch misprediction slows down your code.
+To make clear that's the issue, we will disable SIMD.
+
+
+## Branchless programming with more than two branches
+
+Let's consider a slightly more complex example, where we have three different branches.
 We have a time series of numbers, and want to record how many times values went up, stayed the same, or went down compared to the previous value.
 
 ```{python}
@@ -73,6 +79,7 @@ In this case, a script that ran on the random data had far more branch mispredic
 :::
 
 ### Removing the branches
+
 Compilers can often avoid generating branches in the machine code they generate, often by using special CPU instructions that were created for this purpose.
 The key is to give the compiler hints that allow it to generate suitable code.
 
