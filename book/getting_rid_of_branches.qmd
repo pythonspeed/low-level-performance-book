@@ -190,117 +190,6 @@ We have a time series of numbers, and want to record how many times values went 
 
 ```{python}
 @njit
-def count_increasing_decreasing(arr):
-    previous = 0
-    increasing = 0
-    unchanged = 0
-    for i in range(len(arr)):
-        value = arr[i]
-        if value == previous:
-            unchanged += 1
-        elif value > previous:
-            increasing += 1
-        previous = value
-    decreasing = len(arr) - increasing - unchanged
-    return increasing, unchanged, decreasing
-```
-
-For example, we expect this to to have 2 increasing, 1 unchanged, and 1 decreasing sequences:
-
-```{python}
-print(count_increasing_decreasing([1, 2, 3, 2, 2, 4]))
-```
-
-We can run this on data that is always increasing, which means branch prediction will work well, and randomized data where branch prediction is impossible:
-
-```{python}
-# Increases linearly from 1 to 1,000,000:
-PREDICTABLE_DATA = np.linspace(1, 1_000_000, 1_000_000, dtype=np.uint64)
-# Shuffled randomly:
-RANDOM_DATA = PREDICTABLE_DATA.copy()
-np.random.shuffle(RANDOM_DATA)
-```
-
-```{python}
-%%compare_timing
-count_increasing_decreasing(PREDICTABLE_DATA)
-count_increasing_decreasing(RANDOM_DATA)
-```
-
-As you can see, random data results in much slower execution even though the number of CPU instruction should be basically the same.
-The problem: branch misprediction.
-
-::: {.callout-note}
-I validated this hypothesis by using the `perf` tool on Linux.
-Among [many other useful abilities](https://perf.wiki.kernel.org/index.php/Main_Page), it lets you run a program and get runtime statistics about where time was spent:
-
-```
-$ perf stat python yourscript.py
-```
-
-In this case, a script that ran on the random data had far more branch mispredictions than the same version running on the predictable data.
-:::
-
-### Removing the branches
-
-Compilers can often avoid generating branches in the machine code they generate, often by using special CPU instructions that were created for this purpose.
-The key is to give the compiler hints that allow it to generate suitable code.
-
-In our example, the issue is that are updating the `unchanged` variable, but only in one branch (and similarly for `increasing`).
-The compiler is unlikely to add additional writes.
-But we could restructure the code so we always write to these variables, regardless of the outcome:
-
-```{python}
-@njit
-def count_increasing_decreasing_avoid_conditionals(arr):
-    previous = 0
-    increasing = 0
-    unchanged = 0
-    for i in range(len(arr)):
-        value = arr[i]
-        unchanged += 1 if value == previous else 0
-        increasing += 1 if value > previous else 0
-        previous = value
-    decreasing = len(arr) - increasing - unchanged
-    return increasing, unchanged, decreasing
-
-count_increasing_decreasing_avoid_conditionals([1, 2, 3, 2, 2, 4])
-```
-
-Now, regardless of the result of comparing `value` and `previous` we add a value to `unchanged` and `increasing`.
-This gives the compiler sufficient information to generate code that doesn't use a conditional at all.
-
-We can can measure the performance with predictable data and random data:
-
-```{python}
-%%compare_timing
-count_increasing_decreasing_avoid_conditionals(PREDICTABLE_DATA)
-count_increasing_decreasing_avoid_conditionals(RANDOM_DATA)
-```
-
-In the predictable case, the code runs slightly slower: we're doing extra work.
-But in the random case, the code is much faster.
-And importantly, performance is consistent, so we know how much time the code will take to run.
-Depending on the data we expect to encounter this implementation may be much better.
-
-In general, making sure that both branches end up writing to the same memory location can help the compiler generate branchless code.
-
-### Branchless programming with more than one branch
-
-There are also various arithmetic tricks you can do, for example by treating a boolean (the result of some condition) as an integer with either values `0` or `1`:
-
-```{python}
-#| eval: false
-from numba import uint64
-
-# ...
-unchanged += uint64(value == previous)
-increasing += uint64(value > previous)
-# ...
-```
-
-```{python}
-@njit
 def count_sequences(arr):
     DECREASE, UNCHANGED, INCREASE = 1, 2, 3
     prev_value = 0
@@ -326,8 +215,22 @@ def count_sequences(arr):
         prev_status = status
         prev_value = value
     return decreased, unchanged, increased
+```
 
-count_sequences(PREDICTABLE_DATA)
+For example, we expect this to to have 2 increasing, 1 unchanged, and 1 decreasing sequences:
+
+```{python}
+print(count_sequences([1, 2, 3, 2, 2, 4]))
+```
+
+We can run this on data that is always increasing, which means branch prediction will work well, and randomized data where branch prediction is impossible:
+
+```{python}
+# Increases linearly from 1 to 1,000,000:
+PREDICTABLE_DATA = np.linspace(1, 1_000_000, 1_000_000, dtype=np.uint64)
+# Shuffled randomly:
+RANDOM_DATA = PREDICTABLE_DATA.copy()
+np.random.shuffle(RANDOM_DATA)
 ```
 
 ```{python}
@@ -335,6 +238,14 @@ count_sequences(PREDICTABLE_DATA)
 count_sequences(PREDICTABLE_DATA)
 count_sequences(RANDOM_DATA)
 ```
+
+As you can see, random data results in much slower execution even though the number of CPU instruction should be basically the same.
+The problem: branch misprediction.
+
+### Simplifying the logic with result indexing
+
+Instead of having different variables for the results, we can use an array; this enables us to use indexing to choose where to put the result.
+We still have unpredictable branches, but the code is easier to reason about:
 
 ```{python}
 @njit
@@ -367,13 +278,22 @@ assert np.array_equal(
 
 ```{python}
 %%compare_timing
+count_sequences(PREDICTABLE_DATA)
 count_sequences_2(PREDICTABLE_DATA)
-count_sequences_2(RANDOM_DATA)
 ```
 
 ```{python}
+count_sequences(RANDOM_DATA)
+count_sequences_2(RANDOM_DATA)
+```
+
+### Switching to branchless code
+
+Since we don't want branches, we want the same code to run every time, no matter what:
+
+```{python}
 @njit
-def count_sequences_3(arr):
+def count_sequences_branchless_1(arr):
     DECREASE, UNCHANGED, INCREASE = 0, 1, 2
     prev_value = 0
     prev_status = UNCHANGED
@@ -391,19 +311,37 @@ def count_sequences_3(arr):
 
 assert np.array_equal(
     count_sequences(RANDOM_DATA),
-    count_sequences_3(RANDOM_DATA)
+    count_sequences_branchless_1(RANDOM_DATA)
 )
 ```
 
 ```{python}
 %%compare_timing
-count_sequences_3(PREDICTABLE_DATA)
-count_sequences_3(RANDOM_DATA)
+count_sequences(PREDICTABLE_DATA)
+count_sequences_branchless_1(PREDICTABLE_DATA)
 ```
 
 ```{python}
+count_sequences(RANDOM_DATA)
+count_sequences_branchless_1(RANDOM_DATA)
+```
+
+By getting rid of branches, we've signifcantly sped up the `RANDOM_DATA` case.
+However, the `PREDICTABLE_DATA` case is actually slower.
+Can you figure out why?
+Hint: It's got nothing to do with branch prediction.
+
+### Fixing our performance regression
+
+The reason our latest version is slower on `PREDICTABLE_DATA` is that `result[INCREASE]` has become a data dependency.
+Because it gets written to in every loop, the CPU can't use instruction-level parallelism to do multiple iterations of the loop in paralle.
+For `RANDOM_DATA` this is less of a problem because loop iterations don't always write to the same place.
+
+We can fix this by having multiple accumulators:
+
+```{python}
 @njit
-def count_sequences_4(arr):
+def count_sequences_branchless_2(arr):
     DECREASE, UNCHANGED, INCREASE = 0, 1, 2
     prev_value = 0
     prev_status = UNCHANGED
@@ -421,14 +359,19 @@ def count_sequences_4(arr):
 
 assert np.array_equal(
     count_sequences(RANDOM_DATA),
-    count_sequences_4(RANDOM_DATA)
+    count_sequences_branchless_2(RANDOM_DATA)
 )
 ```
 
 ```{python}
 %%compare_timing
-count_sequences_4(PREDICTABLE_DATA)
-count_sequences_4(RANDOM_DATA)
+count_sequences(PREDICTABLE_DATA)
+count_sequences_branchless_2(PREDICTABLE_DATA)
+```
+
+```{python}
+count_sequences(RANDOM_DATA)
+count_sequences_branchless_2(RANDOM_DATA)
 ```
 
 ## When should you use branchless programming?
