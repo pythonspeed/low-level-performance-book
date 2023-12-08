@@ -20,6 +20,7 @@ book:
       chapters:
         - 04_instruction_level_parallelism.qmd
         - 05_simd.qmd
+        - getting_rid_of_branches.qmd
         - 06_memory_heirarchy.qmd
     - 07_floating_point.qmd
     - 08_integers.qmd

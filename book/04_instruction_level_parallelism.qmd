@@ -128,7 +128,7 @@ def generate_random_numbers_unrolled(n):
 ```
 
 Notice that depending how smart the CPU is, we now have more opportunity for parallelism, as more code paths in each loop iteration are independent of each other.
-You can do loop unrolling manually, but in practice the compiler will often do it for you, which means you can stick to more readable code.
+You can do loop unrolling manually, but depending on your language and compiler options, the compiler will often do it for you, which means you can stick to more readable code.
 
 ::: {.callout-note}
 For Numba, you can see the underlying compiler's optimized output—specifically, the LLVM intermediate representation—by setting this option before you import `numba` for the first time:
@@ -140,6 +140,10 @@ os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
 
 You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
 :::
+
+## TODO something with parallel accumulators
+
+TODO think about how to solve the problem in parallel
 
 ## Bottleneck #2: Conditionals and failed branch prediction
 
@@ -153,6 +157,8 @@ If the guess turns out to be wrong—a branch misprediction—then the work done
 And that can get expensive.
 
 However, many conditionals have very consistent answers for long stretches of time, so branch prediction will end up being very accurate.
+TODO make the below a more complete code example, explaining why loops don't prevent instruction parallelism
+
 For example, if we're iterating over a range of numbers from `0` to `N`, the CPU keeps asking "is `i` smaller than `N`?"
 
 * Is 0 smaller than `N`?
@@ -163,242 +169,5 @@ For example, if we're iterating over a range of numbers from `0` to `N`, the CPU
 The conditional will be true for the first `N` times; only when the iteration ends does the conditional go the other way.
 Given how common this sort of loop is, you can assume the branch predictor will get things right.
 
-Nonetheless, branches can still be a problem:
-
-* There is a limit to how many branch locations the CPU can track and predict.
-* There are potential benefits to branchless code when trying to use SIMD auto-vectorization, which we'll discuss in the next chapter.
-* Most significantly, in some situations branches cannot be accurately predicted, leading to misprediction and therefore slow code execution.
-
-Let's dig a little deeper into that last problem.
-
-### Unpredictable branches slow down your code
-
-When your conditionals' outcomes are hard to predict, quite frequently the CPU will speculatively execute the wrong branch, and therefore have to do the expensive work of switching to a different branch.
-And that will slow down your code's execution.
-
-Let's see an example: we have a time series of numbers, and want to record how many times values went up, stayed the same, or went down compared to the previous value.
-
-```{python}
-@njit
-def count_increasing_decreasing(arr):
-    previous = 0
-    increasing = 0
-    unchanged = 0
-    for i in range(len(arr)):
-        value = arr[i]
-        if value == previous:
-            unchanged += 1
-        elif value > previous:
-            increasing += 1
-        previous = value
-    decreasing = len(arr) - increasing - unchanged
-    return increasing, unchanged, decreasing
-
-count_increasing_decreasing([1, 2, 3, 2, 2, 4])
-```
-
-We can run this on data that is always increasing, which means branch prediction will work well, and randomized data where branch prediction is impossible:
-
-```{python}
-# Increases linearly from 1 to 1,000,000:
-PREDICTABLE_DATA = np.linspace(1, 1_000_000, 1_000_000, dtype=np.uint64)
-# Shuffled randomly:
-RANDOM_DATA = PREDICTABLE_DATA.copy()
-np.random.shuffle(RANDOM_DATA)
-```
-
-```{python}
-%%compare_timing
-count_increasing_decreasing(PREDICTABLE_DATA)
-count_increasing_decreasing(RANDOM_DATA)
-```
-
-As you can see, random data results in much slower execution even though the number of CPU instruction should be basically the same.
-The problem: branch misprediction.
-
-::: {.callout-note}
-I validated this hypothesis by using the `perf` tool on Linux.
-Among [many other useful abilities](https://perf.wiki.kernel.org/index.php/Main_Page), it lets you run a program and get runtime statistics about where time was spent:
-
-```
-$ perf stat python yourscript.py
-```
-
-In this case, a script that ran on the random data had far more branch mispredictions than the same version running on the predictable data.
-:::
-
-### Avoiding branch mispredictions with branchless programming
-
-Compilers can often avoid generating branches in the machine code they generate, often by using special CPU instructions that were created for this purpose.
-The key is to give the compiler hints that allow it to generate suitable code.
-
-In our example, the issue is that are updating the `unchanged` variable, but only in one branch (and similarly for `increasing`).
-The compiler is unlikely to add additional writes.
-But we could restructure the code so we always write to these variables, regardless of the outcome:
-
-```{python}
-@njit
-def count_increasing_decreasing_avoid_conditionals(arr):
-    previous = 0
-    increasing = 0
-    unchanged = 0
-    for i in range(len(arr)):
-        value = arr[i]
-        unchanged += 1 if value == previous else 0
-        increasing += 1 if value > previous else 0
-        previous = value
-    decreasing = len(arr) - increasing - unchanged
-    return increasing, unchanged, decreasing
-
-count_increasing_decreasing_avoid_conditionals([1, 2, 3, 2, 2, 4])
-```
-
-Now, regardless of the result of comparing `value` and `previous` we add a value to `unchanged` and `increasing`.
-This gives the compiler sufficient information to generate code that doesn't use a conditional at all.
-
-We can can measure the performance with predictable data and random data:
-
-```{python}
-%%compare_timing
-count_increasing_decreasing_avoid_conditionals(PREDICTABLE_DATA)
-count_increasing_decreasing_avoid_conditionals(RANDOM_DATA)
-```
-
-In the predictable case, the code runs slightly slower: we're doing extra work.
-But in the random case, the code is much faster.
-And importantly, performance is consistent, so we know how much time the code will take to run.
-Depending on the data we expect to encounter this implementation may be much better.
-
-In general, making sure that both branches end up writing to the same memory location can help the compiler generate branchless code.
-
-### Branchless programming with more than one branch
-
-There are also various arithmetic tricks you can do, for example by treating a boolean (the result of some condition) as an integer with either values `0` or `1`:
-
-```{python}
-#| eval: false
-from numba import uint64
-
-# ...
-unchanged += uint64(value == previous)
-increasing += uint64(value > previous)
-# ...
-```
-
-```{python}
-@njit
-def count_sequences(arr):
-    DECREASE, UNCHANGED, INCREASE = 1, 2, 3
-    prev_value = 0
-    prev_status = UNCHANGED
-    decreased = 0
-    increased = 0
-    unchanged = 0
-    for i in range(len(arr)):
-        value = arr[i]
-        if value > prev_value:
-            status = INCREASE
-        elif value == prev_value:
-            status = UNCHANGED
-        else:
-            status = DECREASE
-        if status != prev_status:
-            if status == INCREASE:
-                increased += 1
-            elif status == UNCHANGED:
-                unchanged += 1
-            else:
-                decreased += 1
-        prev_status = status
-        prev_value = value
-    return decreased, unchanged, increased
-
-count_sequences(PREDICTABLE_DATA)
-```
-
-```{python}
-%%compare_timing
-count_sequences(PREDICTABLE_DATA)
-count_sequences(RANDOM_DATA)
-```
-
-```{python}
-@njit
-def count_sequences_2(arr):
-    # We'll use these as indexes into the result array:
-    DECREASE, UNCHANGED, INCREASE = 0, 1, 2
-    prev_value = 0
-    prev_status = UNCHANGED
-    result = np.zeros((3,), dtype=np.uint64)
-
-    for i in range(len(arr)):
-        value = arr[i]
-        if value > prev_value:
-            status = INCREASE
-        elif value == prev_value:
-            status = UNCHANGED
-        else:
-            status = DECREASE
-        if status != prev_status:
-            result[status] += 1
-        prev_status = status
-        prev_value = value
-    return result[0], result[1], result[2]
-
-assert np.array_equal(
-    count_sequences(RANDOM_DATA),
-    count_sequences_2(RANDOM_DATA)
-)
-```
-
-```{python}
-%%compare_timing
-count_sequences_2(PREDICTABLE_DATA)
-count_sequences_2(RANDOM_DATA)
-```
-
-```{python}
-@njit
-def count_sequences_3(arr):
-    DECREASE, UNCHANGED, INCREASE = 0, 1, 2
-    prev_value = 0
-    prev_status = UNCHANGED
-    result = np.zeros((3,), dtype=np.uint64)
-
-    for i in range(len(arr)):
-        value = arr[i]
-        #status = INCREASE if value > prev_value else UNCHANGED
-        #status = DECREASE if value < prev_value else status
-        status = 1 + int(value > prev_value) - int(value < prev_value)
-        result[status] += 1 if status != prev_status else 0
-        prev_status = status
-        prev_value = value
-    return result[0], result[1], result[2]
-
-assert np.array_equal(
-    count_sequences(RANDOM_DATA),
-    count_sequences_3(RANDOM_DATA)
-)
-```
-
-```{python}
-%%compare_timing
-count_sequences_3(PREDICTABLE_DATA) # TODO why aren't these two the same?
-count_sequences_3(RANDOM_DATA)
-count_sequences_3(PREDICTABLE_DATA) # TODO why aren't these two the same?
-count_sequences_3(RANDOM_DATA)
-```
-
-Whether or not branchless code is actually faster depends on the data and how predictable the branches are.
-
-### Hidden sources of branching
-
-In addition to explicit branches you might add to your code, there are other less obvious sources of branching that can be added by the compiler, including handling division by zero and bounds checking.
-
-Dividing by zero is mathematically meaningless, so programming languages need to decide how to handle it for different data types.
-For example, in Python you get a `ZeroDivisionError` by default, whereas NumPy floats return the special value `inf`/`-inf`/`nan` when divided by zero (for positive numbers, negative numbers, and zero, respectively).
-
-If your programming language has any sort of graceful handling for divide by zero, behind the scenes that will require generating an `if` statement any time division by a variable happens.
-Numba, for example, will raise a `ZeroDivisionError` by default.
-
-Another potential source of auto-generated branches is bounds checking, which we will discuss in a later chapter.
+Some branches are unpredictable, however, and those can significantly slow down execution.
+We'll talk about how to deal with those in a later chapter.
