@@ -17,6 +17,7 @@ book:
     - part: part_2.qmd
         - 02_low_level_compilation.qmd
         - 04_the_compiler_optimizes_for_you.qmd
+        - aliasing.qmd
         # TODO aliasing split off into its won chapter
     - part: "TODO more sophisticated mental model of CPU"
       chapters:

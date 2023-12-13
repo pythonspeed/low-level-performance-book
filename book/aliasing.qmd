@@ -1,0 +1,100 @@
+# Avoid aliasing to enable compiler optimizations
+
+To understand the problem we'll cover in this chapter, we first need to cover a couple of definitions:
+
+* A pointer is a programming language construct that points at a memory address.
+  In the CPython interpreter you use to run Python, for example, every Python object you interact with is a pointer to a `PyObject`.
+  In Numba, every NumPy array or view has a pointer internally.
+* Aliasing means having multiple pointers referencing the same memory address at the same time.
+
+When you slice a NumPy array, for example, by default the data doesn't get copied.
+Instead, you get a view object that points at the same memory.
+Now you have two pointers at the original memory: the original array and the view into it.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import njit
+
+arr = np.arr([1, 2, 3])
+arr_view = arr[:2]
+print("Original view", arr_view)
+arr[0] = 100
+print("Updated view", arr_view)
+```
+
+Here's the problem: the _possibility_ of aliasing can limit what the compiler is able to do to speed up your code, because it means seemingly identically behaved functions can actually behave differently when inputs are aliased.
+
+TODO note source of example, the systems programming book, in footnote or osmething
+
+```{python}
+@njit
+def add_twice(first_arr, second_arr):
+    for i in range(len(first_arr)):
+        first_arr[i] += second_arr[i]
+        first_arr[i] += second_arr[i]
+    return first_arr
+
+@njit
+def add_doubled(first_arr, second_arr):
+    for i in range(len(first_arr)):
+        first_arr[i] += 2 * second_arr[i]
+    return first_arr
+
+def zeros():
+    return np.zeros((1_000_000, ), dtype=np.uint64)
+
+DATA2 = np.linspace(1_000_000, 0, 1_000_000, dtype=np.uint64)
+
+# Both functions give the same result (in this case at least):
+assert np.array_equal(
+    add_twice(zeros(), DATA2),
+    add_doubled(zeros(), DATA2)
+)
+```
+
+The second implementation is faster, because it does less work and the compiler doesn't optimize that work away:
+
+```{python}
+#| echo: false
+%%compare_timing
+
+add_twice(zeros(), DATA2)
+add_doubled(zeros(), DATA2)
+```
+
+On the face of it, the two implementations are semantically the same, and so it's surprising that the compiler won't transform the first implementation into the second, slightly faster form.
+
+The likely issue is that the compiler can't know at compile time if the two arrays are actually the same array: it needs to take aliasing into account.
+This matters because the two functions behave differently for inputs that involve aliasing, which means the compiler can't swap the two implementations out.
+For example, if we pass the same array to both arguments of the functions, we get different results:
+
+```{python}
+arr = np.ones((3, ), dtype=np.uint64)
+print("add_twice() gives:", add_twice(arr, arr))
+
+arr = np.ones((3, ), dtype=np.uint64)
+print("add_doubled() gives:", add_doubled(arr, arr))
+```
+
+You have multiple ways to address this optimization blocker:
+
+1. Rewrite your code so aliasing won't affect the calculation, allowing the compiler more scope for optimization.
+   In the example above, instead of mutating the first array the results could instead be written to an output array newly created by the function itself.
+   As a new array, the compiler would be able to tell that aliasing was not possible, enabling a larger scope for optimizations.
+2. Restructure the code to do the optimizations manually, or at least those that you can easily identify.
+3. Your programming language may have a way to indicate that aliasing is not an issue (see below).
+
+::: {.callout-info}
+In Rust aliasing is usually not a performance blocker for the compiler.
+To ensure memory safety, the compiler ensures that there is either a single writable pointer to a particular memory address, or any number of read-only pointers, but you can never have both.
+As a result, if you rewrote the above example in Rust, the compiler would know that `first_arr` and `second_arr` cannot alias, and that information would be conveyed to the optimization layer.
+
+In C you can use the `restrict` keyword to manually indicate that you have enforced a uniqueness constraint.
+Additionally, when compiling C and C++ there are a variety of ways the compiler can handle aliasing scenarios, including pretending it won't happen, pretending but warning you, or choosing the safer-but-slower option.
+Depending on your compiler you can use compiler flags to control this behavior.
+:::
