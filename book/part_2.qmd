@@ -1,0 +1,8 @@
+# Speeding up your code with a low-level compiled language
+
+So far the optimizations we've covered are language-agnostic: you can apply whether you're writing Python or C++.
+But beyond a certain point, Python will be too slow, and you'll need to switch to a faster compiled language.
+
+TODO point at specific chapters, amke sure they're all mentioned
+
+In the following chapters we'll cover TODO

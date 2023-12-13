@@ -23,3 +23,5 @@ We can do this in one of two ways:
 
 1. Figuring out a more efficient way to get the same results.
 2. Accepting somewhat different results in exchange for using fewer instructions.
+
+TODO point at specific chapters, amke sure they're all mentioned

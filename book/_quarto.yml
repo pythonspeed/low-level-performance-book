@@ -9,13 +9,15 @@ book:
     - index.qmd
     - 001_introduction.qmd
     - 002_prerequisites.qmd
-    - part: part_1.qmd
+    - part: part_1.qmd  # General performance
       chapters:
         - 01_algorithms.qmd
         - 03_generic_optimization.qmd
+        - 09_trading_accuracy_for_speed.qmd
+    - part: part_2.qmd
         - 02_low_level_compilation.qmd
         - 04_the_compiler_optimizes_for_you.qmd
-        - 09_trading_accuracy_for_speed.qmd
+        # TODO aliasing split off into its won chapter
     - part: "TODO more sophisticated mental model of CPU"
       chapters:
         - 04_instruction_level_parallelism.qmd
