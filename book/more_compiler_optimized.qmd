@@ -1,0 +1,73 @@
+# More ways the compiler can help you
+
+## Using faster CPU instructions
+
+TODO maybe move to later chapter with a more sophisticated model of the CPU
+
+For any given piece of code there are different ways the compiler could translate the code into CPU instructions.
+This is relevant because some CPU instructions are faster than others.
+For example, division is a complex operation, so in situations where the compiler can avoid using it, it will try to use other CPU instructions.
+
+One such useful instruction is bitshifting: a bitshift of 3 to the right will change 97 to 12, as it's shifting the bits of `1100001` three to the right, resulting in `1100`.
+Put another way, bitshifting N to the right is equivalent to dividing by 2^N.
+
+```{python}
+print(97 >> 3)
+print(97 // (2 ** 3))
+```
+
+If the compiler is asked to do a generic division, it can't really switch to other CPU instructions, so it's stuck with slow division instead of a fast bitshift.
+
+```{python}
+@njit
+def generic_division(divisor):
+    arr = np.empty((1000,), dtype=np.int64)
+    for i in range(len(arr)):
+        arr[i] = i / divisor
+    return arr
+
+@njit
+def generic_bitshift(bits):
+    arr = np.empty((1000,), dtype=np.int64)
+    for i in range(len(arr)):
+        arr[i] = i >> bits
+    return arr
+
+assert np.array_equal(generic_division(8), generic_bitshift(3))
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+generic_division(8)
+generic_bitshift(3)
+```
+
+Notice how division is slower than bitshifts.
+However, if the compiler knows you're dividing by a power of 2, it can choose to use faster operations than division.
+To see whether bitshifts were actually used we'd have to look at the generated CPU instructions, but even without doing that we can see that in this case the compiler was able to generate faster code to get the _equivalent_ of division by 8:
+
+```{python}
+@njit
+def specific_division():
+    arr = np.empty((1000,), dtype=np.int64)
+    for i in range(len(arr)):
+        arr[i] = i // 8
+    return arr
+
+@njit
+def specific_bitshift():
+    arr = np.empty((1000,), dtype=np.int64)
+    for i in range(len(arr)):
+        arr[i] = i >> 3
+    return arr
+
+assert np.array_equal(specific_division(), specific_bitshift())
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+specific_division()
+specific_bitshift()
+```

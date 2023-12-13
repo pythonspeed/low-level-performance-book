@@ -20,6 +20,7 @@ book:
         # TODO aliasing split off into its won chapter
     - part: "TODO more sophisticated mental model of CPU"
       chapters:
+        - more_compiler_optimizations.qmd
         - 04_instruction_level_parallelism.qmd
         - 05_simd.qmd
         - getting_rid_of_branches.qmd
