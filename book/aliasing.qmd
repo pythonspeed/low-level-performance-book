@@ -20,14 +20,20 @@ Now you have two pointers at the original memory: the original array and the vie
 import numpy as np
 from numba import njit
 
-arr = np.arr([1, 2, 3])
+arr = np.array([1, 2, 3], dtype=np.int64)
+# This is a view to the original array:
 arr_view = arr[:2]
 print("Original view", arr_view)
+# If we mutate the original array...
 arr[0] = 100
+# ...the view sees the same information:
 print("Updated view", arr_view)
 ```
 
-Here's the problem: the _possibility_ of aliasing can limit what the compiler is able to do to speed up your code, because it means seemingly identically behaved functions can actually behave differently when inputs are aliased.
+Here's the problem: the _possibility_ of aliasing can limit what the compiler is able to do to speed up your code.
+That's because seemingly identically behaved functions can actually behave differently when inputs are aliased.
+
+## An example of the problem
 
 TODO note source of example, the systems programming book, in footnote or osmething
 
@@ -81,20 +87,63 @@ arr = np.ones((3, ), dtype=np.uint64)
 print("add_doubled() gives:", add_doubled(arr, arr))
 ```
 
-You have multiple ways to address this optimization blocker:
+## Solution #1: Manual optimization
 
-1. Rewrite your code so aliasing won't affect the calculation, allowing the compiler more scope for optimization.
-   In the example above, instead of mutating the first array the results could instead be written to an output array newly created by the function itself.
-   As a new array, the compiler would be able to tell that aliasing was not possible, enabling a larger scope for optimizations.
-2. Restructure the code to do the optimizations manually, or at least those that you can easily identify.
-3. Your programming language may have a way to indicate that aliasing is not an issue (see below).
+Rather than relying on the compiler, you can implement the optimizations yourself.
+In our example, you could write the verison of the code in `add_doubled()` instead of `add_twice()`, assuming that matches the semantics you want in the case when the data is aliased.
 
-::: {.callout-info}
-In Rust aliasing is usually not a performance blocker for the compiler.
-To ensure memory safety, the compiler ensures that there is either a single writable pointer to a particular memory address, or any number of read-only pointers, but you can never have both.
-As a result, if you rewrote the above example in Rust, the compiler would know that `first_arr` and `second_arr` cannot alias, and that information would be conveyed to the optimization layer.
+Unfortunately, there may be less obvious optimizations that you miss.
+And some optimizations are much more difficult for you to implement yourself, in particular those that involve generating particular machine code.
 
-In C you can use the `restrict` keyword to manually indicate that you have enforced a uniqueness constraint.
-Additionally, when compiling C and C++ there are a variety of ways the compiler can handle aliasing scenarios, including pretending it won't happen, pretending but warning you, or choosing the safer-but-slower option.
-Depending on your compiler you can use compiler flags to control this behavior.
-:::
+## Solution #2: Ensure aliasing doesn't impact the result
+
+Just because two pointers point at the same memory doesn't necessarily prevent the compiler from applying optimizations.
+In particular, the issue in the examples above was due to _writing_ to the passed-in array.
+If instead we write the data to a _new_ array, aliasing becomes irrelevant and the compiler should be able to apply more optimizations.
+
+```{python}
+@njit
+def add_twice_new_array(first_arr, second_arr):
+    result = np.empty(first_arr.shape, dtype=first_arr.dtype)
+    for i in range(len(result)):
+        result[i] = first_arr[i] + second_arr[i]
+        result[i] += second_arr[i]
+    return result
+
+@njit
+def add_doubled_new_array(first_arr, second_arr):
+    result = np.empty(first_arr.shape, dtype=first_arr.dtype)
+    for i in range(len(result)):
+        result[i] = first_arr[i] + 2 * second_arr[i]
+    return result
+
+# Both functions give the same result:
+ZEROS = zeros()
+assert np.array_equal(
+    add_twice_new_array(ZEROS, DATA2),
+    add_doubled_new_array(ZEROS, DATA2)
+)
+```
+
+In this case the compiler is able to optimize `add_twice_new_array()`:
+
+```{python}
+#| echo: false
+%%compare_timing
+add_twice_new_array(ZEROS, DATA2)
+add_doubled_new_array(ZEROS, DATA2)
+```
+
+## Solution #3: Take advantage of language features
+
+Your programming language may have a way to indicate that aliasing is not an issue.
+For example:
+
+* In C, you can use the `restrict` keyword on function arguments to manually indicate that you have enforced a uniqueness constraint.
+* The most commonly-used C++ compilers support [a similar language extension](https://en.wikipedia.org/wiki/Restrict#Support_by_C++_compilers).
+* In Rust, if you have a writable reference to data, you cannot simultaneously have any other references to it; this is enforced by the compiler.
+  The Rust compiler is therefore able to optimize code without having to worry about aliasing.
+  When dealing with external data like Python objects, Rust libraries will enforce this at runtime insofar as they are able to.
+  See for example [the relevant documentation for the Rust NumPy integration](https://docs.rs/numpy/latest/numpy/borrow/index.html).
+
+Numba is considering adding a solution similar to C's, but at the time of writing it has not yet been merged so I am unable to demonstrate it.
