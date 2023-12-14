@@ -1,5 +1,15 @@
 # More ways the compiler can help you
 
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import njit
+```
+
 ## Using faster CPU instructions
 
 TODO maybe move to later chapter with a more sophisticated model of the CPU
