@@ -8,7 +8,6 @@ book:
   chapters:
     - index.qmd
     - 001_introduction.qmd
-    - 002_prerequisites.qmd
     - part: part_1.qmd  # General performance
       chapters:
         - 01_algorithms.qmd
@@ -35,6 +34,7 @@ book:
     - 13_example_memory_layout.qmd
   appendices:
     - 01_when.qmd
+    - 002_prerequisites.qmd
     - 14_microbenchmarking.qmd
 #    - references.qmd
 

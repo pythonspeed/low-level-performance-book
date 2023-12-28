@@ -12,7 +12,7 @@ Cython compiles to C or C++, and then that code is compiled to machine to code, 
 
 In contrast, CPython, the default Python implementation:
 
-1. Does not currently generate machine code.
+1. Does not currently generate machine code, though work is in progress for future versions.
 2. Does not necessarily know what type a variable is.
 
 > In theory, type hints give CPython more information, but in practice they are not currently used.

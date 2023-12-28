@@ -1,11 +1,9 @@
-# Some things you should know before reading this book
+# A bit more about NumPy and Numba
 
 This book is designed to help you improve your understanding of how compilers and CPUs work, so that you can write faster low-level code.
 Because it's aimed at Python developers, I've tried to minimize the non-Python knowledge you need.
 
-Nonetheless, there is a little bit of knowledge you will need to understand the examples in later chapters, which I'll quickly cover here.
-
-TODO figure out how much of this can be shortened, deleted, or moved to later chapters
+Nonetheless, there is a little bit of knowledge you will need to understand the examples in the book, which I'll quickly cover here.
 
 ## A quick intro to NumPy arrays
 
@@ -49,8 +47,6 @@ print(two_by_three[:, 1])
 When you slice an array, you don't get a copy of the data, you get a _view_ onto the original memory.
 Depending on the direction of the slice, the view might not be contiguous in memory.
 Externally NumPy won't differentiate between those views and arrays that are contiguous and those that are non-contiguous, but as we will see this can make a difference to performance.
-
-TODO do we want to cover this?
 
 ## A quick intro to Numba
 
