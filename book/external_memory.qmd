@@ -1,0 +1,76 @@
+# Avoid unnecessary writes to non-local memory
+
+If your code is accessing a local variable that is present only in the function, that is clearly something the compiler can safely optimize and modify.
+However, the compiler may consider removing writes to memory that is accessible outside your function to be more questionable, because in theory those writes might have side effects.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import njit
+
+@njit
+def local_stack(n):
+    acc = 0
+    for i in range(n):
+        acc += i
+    return acc
+
+@njit
+def external_memory(n, arr):
+    arr[0] = 0
+    for i in range(n):
+        arr[0] += i
+    return arr[0]
+
+
+# Both functions give the same result:
+ZEROS = np.zeros((1, ), dtype=np.float64)
+assert local_stack(5) == external_memory(5, ZEROS)
+```
+
+Here's how their speed compares:
+
+```{python}
+#| echo: false
+%%compare_timing
+
+local_stack(1_000_000)
+local_stack(10_000_000)
+external_memory(10_000_000, ZEROS)
+```
+
+Of the two versions, the first version is _vastly_ faster, surprisingly so.
+If my i7-12700k CPU runs at a clock frequency of approximately 4GHZ, that means it does about 4 CPU cycles per nanosecond.
+It should be able to do a few CPU instructions per cycle thanks to instruction-level parallelism, which we'll talk about the in the next chapter.
+So let's say it can do 2000 instructions in 100 nanoseconds, just to be generous.
+How can it do a million additions with just 2000 instructions?
+
+The LLVM compiler used by Numba is smart enough to figure out that the sum of 0, 1, 2, ..., N is actually `N×(N + 1)/2`, so it just substitutes the faster formula when it can.
+So the runtime of the `local_stack()` function will actually be the same regardless of `N`.
+
+Unfortunately, in the case of using an externally given array as the temporary accumulator, the presence of writes to the array likely prevents that particular optimization.
+If the array we're using as an accumulator is local to the function, in this case at least the compiler is once again happy to apply the optimization:
+
+```{python}
+@njit
+def internal_array(n):
+    arr = np.zeros((1, ), dtype=np.uint64)
+    for i in range(n):
+        arr[0] += i
+    return arr[0]
+
+assert local_stack(5) == internal_array(5)
+```
+
+And if we time it:
+
+```{python}
+#| echo: false
+%%compare_timing
+
+internal_array(1_000_000)
+```

@@ -1,8 +1,8 @@
 # The compiler can optimize for you (sometimes)
 
-We'll start by going over the compiler's optimization capabilities.
-The compiler is able to get rid of some redundant or inefficient code, but certainly not all of it.
-So let's get ready to run some examples, and then consider what the compiler is already doing for you, and where it might need your manual intervention.
+The compiler doesn't just translate your code to machine code: it also optimizes the code as it goes.
+In this chapter the optimizations we're focusing on are those you could do yourself, following the principle of avoiding wasted work.
+Having the compiler do them saves you the effort, and the compiler will often apply optimizations you wouldn't have thought of.
 
 ```{python}
 # Disable SIMD so it doesn't distort or hide certain effects:
@@ -17,24 +17,16 @@ import numpy as np
 %load_ext book_magics
 ```
 
-Some of these optimizations you will have to do manually, but some can be automatically by the compiler.
-
 ## Compiler optimizations and their limitations
 
 When your code gets compiled, the compiler runs it through a series of optimization passes, with each pass transforming the code in the some way.
 The hope is that the cumulative series of transformations will result in code that is more efficient by:
 
 1. Removing redundant code execution, our focus in this chapter.
-2. Utilizing the CPU as efficiently as possible, our focus in later chapters.
+2. Utilizing the CPU as efficiently as possible.
+   We won't consider these optimizations here, but we'll cover at least some of them in later chapters.
 
-A key requirement for the optimization passes is that your code continues behave the same way, even as it gets faster.
-**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
-
-As a result, even if you had a perfect compiler that could identify every single optimization possibility, there would still be optimizations that couldn't be applied.
-Only you, the author of the code, can know whether or not it is acceptable to make a change to the code's results and side-effects.
-In practice, the compiler may only be looking at a single function: it doesn't have a full view of the whole program, especially when you're just writing a Python extension.
-
-### Some examples of what the compiler can do
+## Some examples of what the compiler can do
 
 Even with this constraint mind, there is still plenty the compiler can do to speed up your code.
 
@@ -111,93 +103,27 @@ manually_hoisted(1_000_000, 3)
 
 While both versions have the same speed, the manually hoisted version is arguably clearer about what is going on in the calculation, and the compiler won't always be able to hoist expressions, so doing it manually might still be worth it.
 
-#### Inlining TODO
+#### Inlining
 
 TODO
+
+Calling a function has overhead, even in a low-level language.
+And perhaps more importantly, it's difficult for the compiler to optimize across function boundaries: combining different parts 
 
 There are many other optimizations the compiler can do, with more added or tweaked with every compiler release.
 
 ## What the compiler won't do
 
+A key requirement for the compiler's optimization passes is that your code continues behave the same way, even as it gets faster.
+**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
+
+As a result, even if you had a perfect compiler that could identify every single optimization possibility, there would still be optimizations that couldn't be applied.
+Only you, the author of the code, can know whether or not it is acceptable to make a change to the code's results and side-effects.
+
 Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of conservatism.
-Some reasons this can happen include:
+In the following chapters we'll consider some of the reasons the compiler might fail to optimize your code, and what you can do about it.
 
-* Floating point calculations, which we'll talk about in a later chapter.
-* Access to memory that is visible outside the function.
-* The potential for aliasing.
-* Function calls.
-
-By identifying these patterns, you can learn to write code that avoids them.
-
-### Memory accesses can prevent optimizations
-
-If your code is accessing a local variable that is present only in the function, that is clearly something the compiler can safely optimize and modify.
-However, the compiler may consider removing writes to memory that is accessible outside your function to be more questionable, because in theory those writes might have side effects.
-
-```{python}
-@njit
-def local_stack(n):
-    acc = 0
-    for i in range(n):
-        acc += i
-    return acc
-
-@njit
-def external_memory(n, arr):
-    arr[0] = 0
-    for i in range(n):
-        arr[0] += i
-    return arr[0]
-
-
-# Both functions give the same result:
-ZEROS = np.zeros((1, ), dtype=np.float64)
-assert local_stack(5) == external_memory(5, ZEROS)
-```
-
-Here's how their speed compares:
-
-```{python}
-#| echo: false
-%%compare_timing
-
-local_stack(1_000_000)
-external_memory(1_000_000, ZEROS)
-```
-
-TODO this should really be two optimizations with this section having its own example
-
-Of the two versions, the first version is _vastly_ faster, surprisingly so.
-If my i7-12700k CPU runs at a clock frequency of approximately 4GHZ, that means it does about 4 CPU cycles per nanosecond.
-It should be able to do a few CPU instructions per cycle thanks to instruction-level parallelism, which we'll talk about the in the next chapter.
-So let's say it can do 2000 instructions in 100 nanoseconds, just to be generous.
-How can it do a million additions with just 2000 instructions?
-
-The LLVM compiler used by Numba is smart enough to figure out that the sum of 0, 1, 2, ..., N is actually `N×(N + 1)/2`, so it just substitutes the faster formula when it can.
-So the runtime of the `local_stack()` function will actually be the same regardless of `N`.
-
-Unfortunately, in the case of using an externally given array as the temporary accumulator, the presence of writes to the array likely prevents that particular optimization.
-If the array we're using as an accumulator is local to the function, in this case at least the compiler is once again happy to apply the optimization:
-
-```{python}
-@njit
-def internal_array(n):
-    arr = np.zeros((1, ), dtype=np.uint64)
-    for i in range(n):
-        arr[0] += i
-    return arr[0]
-
-assert local_stack(5) == internal_array(5)
-```
-
-And if we time it:
-
-```{python}
-#| echo: false
-%%compare_timing
-
-internal_array(1_000_000)
-```
+TODO delete everything else, moving it to appropriate places.
 
 ### The possibility of aliasing can prevent optimizations
 
