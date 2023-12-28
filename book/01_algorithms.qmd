@@ -4,62 +4,185 @@ How long it takes your program to run depends on two sets of decisions embedded 
 
 1. The choice of algorithm.
 2. The implementation.
-   For example, as we'll be repeating repeatedly, low-level languages like C can run the same algorithm much faster than Python can.
+   For example, as we'll be repeating repeatedly, low-level languages like C usually run the same algorithm much faster than Python can.
 
-In the rest of the book we'll focus on the implementation, but in this chapter we'll focus on choice of algorithm.
+In the rest of the book we'll focus on the implementation, but the choice of algorithm is just as important, as we'll see in this chapter.
 
 ```{python}
 #| echo: false
 %load_ext book_magics
 ```
 
-## The 
+## Avoid quadratic algorithms, accidental or otherwise
 
 How long your program runs depends on the size of the input: processing a 1,000,000-base DNA sequence will probably take longer than processing a 1,000-base sequence.
 And once you're dealing with large input sizes, an algorithm that scales badly will be so slow that your implementation speed won't matter.
 
+In much of this book we'll be using the NumPy library for examples.
+NumPy's core data structure, the `ndarray`, is a bit like a standard Python list, except that `ndarrays`s:
+
+1. Are fixed in size.
+2. Only contain items of a single data type or "dtype", e.g. a 32-bit unsigned integer.
+3. Can be multi-dimensional.
+
+Because of the second item an `ndarray` can be accessed efficiently from compiled languages, unlike Python lists.
+
 Let's consider an example: quadratic algorithms, which are very easy to write accidentally, to the point that there is [a blog showcasing examples](https://accidentallyquadratic.tumblr.com/).
 A typical mistake is to have a loop, and then call a function that doesn't look like a loop but actually causes another loop over the same data.
-Here's an example from the blog, with just pure Python, calculating the intersection of two lists of length `N`:
+
+Here's an example, a naive implementation of a quadratic algorithm that filters an array down to only those items that are present in the second array.
+We'll assume both arrays have approximately the same length.
 
 ```{python}
-def slow_algorithm(l1, l2):
-    result = []
-    # This has N steps:
-    for item in l1:
-        # Checking if an item is contained in a list requires N comparisons:
-        if item in l2:
-            result.append(item)
-    return result
+import numpy as np
 
-def fast_algorithm(l1, l2):
-    result = []
-    l2_as_set = set(l2)
-    for item in l1:
-        # Checking if an item is contained in a Python set takes a fixed amount
-        # of time:
-        if item in l2_as_set:
-            result.append(item)
-    return result
+def naive_filter_python(arr1, arr2):
+    # Create a new array that is the same size and has the same
+    # type as the first array:
+    result = np.empty(shape=arr1.shape, dtype=arr1.dtype)
 
-DATA = list(range(1_000))
-DATA2 = list(range(3, 1_003))
-assert slow_algorithm(DATA, DATA2) == fast_algorithm(DATA, DATA2)
+    found_items = 0
+
+    # This has len(arr1) steps:
+    for i in range(len(arr1)):
+        item = arr1[i]
+        # Checking if an item is contained in an array may require iterating
+        # over the whole array, so len(arr2) steps:
+        if item in arr2:
+            result[found_items] = item
+            found_items += 1
+
+    # A simple slice of a NumPy array doesn't copy the data, it just points at
+    # the same underlying memory:
+    result = result[:found_items]
+    return result
 ```
 
-The second implementation is much faster:
+How long does this take to run for different input sizes?
+
+```{python}
+# Create an array with values from 0 to 999:
+SMALL_DATA = np.arange(0, 1_000, dtype=np.uint64)
+SMALL_DATA2 = np.arange(3, 1_003, dtype=np.uint64)
+LARGER_DATA = np.arange(0, 10_000, dtype=np.uint64)
+LARGER_DATA2 = np.arange(0, 10_003, dtype=np.uint64)
+```
 
 ```{python}
 #| echo: false
 %%compare_timing
-slow_algorithm(DATA, DATA2)
-fast_algorithm(DATA, DATA2)
+naive_filter_python(SMALL_DATA, SMALL_DATA2)
+naive_filter_python(LARGER_DATA, LARGER_DATA2)
 ```
 
-## Big O notation is a way of modeling algorithm scalability
+When the data is 10× larger, the run time is more than 100× slower!
+That's because the algorithm takes `len(arr1) × len(arr2)` steps.
+If we assume both arrays have approximately the same length `N`, we can say the algorithm is $O(N^{2})$: it scales with the square of the length of the inputs.
 
-Let's compare 
-The `slow_algorithm()` above does $N^{2}$ operations: for each item in the first list it may need to iterate over every item in the second list.
-So assuming both lists are of size $N$, that's $N^{2}$ operations.
+## A faster language won't make an algorithm scale
 
-## A fast implementation is useless if your algorithm doesn't scale
+Since this is a book about using low-level compiled languages, let's see how fast that runs, by using [Numba](https://numba.pydata.org/).
+Numba is a programming language that implements a subset of Python, but compiles to machine code, and has native support for NumPy arrays.
+However, this is not a book about Numba, and the concepts we cover should apply to C, C++, Rust, and other low-level languages.
+
+The reason Numba is helpful is because it's so easy to use: just decorate a function with `@numba.njit`.
+The first time you call this function with a set of arguments with specific types, Numba will generate machine code customized for those particular types.
+Subsequent runs will use the pre-compiled version and run extremely quickly.
+
+```{python}
+from numba import njit
+
+@njit
+def naive_filter_numba(arr1, arr2):
+    # This is the same code as naive_filter_python() above, but it will be compiled
+    # to machine code the first time it is called with particular types.
+    result = np.empty(shape=arr1.shape, dtype=arr1.dtype)
+
+    found_items = 0
+    for i in range(len(arr1)):
+        item = arr1[i]
+        if item in arr2:
+            result[found_items] = item
+            found_items += 1
+
+    result = result[:found_items]
+    return result
+
+assert np.array_equal(
+    naive_filter_python(SMALL_DATA, SMALL_DATA2),
+    naive_filter_numba(SMALL_DATA, SMALL_DATA2)
+)
+```
+
+How does this version scale?
+
+```{python}
+#| echo: false
+%%compare_timing
+naive_filter_numba(SMALL_DATA, SMALL_DATA2)
+naive_filter_numba(LARGER_DATA, LARGER_DATA2)
+```
+
+This is a lot faster, but it is still going to run vastly slower as the input size grows.
+
+## Linear algorithms beat quadratic algorithms
+
+Let's try a different approach: a faster algorithm.
+Whereas checking membership in an array scales linearly with the size of the array, checking membership in a set takes a constant amount of time.
+
+```{python}
+# This is still written in Python, a slow language!
+def smarter_filter_python(arr1, arr2):
+    result = np.empty(shape=arr1.shape, dtype=arr1.dtype)
+
+    # This scales linearly with the size of arr2:
+    arr2_as_set = set(arr2)
+
+    found_items = 0
+
+    for i in range(len(arr1)):
+        item = arr1[i]
+        # Checking if an item is contained in a Python set takes a fixed amount
+        # of time:
+        if item in arr2_as_set:
+            result[found_items] = item
+            found_items += 1
+
+    result = result[:found_items]
+    return result
+
+assert np.array_equal(
+    naive_filter_python(SMALL_DATA, SMALL_DATA2),
+    smarter_filter_python(SMALL_DATA, SMALL_DATA2),
+)
+```
+
+Now, let's see how all three of our implementations compare.
+We'll use the `benchit` library to generate a graph of run time over a series of inputs of increasing size:
+
+```{python}
+#| output: false
+import benchit
+
+inputs = {
+    size: (np.arange(0, size, dtype=np.uint64),
+           np.arange(3, size + 3, dtype=np.uint64))
+    for size in [100, 1000, 10_000]
+}
+
+timings = benchit.timings(
+    [naive_filter_python, naive_filter_numba, smarter_filter_python],
+    inputs,
+    multivar=True,
+    input_name="Array length",
+)
+```
+
+Here's what the resulting run time looks like:
+
+```{python}
+timings.plot(logx=True, logy=True, dpi=100, figsize=(8, 4))
+```
+
+**Once inputs are large enough, the smarter algorithm in Python is faster than the compiled Numba version.**
+That's why it's so important to pick a good algorithm: a slow algorithm will overwhelm any benefits you get from switching to a faster programming language.
