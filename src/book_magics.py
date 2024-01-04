@@ -29,16 +29,26 @@ MEASUREMENTS = {
         [Hardware.INSTRUCTIONS],
         lambda instructions: instructions,
     ),
+    "memory_cache_miss": (
+        "Memory cache miss %",
+        [Hardware.CACHE_REFERENCES, Hardware.CACHE_MISSES],
+        lambda refs, misses: round((misses / refs) * 100, 1),
+    ),
+    "memory_cache_refs": (
+        "Memory cache references",
+        [Hardware.CACHE_REFERENCES],
+        lambda refs: refs,
+    ),
 }
 
 
 @magic_arguments()
-@argument("--measure")
+@argument("--measure", default="")
 @needs_local_scope
 @register_cell_magic
 def compare_timing(line, cell, local_ns):
     arguments = parse_argstring(compare_timing, line)
-    measurements = arguments.measure.split(",")
+    measurements = [m for m in arguments.measure.split(",") if m]
 
     result = []
     for line in cell.splitlines():
@@ -70,8 +80,8 @@ def compare_timing(line, cell, local_ns):
         headers.append(MEASUREMENTS[m][0])
 
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
-    table.set_style(1, Style(thousand_separator=","))
-    table.set_style(2, Style(thousand_separator=","))
+    for i in range(1, len(headers)):
+        table.set_style(i, Style(thousand_separator=","))
     display(Markdown(table.dumps()))
 
 

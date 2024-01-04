@@ -53,7 +53,7 @@ Here's the time it takes to reach each variation:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions
 scan_memory(100_000_000, LINEAR)
 scan_memory(100_000_000, RANDOM)
 ```
@@ -123,6 +123,13 @@ Comparing our two variations:
 
 As a result, in the linear scan case the data we need is much more likely to already be in the cache.
 
+```{python}
+#| echo: false
+%%compare_timing --measure=memory_cache_refs
+scan_memory(100_000_000, LINEAR)
+scan_memory(100_000_000, RANDOM)
+```
+
 ### Pre-fetching
 
 Modern CPUs will also pre-fetch memory into the cache as an optimization technique, even before the running code asks for it.
@@ -134,6 +141,15 @@ Random scans are, of course, much harder to predict, and so prefetching is less 
 
 If data is being prefetched, there will be fewer cache misses because the CPU will already have loaded the data into the memory caches.
 And that means fewer loads from slower caches, or even slower RAM.
+
+Let's rerun our comparison, showing what percentage of cache accesses are misses:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=memory_cache_miss
+scan_memory(100_000_000, LINEAR)
+scan_memory(100_000_000, RANDOM)
+```
 
 :::{.callout-info}
 On Linux, you can use the [`perf stat`](https://perf.wiki.kernel.org/index.php/Tutorial#Counting_with_perf_stat) tool to measure cache misses.
