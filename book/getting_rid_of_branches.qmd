@@ -220,7 +220,11 @@ def count_sequences(arr):
 For example, we expect this to to have 2 increasing, 1 unchanged, and 1 decreasing sequences:
 
 ```{python}
-print(count_sequences([1, 2, 3, 2, 2, 4]))
+print(
+    count_sequences(
+        np.array([1, 2, 3, 2, 2, 4], dtype=np.uint64)
+    )
+)
 ```
 
 We can run this on data that is always increasing, which means branch prediction will work well, and randomized data where branch prediction is impossible:
