@@ -75,7 +75,7 @@ def generate_random_numbers(n):
         result[i] = random_number
     return result
 
-generate_random_numbers(3)
+_ = generate_random_numbers(3)
 ```
 
 Unfortunately, this calculation does not have a lot of parallelism: `result[i+1]` cannot be calculated without knowing `result[i]`.
@@ -93,13 +93,14 @@ def generate_random_numbers_2(n):
         result[i] = random_number
     return result
 
-generate_random_numbers_2(3)
+_ = generate_random_numbers_2(3)
 ```
 
 A little thought will suggest this is a terrible way to generate random numbers, so we won't want to use this code in practice.
 However, this change does enable a massive speedup; the number of instructions isn't that different, but the speed at which they run drops dramatically thanks to ILP:
 
 ```{python}
+#| echo: false
 %%compare_timing
 generate_random_numbers(1_000_000)
 generate_random_numbers_2(1_000_000)
