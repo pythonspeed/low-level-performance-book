@@ -76,7 +76,7 @@ That is certainly the case for our simulated image.
 Here's how long this version takes to run:
 
 ```{python}
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 remove_noise_naive(NOISY_IMAGE, 1000)
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 ```
@@ -144,7 +144,7 @@ Here's the difference in performance:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 remove_noise_naive(NOISY_IMAGE, 1000)
 remove_noise_branchless_1(NOISY_IMAGE, 1000)
 remove_noise_branchless_2(NOISY_IMAGE, 1000)
@@ -152,7 +152,7 @@ remove_noise_branchless_2(NOISY_IMAGE, 1000)
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_2(PREDICTABLE_IMAGE, 1000)
@@ -185,7 +185,7 @@ with disabled_simd() as njit_no_simd:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 remove_noise_naive(NOISY_IMAGE, 1000)
 remove_noise_branchless_1(NOISY_IMAGE, 1000)
 remove_noise_branchless_3(NOISY_IMAGE, 1000)
@@ -193,7 +193,7 @@ remove_noise_branchless_3(NOISY_IMAGE, 1000)
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
@@ -238,7 +238,7 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branches,branch_mispredictions
 remove_noise_naive(NOISY_IMAGE, 1000)
 remove_noise_naive_simd(NOISY_IMAGE, 1000)
 remove_noise_branchless_3(NOISY_IMAGE, 1000)
@@ -247,7 +247,7 @@ remove_noise_branchless_3_simd(NOISY_IMAGE, 1000)
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 remove_noise_naive_simd(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
@@ -306,7 +306,7 @@ np.random.shuffle(SHUFFLED_DATA)
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
 count_sequences(SHUFFLED_DATA)
 ```
@@ -350,14 +350,14 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
 count_sequences_2(PREDICTABLE_DATA)
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 count_sequences(SHUFFLED_DATA)
 count_sequences_2(SHUFFLED_DATA)
 ```
@@ -392,14 +392,14 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
 count_sequences_branchless_1(PREDICTABLE_DATA)
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 count_sequences(SHUFFLED_DATA)
 count_sequences_branchless_1(SHUFFLED_DATA)
 ```
@@ -446,20 +446,25 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
 count_sequences_branchless_2(PREDICTABLE_DATA)
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=branch_mispredictions
 count_sequences(SHUFFLED_DATA)
 count_sequences_branchless_2(SHUFFLED_DATA)
 ```
 
 Our latest code now has consistent performance for different inputs.
 And for cases where the time series isn't predictable, it runs 3.5× as fast as the original version.
+
+## Branchless programming with expensive branches
+
+TODO what if each branch is expensive? The cost of doing both will overwhelm benefit of avoiding branches.
+BUild index.
 
 ## When should you use branchless programming?
 

@@ -39,6 +39,16 @@ MEASUREMENTS = {
         [Hardware.CACHE_REFERENCES],
         lambda refs: refs,
     ),
+    "branch_mispredictions": (
+        "Branch misprediction %",
+        [Hardware.BRANCH_INSTRUCTIONS, Hardware.BRANCH_MISSES],
+        lambda ints, misses: round((misses / ints) * 100, 1),
+    ),
+    "branches": (
+        "Branch instructions",
+        [Hardware.BRANCH_INSTRUCTIONS],
+        lambda ints: ints,
+    ),
 }
 
 
