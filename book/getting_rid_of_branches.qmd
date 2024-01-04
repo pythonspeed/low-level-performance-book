@@ -48,26 +48,22 @@ PREDICTABLE_IMAGE = np.zeros((4096, 4096), dtype=np.uint16)
 ```
 
 Here's a first pass implementation using Numba.
-We generate this with SIMD disabled to demonstrate the cost of branch misprediction:
 
 ```{python}
-from book_utilities import disabled_simd
+@njit
+def remove_noise_naive(arr, noise_threshold):
+    # Ensure noise_threshold has some data type as the values in the arr,
+    # to make it as easy as possible for the compiler to find
+    # optimizations.
+    noise_threshold = arr.dtype.type(noise_threshold)
+    result = arr.copy()
+    for i in range(result.shape[0]):
+        for j in range(result.shape[1]):
+            if result[i, j] < noise_threshold:
+                result[i, j] = 0
+    return result
 
-with disabled_simd() as njit_no_simd:
-    @njit
-    def remove_noise_naive(arr, noise_threshold):
-        # Ensure noise_threshold has some data type as the values in the arr,
-        # to make it as easy as possible for the compiler to find
-        # optimizations.
-        noise_threshold = arr.dtype.type(noise_threshold)
-        result = arr.copy()
-        for i in range(result.shape[0]):
-            for j in range(result.shape[1]):
-                if result[i, j] < noise_threshold:
-                    result[i, j] = 0
-        return result
-
-    denoised = remove_noise_naive(NOISY_IMAGE, 1000)
+denoised = remove_noise_naive(NOISY_IMAGE, 1000)
 ```
 
 Notice that whether a specific pixel is above or below the noise threshold may be difficult to predict, depending on the image.
@@ -76,9 +72,9 @@ That is certainly the case for our simulated image.
 Here's how long this version takes to run:
 
 ```{python}
-%%compare_timing --measure=branch_mispredictions
-remove_noise_naive(NOISY_IMAGE, 1000)
+%%compare_timing --measure=branches,branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
+remove_noise_naive(NOISY_IMAGE, 1000)
 ```
 
 ### Switching to branchless programming
@@ -99,125 +95,69 @@ In this case, instead of doing nothing, we can change the code so it _always_ wr
 We use an arithmetic to trick to pick which value to write:
 
 ```{python}
-with disabled_simd() as njit_no_simd:
-    @njit
-    def remove_noise_branchless_1(arr, noise_threshold):
-        result = arr.copy()
-        for i in range(result.shape[0]):
-            for j in range(result.shape[1]):
-                # false/true becomes 0 or 1 respectively when converted to a
-                # number:
-                above_threshold = np.uint16(result[i, j] >= noise_threshold)
-                # If we're above the threshold, we keep the value, otherwise
-                # the expression evaluates to 0. Either way we're writing to
-                # result[i, j].
-                result[i, j] = above_threshold * result[i, j]
-        return result
+@njit
+def remove_noise_branchless_1(arr, noise_threshold):
+    result = arr.copy()
+    for i in range(result.shape[0]):
+        for j in range(result.shape[1]):
+            # false/true becomes 0 or 1 respectively when converted to a
+            # number:
+            above_threshold = np.uint16(result[i, j] >= noise_threshold)
+            # If we're above the threshold, we keep the value, otherwise
+            # the expression evaluates to 0. Either way we're writing to
+            # result[i, j].
+            result[i, j] = above_threshold * result[i, j]
+    return result
 
-    assert np.array_equal(
-        denoised,
-        remove_noise_branchless_1(NOISY_IMAGE, 1000)
-    )
+assert np.array_equal(
+    denoised,
+    remove_noise_branchless_1(NOISY_IMAGE, 1000)
+)
 ```
 
 As an alternative, we can express the same thing with a ternary operator; for Numba, at least, the compiler is smart enough to turn this expression into non-branching code.
 
 ```{python}
-with disabled_simd() as njit_no_simd:
-    @njit
-    def remove_noise_branchless_2(arr, noise_threshold):
-        noise_threshold = arr.dtype.type(noise_threshold)
-        result = arr.copy()
-        for i in range(result.shape[0]):
-            for j in range(result.shape[1]):
-                value = result[i, j]
-                result[i, j] = 0 if value < noise_threshold else value
-        return result
+@njit
+def remove_noise_branchless_2(arr, noise_threshold):
+    noise_threshold = arr.dtype.type(noise_threshold)
+    result = arr.copy()
+    for i in range(result.shape[0]):
+        for j in range(result.shape[1]):
+            value = result[i, j]
+            result[i, j] = 0 if value < noise_threshold else value
+    return result
 
-    assert np.array_equal(
-        denoised,
-        remove_noise_branchless_2(NOISY_IMAGE, 1000)
-    )
+assert np.array_equal(
+    denoised,
+    remove_noise_branchless_2(NOISY_IMAGE, 1000)
+)
 ```
 
 Here's the difference in performance:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=branch_mispredictions
-remove_noise_naive(NOISY_IMAGE, 1000)
-remove_noise_branchless_1(NOISY_IMAGE, 1000)
-remove_noise_branchless_2(NOISY_IMAGE, 1000)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=branch_mispredictions
+%%compare_timing --measure=branches,branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
+remove_noise_naive(NOISY_IMAGE, 1000)
 remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_1(NOISY_IMAGE, 1000)
 remove_noise_branchless_2(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_2(NOISY_IMAGE, 1000)
 ```
 
 The two branchless versions are seemingly doing more work: they write to every pixel in the result image, not just some of them.
 But that extra work is worth it, because it gets rid of an expensive branch misprediction.
+Even better, it reduces the number of branches, probably by enabling to the compiler to use SIMD more extensively.
 
 ### Bonus optimization: getting rid of the copy
 
 Now that we're overwriting all the values in the result, we don't actually have to copy the original image:
 
 ```{python}
-with disabled_simd() as njit_no_simd:
-    @njit
-    def remove_noise_branchless_3(arr, noise_threshold):
-        noise_threshold = arr.dtype.type(noise_threshold)
-        result = np.empty(arr.shape, dtype=arr.dtype)
-        for i in range(result.shape[0]):
-            for j in range(result.shape[1]):
-                value = arr[i, j]
-                result[i, j] = 0 if value < noise_threshold else value
-        return result
-
-    assert np.array_equal(
-        denoised,
-        remove_noise_branchless_3(NOISY_IMAGE, 1000)
-    )
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=branch_mispredictions
-remove_noise_naive(NOISY_IMAGE, 1000)
-remove_noise_branchless_1(NOISY_IMAGE, 1000)
-remove_noise_branchless_3(NOISY_IMAGE, 1000)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=branch_mispredictions
-remove_noise_naive(PREDICTABLE_IMAGE, 1000)
-remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
-remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
-```
-
-### What happens if you enable SIMD?
-
-On my computer, which has an x86-64 CPU with support for AVX2 SIMD instructions, the naive version gets slower.
-Sometimes the compiler's auto-vectorization just makes things worse.
-However, the branchless versions gets even faster with SIMD enabled:
-
-```{python}
 @njit
-def remove_noise_naive_simd(arr, noise_threshold):
-    noise_threshold = arr.dtype.type(noise_threshold)
-    result = arr.copy()
-    for i in range(result.shape[0]):
-        for j in range(result.shape[1]):
-            if result[i, j] < noise_threshold:
-                result[i, j] = 0
-    return result
-
-@njit
-def remove_noise_branchless_3_simd(arr, noise_threshold):
+def remove_noise_branchless_3(arr, noise_threshold):
     noise_threshold = arr.dtype.type(noise_threshold)
     result = np.empty(arr.shape, dtype=arr.dtype)
     for i in range(result.shape[0]):
@@ -228,30 +168,19 @@ def remove_noise_branchless_3_simd(arr, noise_threshold):
 
 assert np.array_equal(
     denoised,
-    remove_noise_naive_simd(NOISY_IMAGE, 1000)
-)
-assert np.array_equal(
-    denoised,
-    remove_noise_branchless_3_simd(NOISY_IMAGE, 1000)
+    remove_noise_branchless_3(NOISY_IMAGE, 1000)
 )
 ```
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=branches,branch_mispredictions
-remove_noise_naive(NOISY_IMAGE, 1000)
-remove_noise_naive_simd(NOISY_IMAGE, 1000)
-remove_noise_branchless_3(NOISY_IMAGE, 1000)
-remove_noise_branchless_3_simd(NOISY_IMAGE, 1000)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
-remove_noise_naive_simd(PREDICTABLE_IMAGE, 1000)
+remove_noise_naive(NOISY_IMAGE, 1000)
+remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_1(NOISY_IMAGE, 1000)
 remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
-remove_noise_branchless_3_simd(PREDICTABLE_IMAGE, 1000)
+remove_noise_branchless_3(NOISY_IMAGE, 1000)
 ```
 
 ## Branchless programming with more than two branches
@@ -306,7 +235,7 @@ np.random.shuffle(SHUFFLED_DATA)
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=branch_mispredictions
+%%compare_timing --measure=branches,branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
 count_sequences(SHUFFLED_DATA)
 ```
@@ -350,15 +279,10 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=branch_mispredictions
+%%compare_timing --measure=branches,branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
-count_sequences_2(PREDICTABLE_DATA)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=branch_mispredictions
 count_sequences(SHUFFLED_DATA)
+count_sequences_2(PREDICTABLE_DATA)
 count_sequences_2(SHUFFLED_DATA)
 ```
 
@@ -392,19 +316,14 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=branch_mispredictions
+%%compare_timing --measure=branches,branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
-count_sequences_branchless_1(PREDICTABLE_DATA)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=branch_mispredictions
 count_sequences(SHUFFLED_DATA)
+count_sequences_branchless_1(PREDICTABLE_DATA)
 count_sequences_branchless_1(SHUFFLED_DATA)
 ```
 
-By getting rid of branches, we've signifcantly sped up the `SHUFFLED_DATA` case.
+By getting rid of branches, we've significantly sped up the `SHUFFLED_DATA` case.
 The `PREDICTABLE_DATA` case is slower, which is a common outcome of branchless programming: we're doing more work on every iteration, since we can't shortcut out with a branch.
 However, what is less expected is that `count_sequences_branchless_1(PREDICTABLE_DATA)` runs much slower than `count_sequences_branchless_1(SHUFFLED_DATA)`.
 This can't be because of branch prediction, though, since we've gotten rid of all the branches!
@@ -432,7 +351,6 @@ def count_sequences_branchless_2(arr):
         value = arr[i]
         status = INCREASE if value > prev_value else UNCHANGED
         status = DECREASE if value < prev_value else status
-        #status = 1 + int(value > prev_value) - int(value < prev_value)
         result[status, i % 8] += 1 if status != prev_status else 0
         prev_status = status
         prev_value = value
@@ -446,15 +364,10 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=branch_mispredictions
+%%compare_timing --measure=branches,branch_mispredictions
 count_sequences(PREDICTABLE_DATA)
-count_sequences_branchless_2(PREDICTABLE_DATA)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=branch_mispredictions
 count_sequences(SHUFFLED_DATA)
+count_sequences_branchless_2(PREDICTABLE_DATA)
 count_sequences_branchless_2(SHUFFLED_DATA)
 ```
 
