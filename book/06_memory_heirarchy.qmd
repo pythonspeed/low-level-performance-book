@@ -42,6 +42,8 @@ def scan_memory(array_size, multiplier):
 
 LINEAR = 1
 RANDOM = 22695477
+
+scan_memory(1, LINEAR)
 ```
 
 Depending on the value of the multiplier, the memory will be traversed in different ways:
@@ -111,14 +113,14 @@ Why is a linear scan of memory faster than randomly jumping around?
 ### Cache lines
 
 Memory is loaded into the caches in chunks known as "cache lines", often 64 bytes at a time.
-Each of the values in the example above is a 32-bit integer, i.e. it takes 4 bytes.
-So if we're loading 64 bytes at a time, we'll also load the 2nd, 3rd, 4th up to the 15th consecutive value into the L1 cache.
+Each of the values in the example above is an 8-bit integer, i.e. it takes 1 byte.
+So if we're loading 64 bytes at a time, we'll also load the 2nd, 3rd, 4th up to the 63rd consecutive value into the L1 cache.
 
 Comparing our two variations:
 
-* **Linear scan:** Each load of an integer also loads the next 15 consecutive integers.
+* **Linear scan:** Each load of an integer also loads the next 63 consecutive integers.
   This is helpful, since we're doing a linear scan, so we're going to be inspecting these integers next.
-* **Random scan:** Each load of an integer also loads the next 15 consecutive integers, but they're of no immediate use to us since the next value we'll inspect will be elsewhere in the array.
+* **Random scan:** Each load of an integer also loads the next 63 consecutive integers, but they're of no immediate use to us since the next value we'll inspect will be elsewhere in the array.
   Quite possibly they'll be dropped from the cache before we actually need to see them.
 
 As a result, in the linear scan case the data we need is much more likely to already be in the cache.
@@ -186,6 +188,8 @@ def scan_x_first(arr):
         for y in range(arr.shape[0]):
             total += arr[y, x]
     return total
+
+assert scan_y_first(two_d) == scan_x_first(two_d)
 ```
 
 Given NumPy's default memory layout, scanning the dimensions in order is faster:
@@ -199,6 +203,7 @@ scan_x_first(two_d)
 
 ### Be aware of the impact of NumPy views
 
+TODO maybe?
 
 ### Keep your working set in memory
 
@@ -214,43 +219,6 @@ And that means switching from a linear scan to random access isn't as expensive:
 %%compare_timing
 scan_memory(1_000_000, LINEAR)
 scan_memory(1_000_000, RANDOM)
-scan_memory(100_000_000, LINEAR)
-scan_memory(100_000_000, RANDOM)
-```
-
-## Registers: even faster than the L1 cache
-
-The diagram above of the memory hierarchy leaves out one form of memory that is even faster than the L1 cache: CPU registers.
-The registers are where the CPU can store temporary values that it is running instructions on.
-Registers typically store at most a 64-bit value; SIMD is implemented with special registers that can store 128, 256, or 512-bit values.
-
-Register are used as part of the way function calls are implemented, for arguments to functions and the return result of a function.
-As a simplification, you can assume local function variables of 64 bits or less are stored in registers: numbers, and maybe other small values depending on the programming language.
-For our purposes, that means it's faster to read and write numbers from a local variable than it is to and from memory.
-
-```{python}
-@njit
-def multiply_in_array(arr):
-    for i in range(1_000):
-        arr[0] *= 1.1
-
-@njit
-def multiply_with_local(arr):
-    temp = arr[0]
-    for i in range(1_000):
-        temp *= 1.1
-    arr[0] = temp
-
-ARR = np.ones((1,), dtype=np.float64)
-```
-
-If we compare the two:
-
-```{python}
-#| echo: false
-%%compare_timing
-ARR[0] = 1; multiply_in_array(ARR)
-ARR[0] = 1; multiply_with_local(ARR)
 ```
 
 TODO swap
