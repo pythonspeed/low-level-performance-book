@@ -25,7 +25,7 @@ def ns_per_iteration(line, globals):
 
 MEASUREMENTS = {
     "instructions": (
-        "CPU instruction",
+        "CPU instructions",
         [Hardware.INSTRUCTIONS],
         lambda instructions: instructions,
     ),
