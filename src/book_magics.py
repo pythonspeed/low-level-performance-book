@@ -85,7 +85,7 @@ def compare_timing(line, cell, local_ns):
         # Round to whole numbers:
         row[1] = int(round(row[1]))
 
-    headers = ["Code", f"Time to run ({units})"]
+    headers = ["Code", f"Elapsed {units}"]
     for m in measurements:
         headers.append(MEASUREMENTS[m][0])
 
