@@ -162,7 +162,7 @@ assert np.array_equal(
 )
 ```
 
-Now, let's see how all three of our implementations compare.
+Now, let's compare our quadratic compiled implementation to our new, Python-based but linear implementation.
 We'll use the `benchit` library to generate a graph of run time over a series of inputs of increasing size:
 
 ```{python}
@@ -189,10 +189,10 @@ Here's what the resulting run time looks like; lower values on the Y axis are be
 timings.plot(logx=True, logy=True, dpi=100, figsize=(8, 4))
 ```
 
-For small inputs, the compiled version is a lot faster.
+For small inputs, the Python version is slower than the compiled version.
 But once inputs are large enough, the linear algorithm in Python is faster than the compiled (but quadratic) Numba version.
 
-**That's why it's so important to pick a scalable algorithm: a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language, once your inputs are large enough.**
+**That's why it's so important to pick a scalable algorithm: once your inputs are large enough, a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language.**
 In this book I'm assuming you're dealing with sufficiently-large amounts of data, where the choice of algorithm is critical.
 But once you've picked a scalable algorithm, what else can you do to speed up your code?
 That's what we'll be covering in the rest of the book.
