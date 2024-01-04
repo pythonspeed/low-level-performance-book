@@ -52,8 +52,8 @@ def naive_filter_python(arr1, arr2):
             result[found_items] = item
             found_items += 1
 
-    # A simple slice of a NumPy array doesn't copy the data, it just points at
-    # the same underlying memory:
+    # A simple slice of a NumPy array doesn't copy the data, it just creates
+    # a view pointing at the same underlying memory:
     result = result[:found_items]
     return result
 ```
@@ -70,7 +70,7 @@ LARGER_DATA2 = np.arange(0, 10_003, dtype=np.uint64)
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions
 naive_filter_python(SMALL_DATA, SMALL_DATA2)
 naive_filter_python(LARGER_DATA, LARGER_DATA2)
 ```
@@ -92,25 +92,30 @@ Subsequent runs will use the pre-compiled version and run extremely quickly.
 ```{python}
 from numba import njit
 
+# This is approximately the same code as naive_filter_python() above,
+# but it will be compiled to machine code the first time it is called
+# with particular types because of the @njit decorator.
 @njit
-def naive_filter_numba(arr1, arr2):
-    # This is the same code as naive_filter_python() above, but it will be compiled
-    # to machine code the first time it is called with particular types.
+def naive_filter_compiled(arr1, arr2):
+    # When NumPy APIs are used, Numba uses an equivalent, Numba-specific
+    # reimplemented version.
     result = np.empty(shape=arr1.shape, dtype=arr1.dtype)
 
     found_items = 0
     for i in range(len(arr1)):
         item = arr1[i]
-        if item in arr2:
-            result[found_items] = item
-            found_items += 1
+        for j in range(len(arr2)):
+            if arr2[j] == item:
+                result[found_items] = item
+                found_items += 1
+                break
 
     result = result[:found_items]
     return result
 
 assert np.array_equal(
     naive_filter_python(SMALL_DATA, SMALL_DATA2),
-    naive_filter_numba(SMALL_DATA, SMALL_DATA2)
+    naive_filter_compiled(SMALL_DATA, SMALL_DATA2)
 )
 ```
 
@@ -118,9 +123,9 @@ How does this version scale?
 
 ```{python}
 #| echo: false
-%%compare_timing
-naive_filter_numba(SMALL_DATA, SMALL_DATA2)
-naive_filter_numba(LARGER_DATA, LARGER_DATA2)
+%%compare_timing --measure=instructions
+naive_filter_compiled(SMALL_DATA, SMALL_DATA2)
+naive_filter_compiled(LARGER_DATA, LARGER_DATA2)
 ```
 
 This is a lot faster, but it is still going to run vastly slower as the input size grows.
@@ -171,22 +176,23 @@ inputs = {
 }
 
 timings = benchit.timings(
-    [naive_filter_python, naive_filter_numba, smarter_filter_python],
+    [naive_filter_compiled, smarter_filter_python],
     inputs,
     multivar=True,
     input_name="Array length",
 )
 ```
 
-Here's what the resulting run time looks like:
+Here's what the resulting run time looks like; lower values on the Y axis are better:
 
 ```{python}
 timings.plot(logx=True, logy=True, dpi=100, figsize=(8, 4))
 ```
 
-**Once inputs are large enough, the linear algorithm in Python is faster than the compiled but quadratic Numba version.**
-That's why it's so important to pick a scalable algorithm: a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language, once your inputs are large enough.
+For small inputs, the compiled version is a lot faster.
+But once inputs are large enough, the linear algorithm in Python is faster than the compiled (but quadratic) Numba version.
 
+**That's why it's so important to pick a scalable algorithm: a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language, once your inputs are large enough.**
 In this book I'm assuming you're dealing with sufficiently-large amounts of data, where the choice of algorithm is critical.
 But once you've picked a scalable algorithm, what else can you do to speed up your code?
 That's what we'll be covering in the rest of the book.

@@ -7,11 +7,13 @@ from IPython.core.magic import (
     register_line_magic,
     needs_local_scope,
 )
+from IPython.core.magic_arguments import argument, magic_arguments, parse_argstring
 from IPython.display import display, Markdown, Image
 from pytablewriter import MarkdownTableWriter
 from pytablewriter.style import Style
 import numpy as np
 import PIL.Image
+from py_perf_event import measure, Hardware
 
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
@@ -21,15 +23,34 @@ def ns_per_iteration(line, globals):
     return int((elapsed_secs * 1_000_000_000) / 1_000)
 
 
+MEASUREMENTS = {
+    "instructions": (
+        "CPU instruction",
+        [Hardware.INSTRUCTIONS],
+        lambda instructions: instructions,
+    ),
+}
+
+
+@magic_arguments()
+@argument("--measure")
 @needs_local_scope
 @register_cell_magic
 def compare_timing(line, cell, local_ns):
+    arguments = parse_argstring(compare_timing, line)
+    measurements = arguments.measure.split(",")
+
     result = []
     for line in cell.splitlines():
         line = line.strip()
         if not line:
             continue
         result.append([f"`{line}`", ns_per_iteration(line, local_ns)])
+        if measurements:
+            for m in measurements:
+                _, events, post_process = MEASUREMENTS[m]
+                results = measure(events, exec, line, local_ns)
+                result[-1].append(post_process(*results))
 
     minimum_value = min(r[1] for r in result)
     for (units, factor) in [
@@ -44,10 +65,13 @@ def compare_timing(line, cell, local_ns):
         # Round to whole numbers:
         row[1] = int(round(row[1]))
 
-    table = MarkdownTableWriter(
-        headers=["Code", f"Time to run ({units})"], value_matrix=result
-    )
+    headers = ["Code", f"Time to run ({units})"]
+    for m in measurements:
+        headers.append(MEASUREMENTS[m][0])
+
+    table = MarkdownTableWriter(headers=headers, value_matrix=result)
     table.set_style(1, Style(thousand_separator=","))
+    table.set_style(2, Style(thousand_separator=","))
     display(Markdown(table.dumps()))
 
 
