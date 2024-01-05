@@ -5,7 +5,7 @@
 words = 0
 characters = 0
 characters_and_spaces = 0
-process_anyway = false
+-- process_anyway = false
 
 wordcount = {
   Str = function(el)
@@ -39,15 +39,15 @@ wordcount = {
 }
 
 -- check if the `wordcount` variable is set to `process-anyway`
-function Meta(meta)
-  if meta.wordcount and (meta.wordcount=="process-anyway"
-    or meta.wordcount=="process" or meta.wordcount=="convert") then
-      process_anyway = true
-  end
-end
+-- function Meta(meta)
+--   if meta.wordcount and (meta.wordcount=="process-anyway"
+--     or meta.wordcount=="process" or meta.wordcount=="convert") then
+--       process_anyway = true
+--   end
+-- end
 
 function Header(el)
-    pandoc.walk_block(pandoc.Div(el.blocks), wordcount)
-    el.content = el.content .. "(" .. words .. " words)"
+    pandoc.walk_block(el, wordcount)
+    el.content = el.content .. {pandoc.Str("(" .. words .. " words)")}
     return el
 end
