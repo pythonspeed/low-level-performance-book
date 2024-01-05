@@ -1,0 +1,122 @@
+# Complex branches
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import njit
+```
+
+```{python}
+import math
+
+@njit
+def expensive1(value):
+    return (np.int64(np.ceil((value + 0.1) ** 2)) ** 5) % 7
+
+@njit
+def expensive2(value):
+    return np.ceil((value - 0.1) ** 2) + np.ceil((value - 0.2) ** 3)
+
+@njit
+def expensive_branches(arr):
+    result = 0.0
+    for i in range(len(arr)):
+        value = arr[i]
+        if value > 0.5:
+            result += expensive1(value)
+        else:
+            result += expensive2(value)
+    return result
+
+SHORT_DATA = np.random.random((10,))
+DATA = np.random.random((1_000_000,))
+_ = expensive_branches(SHORT_DATA)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=branches,branch_mispredictions
+expensive_branches(DATA)
+```
+
+```{python}
+
+# branchless
+@njit
+def expensive_branches_2(arr):
+    result = 0.0
+    for i in range(len(arr)):
+        value = arr[i]
+        option1 = expensive1(value)
+        option2 = expensive2(value)
+        result += option1 if value > 0.5 else option2
+
+    return result
+
+@njit
+def expensive_branches_3(arr):
+    result = np.zeros((8,), dtype=np.float64)
+    EVEN = 0
+    ODD = 1
+    categorized = np.empty((2, len(arr)), dtype=arr.dtype)
+    index_counts = np.zeros((2,), dtype=np.uint32)
+
+    # Record which indexes in the input array or odd or even:
+    for i in range(len(arr)):
+        value = arr[i]
+        even_or_odd = np.int64(value > 0.5)
+        categorized[even_or_odd, index_counts[even_or_odd]] = value
+        index_counts[even_or_odd] += 1
+
+    # Do the evens:
+    for j in range(index_counts[EVEN]):
+        value = categorized[EVEN, j]
+        result[j % 8] += expensive2(value)
+
+    # Do the odds:
+    for j in range(index_counts[ODD]):
+        value = categorized[ODD, j]
+        result[j % 8] += expensive1(value)
+
+    return result.sum()
+
+assert (
+    expensive_branches(SHORT_DATA) ==
+    expensive_branches_2(SHORT_DATA)
+)
+assert (
+    expensive_branches(SHORT_DATA) ==
+    expensive_branches_3(SHORT_DATA)
+)
+
+@njit
+def expensive_branches_4(arr):
+    result = 0.0
+    for i in range(len(arr)):
+        value = arr[i]
+        if value > 0.5:
+            result += expensive1(value)
+    for i in range(len(arr)):
+        value = arr[i]
+        if value <= 0.5:
+            result += expensive2(value)
+
+    return result
+
+assert (
+    expensive_branches(SHORT_DATA) ==
+    expensive_branches_4(SHORT_DATA)
+)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,memory_cache_refs,branches,branch_mispredictions
+expensive_branches_2(DATA)
+expensive_branches_3(DATA)
+expensive_branches_4(DATA)
+```
