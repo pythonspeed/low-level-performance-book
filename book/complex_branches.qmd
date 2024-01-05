@@ -34,6 +34,8 @@ def expensive_branches(arr):
 
 SHORT_DATA = np.random.random((10,))
 DATA = np.random.random((1_000_000,))
+DATA_SORTED = DATA.copy()
+DATA_SORTED.sort()
 _ = expensive_branches(SHORT_DATA)
 ```
 
@@ -41,6 +43,7 @@ _ = expensive_branches(SHORT_DATA)
 #| echo: false
 %%compare_timing --measure=branches,branch_mispredictions
 expensive_branches(DATA)
+expensive_branches(DATA_SORTED)
 ```
 
 ```{python}
@@ -59,30 +62,26 @@ def expensive_branches_2(arr):
 
 @njit
 def expensive_branches_3(arr):
-    result = np.zeros((8,), dtype=np.float64)
-    EVEN = 0
-    ODD = 1
-    categorized = np.empty((2, len(arr)), dtype=arr.dtype)
-    index_counts = np.zeros((2,), dtype=np.uint32)
+    partitioned = np.empty(arr.shape, dtype=arr.dtype)
+    next_index = np.array([0, -1], dtype=np.int64)
+    offsets = np.array([1, -1], dtype=np.int64)
 
-    # Record which indexes in the input array or odd or even:
+    # Put > 0.5 at start, < 0.5 at end.
     for i in range(len(arr)):
         value = arr[i]
-        even_or_odd = np.int64(value > 0.5)
-        categorized[even_or_odd, index_counts[even_or_odd]] = value
-        index_counts[even_or_odd] += 1
+        direction = np.int64(value > 0.5)
+        partitioned[next_index[direction]] = value
+        next_index[direction] += offsets[direction]
 
-    # Do the evens:
-    for j in range(index_counts[EVEN]):
-        value = categorized[EVEN, j]
-        result[j % 8] += expensive2(value)
+    result = 0.0
+    for i in range(len(partitioned)):
+        value = partitioned[i]
+        if value > 0.5:
+            result += expensive1(value)
+        else:
+            result += expensive2(value)
 
-    # Do the odds:
-    for j in range(index_counts[ODD]):
-        value = categorized[ODD, j]
-        result[j % 8] += expensive1(value)
-
-    return result.sum()
+    return result
 
 assert (
     expensive_branches(SHORT_DATA) ==
