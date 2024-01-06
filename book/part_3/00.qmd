@@ -1,0 +1,3 @@
+# Take advantage of modern CPUs' in-core parallelism
+
+TODO
