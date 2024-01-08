@@ -4,4 +4,4 @@ jupyter-cache
 pytablewriter==1.0.0
 scikit-image
 benchit
-git+https://github.com/pythonspeed/py-perf-event.git
+py-perf-event
