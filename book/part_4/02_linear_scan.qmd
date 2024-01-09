@@ -64,47 +64,6 @@ Bouncing around memory is slower than a linear scan of memory—but why?
 In both cases we're running the same number of CPU instructions.
 If the CPU were the only bottleneck, both variations should have taken the same amount of time because they're doing the same amount of work.
 
-## Slow memory and the CPU cache hierarchy
-
-From a CPU's perspective, reading from RAM—the active memory of the computer—is actually quite slow.
-To speed things up, CPU designers provide a series of caches to reduce the need to access RAM.
-
-To simplify dramatically, here's how the CPU talks to RAM:
-
-```{dot}
-digraph G {
-  rankdir = "LR"
-  node [shape = "box"]
-  l1i [label="L1 cache (instructions)"]
-  l1d [label="L1 cache (data)"]
-  l2 [label="L2 cache"]
-  l3 [label="L3 cache"]
-  CPU -> l1i
-  CPU -> l1d
-  l1i -> l2
-  l1d -> l2
-  l2 -> l3 -> RAM
-}
-```
-
-From fastest to slowest:
-
-1. The L1 caches are very fastest and very small, and might be per-CPU or per-core.
-   There's one for instructions (i.e. the code you're running) and one for the data your program is using.
-2. The L2 cache is bigger but slower, and can store both instructions and data.
-3. The L3 cache is even bigger and even slower, and can store both instructions and data.
-4. Finally, there's RAM, which is even slower to access.
-
-My CPU, for example, has 12 cores with:
-
-1. 512KiB L1 data cache and 512KiB L1 instruction per core.
-2. 12MiB L2 cache for each of 9 of the cores (this particular CPU has two different kinds of cores.)
-3. 25MiB L3 cache shared by all the cores.
-
-If the data isn't in L1, that's a cache miss, and you'll need to load from the slower L2.
-If it's not in L2, you need to load from the even slower L3.
-If it's not in L3, you need to load from RAM, which is even slower.
-
 ## Caches and memory access performance
 
 Let's get back to our code example.

@@ -1,0 +1,2 @@
+# Use smaller data types to reduce memory accesses
+
