@@ -15,6 +15,8 @@ import numpy as np
 import PIL.Image
 from py_perf_event import measure, Hardware
 
+from numba import config as numba_config
+
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
 
@@ -57,6 +59,7 @@ MEASUREMENTS = {
 @needs_local_scope
 @register_cell_magic
 def compare_timing(line, cell, local_ns):
+    numba_config.DISABLE_JIT = True
     arguments = parse_argstring(compare_timing, line)
     measurements = [m for m in arguments.measure.split(",") if m]
 
@@ -93,6 +96,7 @@ def compare_timing(line, cell, local_ns):
     for i in range(1, len(headers)):
         table.set_style(i, Style(thousand_separator=","))
     display(Markdown(table.dumps()))
+    numba_config.DISABLE_JIT = False
 
 
 @needs_local_scope
