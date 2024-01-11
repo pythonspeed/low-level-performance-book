@@ -5,43 +5,6 @@ As always, a more accurate mental model can help you speed up our code.
 
 As it turns out, from a CPU's perspective, reading from RAM—the active memory of the computer—is actually quite slow.
 To speed things up, CPU designers provide a series of caches to reduce the need to access RAM.
+Recently used data is stored in those caches, and that speeds up memory access... some of the time.
+If the data you need isn't in a fast cache, you might end up with a slow memory read from RAM.
 
-To simplify somewhat, here's how the CPU talks to RAM:
-
-```{dot}
-digraph G {
-  rankdir = "LR"
-  node [shape = "box"]
-  l1i [label="L1 cache (instructions)"]
-  l1d [label="L1 cache (data)"]
-  l2 [label="L2 cache"]
-  l3 [label="L3 cache"]
-  CPU -> l1i
-  CPU -> l1d
-  l1i -> l2
-  l1d -> l2
-  l2 -> l3 -> RAM
-}
-```
-
-From fastest to slowest:
-
-1. The L1 caches are very fastest and very small, and might be per-CPU or per-core.
-   There's one for instructions, i.e. the code you're running, and one for the data your program is using.
-2. The L2 cache is bigger but slower, and can store both instructions and data.
-3. The L3 cache is even bigger and even slower, and can store both instructions and data.
-4. Finally, there's RAM, which is even slower to access.
-
-If the data isn't in L1, that's a cache miss, and you'll need to load from the slower L2.
-If it's not in L2, you need to load from the even slower L3.
-If it's not in L3, you need to load from RAM, which is even slower.
-
-To give a sense of scale, the 8 physical performance (higher-speed) CPU cores in my i7-12700K have:
-
-1. 48KiB L1 data cache and 32KiB L1 instruction cache per core.
-2. 1280KiB L2 cache for each core.
-3. 25MiB L3 cache shared by all the cores (the performance cores plus the lower-speed efficiency cores).
-
-::: {.callout-note}
-The `lstopo` command included in the [`hwloc`](https://www.open-mpi.org/projects/hwloc/) package can draw nice diagrams of your CPU's memory cache configuration.
-:::
