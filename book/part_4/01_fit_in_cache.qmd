@@ -1,12 +1,12 @@
 # Avoid benchmarking with unrealistically small amounts of data
 
 As we've seen in many of the previous chapters, a key to knowing whether you're making your code faster or slower is measurement.
-However, if you use small amounts of data, the results can be misleading.
-In this chapter we'll focus on one particular reason: memory caches.
+However, if you use small amounts of data, the result of micro-benchmarks can be misleading.
+One relevant reason: memory caches.
 
 Because your CPU has memory caches that are faster than RAM, but smaller in size, if you can keep data in those caches you will get higher performance.
 Once your data gets larger, your process will end up using slower caches, or even RAM.
-As a result, if the data you're benchmarking is much smaller than the the real data, your benchmarks may be inaccurate.
+As a result, if the data you're benchmarking is much smaller than your real data, your benchmarks may be inaccurate.
 
 Let's consider an example: we're going to pick 100,000 samples from an array, with repeats allowed:
 
@@ -63,57 +63,9 @@ random_sample(GENERATOR, LARGE_DATA)
 
 If our real-world data is closer to `LARGE_DATA`, benchmarking using `SMALL_DATA` is going to be misleading.
 
-## Using the mean in benchmarks can be misleading
+## How large are the CPU's memory caches?
 
-The numbers above run the the benchmarks multiple times, and use the mean of the result.
-When memory caches start affecting performance, as is the case here, using the mean may be misleading.
-In particular, data that is sitting in the cache after the first run can impact the performance results of later runs.
-
-We'll do the operation a few times in a row, measuring each _individual_ run, and then flush the cache and try again.
-
-```{python}
-from time import time
-
-def timeit(f, *args):
-    start = time()
-    f(*args)
-    print(f"{(time() - start) * 1_000_000} µs")
-
-def flush_cache():
-    print("Flushing memory caches...")
-    # Create some garbage data large enough that it will hopefully clear out
-    # any existing data from all CPU memory caches.
-    data = np.arange(0, 10_000_000, dtype=np.uint8)
-    del data
-```
-
-First, let's try with a small amount of data:
-
-```{python}
-flush_cache()
-timeit(random_sample, GENERATOR, SMALL_DATA)
-timeit(random_sample, GENERATOR, SMALL_DATA)
-timeit(random_sample, GENERATOR, SMALL_DATA)
-flush_cache()
-timeit(random_sample, GENERATOR, SMALL_DATA)
-```
-
-Notice how the first run is much slower, because the data isn't in the CPU's memory cache.
-The lower numbers later on may be representative _if_ in real-world usage the data is in the cache; if not, the first number is more accurate.
-
-With a large amount of data the cache is never sufficient, so run times are more consistent:
-
-```{python}
-flush_cache()
-timeit(random_sample, GENERATOR, LARGE_DATA)
-timeit(random_sample, GENERATOR, LARGE_DATA)
-timeit(random_sample, GENERATOR, LARGE_DATA)
-flush_cache()
-timeit(random_sample, GENERATOR, LARGE_DATA)
-```
-
-## More details about memory caches
-
+Given data size can impact performance results, it's useful to know how memory caches are organized, and their general sizes.
 To simplify somewhat, here's how the CPU talks to RAM:
 
 ```{dot}
@@ -128,19 +80,20 @@ digraph G {
   CPU -> l1d
   l1i -> l2
   l1d -> l2
-  l2 -> l3 -> RAM
+  l2 -> l3
+  l3 -> RAM
 }
 ```
-
-RAM is the slowest, L3 is a bit faster, L2 more so, and L1 is the fastest.
-Typically L1 is per CPU core, L2 may or may not be per core, and L3 is shared across cores.
-There are actually two L1 caches, one for instructions, i.e. the code you're running, and one for the data your program is using.
 
 To give a sense of scale, the 8 physical performance (higher-speed) CPU cores in my i7-12700K have:
 
 1. 48KiB L1 data cache and 32KiB L1 instruction cache for each core.
 2. 1280KiB L2 cache for each core.
 3. 25MiB L3 cache shared by all the cores, including both the performance cores plus the 4 lower-speed efficiency cores.
+
+RAM is the slowest, L3 is a bit faster, L2 more so, and L1 is the fastest.
+Typically L1 is per CPU core, L2 may or may not be per core, and L3 is shared across cores.
+There are actually two L1 caches, one for instructions, i.e. the code you're running, and one for the data your program is using.
 
 ::: {.callout-note}
 The `lstopo` command included in the [`hwloc`](https://www.open-mpi.org/projects/hwloc/) package can draw nice diagrams of your CPU's memory cache configuration.
