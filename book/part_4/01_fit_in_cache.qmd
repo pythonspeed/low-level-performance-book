@@ -63,36 +63,6 @@ random_sample(GENERATOR, LARGE_DATA)
 
 If our real-world data is closer to `LARGE_DATA`, benchmarking using `SMALL_DATA` is going to be misleading.
 
-## Visualizing the impact of caches on runtime
-
-We can measure run time across a range of array sizes:
-
-```{python}
-#| output: false
-import benchit
-
-inputs = {
-    size: [np.arange(0, size * 1024, dtype=np.uint8)]
-    for size in [250, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000]
-}
-
-def random_sample_(arr):
-    return random_sample(GENERATOR, arr)
-
-timings = benchit.timings(
-    [random_sample_],
-    inputs=inputs,
-    multivar=True,
-    input_name="Array memory size (KB)",
-)
-```
-
-Here's what the resulting run time looks like; lower values on the Y axis are better:
-
-```{python}
-timings.plot(logx=True, logy=False, dpi=100, figsize=(8, 4))
-```
-
 ## Using the mean in benchmarks can be misleading
 
 The numbers above run the the benchmarks multiple times, and use the mean of the result.
