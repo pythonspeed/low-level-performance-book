@@ -8,9 +8,7 @@ Because your CPU has memory caches that are faster than RAM, but smaller in size
 Once your data gets larger, your process will end up using slower caches, or even RAM.
 As a result, if the data you're benchmarking is much smaller than the the real data, your benchmarks may be inaccurate.
 
-## Repeated benchmarks can hide 
-
-Let's consider an example: we're going to calculate the sum of arrays of different sizes, and compare how long it takes.
+Let's consider an example: we're going to pick 100,000 samples from an array, with repeats allowed:
 
 ```{python}
 #| echo: false
@@ -21,30 +19,25 @@ Let's consider an example: we're going to calculate the sum of arrays of differe
 import numpy as np
 from numba import njit
 
-SMALL_DATA = np.arange(0, 1_000, dtype=np.uint64)
-LARGE_DATA = np.arange(0, 10_000_000, dtype=np.uint64)
-
-def flush_cache():
-    print("Flushing memory caches...")
-    # Create some garbage data large enough that it will hopefully clear out
-    # any existing data from all CPU memory caches.
-    data = np.arange(0, 10_000_000, dtype=np.uint64)
-    del data
-```
-
-```{python}
 GENERATOR = np.random.default_rng(0)
 
 @njit
 def random_sample(random_gen, arr):
-    result = np.empty((10_000,), dtype=arr.dtype)
-    for i in range(10_000):
+    result = np.empty((100_000,), dtype=arr.dtype)
+    for i in range(100_000):
         chosen_index = random_gen.integers(0, len(arr))
         result[i] = arr[chosen_index]
     return result
 
-_ = random_sample(GENERATOR, np.array([1, 2], dtype=np.uint64))
+# Pre-compile Numba code:
+random_sample(GENERATOR, np.array([1, 2], dtype=np.uint8))
+
+SMALL_DATA = np.arange(0, 1_000, dtype=np.uint8)
+LARGE_DATA = np.arange(0, 100_000_000, dtype=np.uint8)
 ```
+
+Since we're doing the same amount of computational work regardless of array size, one might expect the run time to be the same for both `SMALL_DATA` and `LARGE_DATA`.
+In fact:
 
 ```{python}
 #| echo: false
@@ -53,62 +46,60 @@ random_sample(GENERATOR, SMALL_DATA)
 random_sample(GENERATOR, LARGE_DATA)
 ```
 
-```{python}
-@njit
-def min_max_mean(arr):
-    dtype_info = np.iinfo(arr.dtype)
-    total = 0
-    result_min = dtype_info.min
-    result_max = dtype_info.max
-    for i in range(len(arr)):
-        value = arr[i]
-        result_min = result_min if result_min < value else value
-        result_max = result_max if result_max < value else value
-        total += value
-    return result_min, result_max, total / len(arr)
+Running the function on a large array takes 1.5× as long, even though the number of CPU instructions is virtually identical.
+What's going on?
 
-@njit
-def min_max_mean_2(arr):
-    dtype_info = np.iinfo(arr.dtype)
-    total = 0
-    result_min = dtype_info.min
-    result_max = dtype_info.max
-    for i in range(len(arr)):
-        value = arr[i]
-        result_min = result_min if result_min < value else value
-    for i in range(len(arr)):
-        value = arr[i]
-        result_max = result_max if result_max < value else value
-    for i in range(len(arr)):
-        total += arr[i]
-    return result_min, result_max, total / len(arr)
+In the case of `SMALL_DATA`, the data fits in the CPU's memory caches, so repeated access is fast.
+`LARGE_DATA` however is too large to fit in the caches, so it needs to be read from RAM, which is slower.
 
-assert min_max_mean_2(SMALL_DATA) == min_max_mean(SMALL_DATA)
-```
+We can see this is if we add measure of memory cache misses to our benchmark (or more accurately, last-level cache misses):
 
 ```{python}
 #| echo: false
-%%compare_timing
-min_max_mean(SMALL_DATA)
-min_max_mean(LARGE_DATA)
-min_max_mean_2(SMALL_DATA)
-min_max_mean_2(LARGE_DATA)
+%%compare_timing --measure=instructions,memory_cache_miss
+random_sample(GENERATOR, SMALL_DATA)
+random_sample(GENERATOR, LARGE_DATA)
 ```
-Next we'll create our summing function:
+
+If our real-world data is closer to `LARGE_DATA`, benchmarking using `SMALL_DATA` is going to be misleading.
+
+## Visualizing the impact of caches on runtime
+
+We can measure run time across a range of array sizes:
 
 ```{python}
-@njit
-def sum_array(arr):
-    total = 0
-    for i in range(len(arr)):
-        total += arr[i]
-    return total
+#| output: false
+import benchit
 
-assert sum_array(np.array([10, 2, 3], dtype=np.uint64)) == 15
+inputs = {
+    size: [np.arange(0, size * 1024, dtype=np.uint8)]
+    for size in [250, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000]
+}
+
+def random_sample_(arr):
+    return random_sample(GENERATOR, arr)
+
+timings = benchit.timings(
+    [random_sample_],
+    inputs=inputs,
+    multivar=True,
+    input_name="Array memory size (KB)",
+)
 ```
 
-Next, we'll measure how long it takes to sum `SMALL_DATA` and `DATA`.
-We'll do the operation a few times in a row, then flush the cache and try again.
+Here's what the resulting run time looks like; lower values on the Y axis are better:
+
+```{python}
+timings.plot(logx=True, logy=False, dpi=100, figsize=(8, 4))
+```
+
+## Using the mean in benchmarks can be misleading
+
+The numbers above run the the benchmarks multiple times, and use the mean of the result.
+When memory caches start affecting performance, as is the case here, using the mean may be misleading.
+In particular, data that is sitting in the cache after the first run can impact the performance results of later runs.
+
+We'll do the operation a few times in a row, measuring each _individual_ run, and then flush the cache and try again.
 
 ```{python}
 from time import time
@@ -116,29 +107,39 @@ from time import time
 def timeit(f, *args):
     start = time()
     f(*args)
-    print(f"{round((time() - start) * 1_000_000)} µs")
+    print(f"{(time() - start) * 1_000_000} µs")
+
+def flush_cache():
+    print("Flushing memory caches...")
+    # Create some garbage data large enough that it will hopefully clear out
+    # any existing data from all CPU memory caches.
+    data = np.arange(0, 10_000_000, dtype=np.uint8)
+    del data
 ```
 
 First, let's try with a small amount of data:
 
 ```{python}
 flush_cache()
-timeit(sum_array, SMALL_DATA)
-timeit(sum_array, SMALL_DATA)
-timeit(sum_array, SMALL_DATA)
+timeit(random_sample, GENERATOR, SMALL_DATA)
+timeit(random_sample, GENERATOR, SMALL_DATA)
+timeit(random_sample, GENERATOR, SMALL_DATA)
 flush_cache()
-timeit(sum_array, SMALL_DATA)
+timeit(random_sample, GENERATOR, SMALL_DATA)
 ```
 
-Then, with a large amount of data:
+Notice how the first run is much slower, because the data isn't in the CPU's memory cache.
+The lower numbers later on may be representative _if_ in real-world usage the data is in the cache; if not, the first number is more accurate.
+
+With a large amount of data the cache is never sufficient, so run times are more consistent:
 
 ```{python}
 flush_cache()
-timeit(sum_array, LARGE_DATA)
-timeit(sum_array, LARGE_DATA)
-timeit(sum_array, LARGE_DATA)
+timeit(random_sample, GENERATOR, LARGE_DATA)
+timeit(random_sample, GENERATOR, LARGE_DATA)
+timeit(random_sample, GENERATOR, LARGE_DATA)
 flush_cache()
-timeit(sum_array, LARGE_DATA)
+timeit(random_sample, GENERATOR, LARGE_DATA)
 ```
 
 ## More details about memory caches
