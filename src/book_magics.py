@@ -1,6 +1,7 @@
 from timeit import timeit
 from io import BytesIO
 import locale
+from time import perf_counter_ns
 
 from IPython.core.magic import (
     register_cell_magic,
@@ -21,8 +22,7 @@ locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
 
 def ns_per_iteration(line, globals):
-    elapsed_secs = timeit(line, globals=globals, number=1_00)
-    return int((elapsed_secs * 1_000_000_000) / 1_000)
+    return timeit(line, globals=globals, number=100, timer=perf_counter_ns) // 100
 
 
 MEASUREMENTS = {
