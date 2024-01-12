@@ -14,7 +14,7 @@ from pytablewriter import MarkdownTableWriter
 from pytablewriter.style import Style
 import numpy as np
 import PIL.Image
-from py_perf_event import measure, Hardware
+from py_perf_event import measure, Hardware, CacheId, CacheOp, CacheResult, Cache
 
 from numba import config as numba_config
 
@@ -32,13 +32,35 @@ MEASUREMENTS = {
         lambda instructions: instructions,
     ),
     "memory_cache_miss": (
-        "Memory cache miss %",
+        "L3 memory cache miss %",
         [Hardware.CACHE_REFERENCES, Hardware.CACHE_MISSES],
         lambda refs, misses: round((misses / refs) * 100, 1),
     ),
     "memory_cache_refs": (
-        "Memory cache references",
+        "L3 memory cache references",
         [Hardware.CACHE_REFERENCES],
+        lambda refs: refs,
+    ),
+    "l1_memory_cache_miss": (
+        "L1 memory cache miss %",
+        [Cache(CacheId.L1D, CacheOp.READ, CacheResult.ACCESS),
+         Cache(CacheId.L1D, CacheOp.READ, CacheResult.MISS)],
+        lambda refs, misses: round((misses / refs) * 100, 1),
+    ),
+    "l1_memory_cache_refs": (
+        "L1 memory cache references",
+        [Cache(CacheId.L1D, CacheOp.READ, CacheResult.ACCESS)],
+        lambda refs: refs,
+    ),
+    "ll_memory_cache_miss": (
+        "LL memory cache miss %",
+        [Cache(CacheId.LL, CacheOp.READ, CacheResult.ACCESS),
+         Cache(CacheId.LL, CacheOp.READ, CacheResult.MISS)],
+        lambda refs, misses: round((misses / refs) * 100, 1),
+    ),
+    "ll_memory_cache_refs": (
+        "LL memory cache references",
+        [Cache(CacheId.LL, CacheOp.READ, CacheResult.ACCESS)],
         lambda refs: refs,
     ),
     "branch_mispredictions": (
@@ -52,6 +74,24 @@ MEASUREMENTS = {
         lambda ints: ints,
     ),
 }
+
+def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,object]) -> list[int]:
+    event_set = set()
+    event_counts = {}  # map event name to count
+    for m in measurement_keys:
+        _, events, _ = MEASUREMENTS[m]
+        event_set |= set(events)
+
+    event_list = list(event_set)
+    for event, counter in zip(event_list, measure(event_list, exec, line, local_ns)):
+        event_counts[event] = counter
+
+    result = []
+    for m in measurement_keys:
+        _, events, post_process = MEASUREMENTS[m]
+        value = post_process(*[event_counts[ev] for ev in events])
+        result.append(value)
+    return result
 
 
 @magic_arguments()
@@ -70,10 +110,7 @@ def compare_timing(line, cell, local_ns):
             continue
         result.append([f"`{line}`", ns_per_iteration(line, local_ns)])
         if measurements:
-            for m in measurements:
-                _, events, post_process = MEASUREMENTS[m]
-                results = measure(events, exec, line, local_ns)
-                result[-1].append(post_process(*results))
+            result[-1].extend(get_measurements(measurements, line, local_ns))
 
     minimum_value = min(r[1] for r in result)
     for (units, factor) in [

@@ -1,18 +1,6 @@
-# Memory as a performance bottleneck
+# Use linear memory reads to get faster memory access
 
-So far we've been assuming that reading and writing from memory:
-
-1. Takes a fixed amount of time.
-2. Is fast enough that we could focus on computation only.
-
-Neither of these assumptions is necessarily true.
-In fact, access to RAM is vastly slower than CPU instructions.
-As we'll see, CPUs are designed to mitigate this slowness, so in many cases you can ignore memory access, but if those mitigations don't help memory access can become a significant bottleneck.
-Which means you need to think about not just your computation, but also how you access memory.
-
-## Same number of operations, different performance
-
-Let's see the impact of memory access on performance.
+Let's see the impact of the _order_ of memory access on performance.
 We'll set up our normal imports:
 
 ```{python}
@@ -64,29 +52,29 @@ Bouncing around memory is slower than a linear scan of memory—but why?
 In both cases we're running the same number of CPU instructions.
 If the CPU were the only bottleneck, both variations should have taken the same amount of time because they're doing the same amount of work.
 
-## Caches and memory access performance
+## Why linear reads are faster than random access reads
 
 Let's get back to our code example.
 Why is a linear scan of memory faster than randomly jumping around?
 
 ### Cache lines
 
-Memory is loaded into the caches in chunks known as "cache lines", often 64 bytes at a time.
+Memory is loaded into the memory caches we discussed in previous in small chunks known as "cache lines", typically 64 bytes at a time.
 Each of the values in the example above is an 8-bit integer, i.e. it takes 1 byte.
 So if we're loading 64 bytes at a time, we'll also load the 2nd, 3rd, 4th up to the 63rd consecutive value into the L1 cache.
 
 Comparing our two variations:
 
-* **Linear scan:** Each load of an integer also loads the next 63 consecutive integers.
+* **Linear scan:** Each load of an integer also loads the next 63 consecutive integers into a fast, local cache.
   This is helpful, since we're doing a linear scan, so we're going to be inspecting these integers next.
 * **Random scan:** Each load of an integer also loads the next 63 consecutive integers, but they're of no immediate use to us since the next value we'll inspect will be elsewhere in the array.
   Quite possibly they'll be dropped from the cache before we actually need to see them.
 
-As a result, in the linear scan case the data we need is much more likely to already be in the cache.
+As a result, in the linear scan case the data we need is much more likely to already be in the much-faster L1 cache.
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=memory_cache_refs
+%%compare_timing --measure=ll_memory_cache_refs,l1_memory_cache_refs
 scan_memory(100_000_000, LINEAR)
 scan_memory(100_000_000, RANDOM)
 ```
@@ -107,23 +95,12 @@ Let's rerun our comparison, showing what percentage of cache accesses are misses
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=memory_cache_miss
+%%compare_timing --measure=ll_memory_cache_miss,l1_memory_cache_miss
 scan_memory(100_000_000, LINEAR)
 scan_memory(100_000_000, RANDOM)
 ```
 
-:::{.callout-info}
-On Linux, you can use the [`perf stat`](https://perf.wiki.kernel.org/index.php/Tutorial#Counting_with_perf_stat) tool to measure cache misses.
-You can often do it down to the level of specific caches (L1 vs L3, say), but even just cache misses in general are often sufficient to see what's going on.
-
-For example, you can do `perf stat -e cache-misses yourprogram` to run `yourprogram` and see how many cache misses it had.
-:::
-
-## Relying on memory caches to write faster software
-
-In order to write fast software, we want as much of our data reads and writes to fit in the L1 cache.
-
-### Stick to linear scans
+## TODO move to another chapter: N-dimensional scans
 
 As we saw, scanning memory linearly is the fastest way to do so.
 Whether or not you're scanning memory linearly becomes a little less obvious when you're dealing with N-dimensional arrays: the memory address space is linear, so there's different ways to map the different dimensions on.
