@@ -30,7 +30,8 @@ book:
         - part_4/01_fit_in_cache.qmd
         - part_4/02_linear_scan.qmd
         - part_4/03_smaller_data_types.qmd
-        # iterate based on memory layout. also non-contiguous views' impact on compiler?
+        - part_4/04_n_dimensional.qmd
+        # non-contiguous views' impact on compiler?
     - part: part_5/00.qmd
       chapters:
         - part_5/01_more_about_simd.qmd

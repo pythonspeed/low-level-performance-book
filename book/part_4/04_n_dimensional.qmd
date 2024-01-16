@@ -1,0 +1,47 @@
+## Scan N-dimensional arrays in a linear fashion
+
+As we saw in a previous chapter, scanning memory linearly is the fastest way to do so.
+Whether or not you're scanning memory linearly becomes a little less obvious when you're dealing with N-dimensional arrays: the memory address space is linear, so there's different ways to map the different dimensions on.
+For example, if you have a 2-dimensional array, you can iterate over the first dimension first or the second dimension first:
+
+```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+```
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+two_d = np.ones((2_000, 2_000), dtype=np.int64)
+
+@njit
+def scan_y_first(arr):
+    total = 0
+    for y in range(arr.shape[0]):
+        for x in range(arr.shape[1]):
+            total += arr[y, x]
+    return total
+
+@njit
+def scan_x_first(arr):
+    total = 0
+    for x in range(arr.shape[1]):
+        for y in range(arr.shape[0]):
+            total += arr[y, x]
+    return total
+
+assert scan_y_first(two_d) == scan_x_first(two_d)
+```
+
+Given NumPy's default memory layout, scanning the dimensions in order is faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+scan_y_first(two_d)
+scan_x_first(two_d)
+```

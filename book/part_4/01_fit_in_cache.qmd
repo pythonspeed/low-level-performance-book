@@ -4,11 +4,13 @@ As we've seen in many of the previous chapters, a key to knowing whether you're 
 However, if you use small amounts of data, the result of micro-benchmarks can be misleading.
 One relevant reason: memory caches.
 
-Because your CPU has memory caches that are faster than RAM, but smaller in size, if you can keep data in those caches you will get higher performance.
-Once your data gets larger, your process will end up using slower caches, or even RAM.
+Because your CPU has memory caches that are faster than RAM, but smaller in size, if you can keep all your data in those caches you will get higher performance.
+The smaller the data, the more likely you are to be able to use the smaller, faster caches.
+
+But if your data gets larger, your process will end up using slower caches, or even RAM.
 As a result, if the data you're benchmarking is much smaller than your real data, your benchmarks may be inaccurate.
 
-Let's consider an example: we're going to pick 100,000 samples from an array, with repeats allowed:
+Let's consider an example: we're going to pick 100,000 samples from an array, with repeats allowed.
 
 ```{python}
 #| echo: false
