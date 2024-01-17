@@ -14,7 +14,7 @@ from pytablewriter import MarkdownTableWriter
 from pytablewriter.style import Style
 import numpy as np
 import PIL.Image
-from py_perf_event import measure, Hardware, CacheId, CacheOp, CacheResult, Cache
+from py_perf_event import measure, Hardware, CacheId, CacheOp, CacheResult, Cache, Raw
 
 from numba import config as numba_config
 
@@ -73,6 +73,26 @@ MEASUREMENTS = {
         [Hardware.BRANCH_INSTRUCTIONS],
         lambda ints: ints,
     ),
+    "simd_float32": (
+        "SIMD float32 instructions",
+        [
+            # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_single
+            Raw(0x8c7),
+            # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_single
+            Raw(0x20c7)
+        ],
+        lambda ints128, ints256: ints128 + ints256
+    ),
+    "simd_float64": (
+        "SIMD float64 instructions",
+        [
+            # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_double
+            Raw(0x4c7),
+            # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_double
+            Raw(0x10c7)
+        ],
+        lambda ints128, ints256: ints128 + ints256
+    )
 }
 
 def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,object]) -> list[int]:
