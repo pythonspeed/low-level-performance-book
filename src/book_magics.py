@@ -73,25 +73,25 @@ MEASUREMENTS = {
         [Hardware.BRANCH_INSTRUCTIONS],
         lambda ints: ints,
     ),
-    "simd_float32": (
-        "SIMD float32 instructions",
+    "simd_256bit": (
+        "256-bit SIMD instructions",
         [
-            # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_single
-            Raw(0x8c7),
+            # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_double
+            Raw(0x10c7),
             # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_single
             Raw(0x20c7)
         ],
-        lambda ints128, ints256: ints128 + ints256
+        lambda double, single: double + single
     ),
-    "simd_float64": (
-        "SIMD float64 instructions",
+    "simd_128bit": (
+        "128-bit SIMD instructions",
         [
             # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_double
             Raw(0x4c7),
-            # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_double
-            Raw(0x10c7)
+            # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_single
+            Raw(0x8c7),
         ],
-        lambda ints128, ints256: ints128 + ints256
+        lambda double, single: double + single
     )
 }
 

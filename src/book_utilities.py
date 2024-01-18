@@ -10,12 +10,15 @@ def disabled_simd():
     This is a horrible hack, but Numba doesn't have any other way of doing this
     at the time of writing.
 
-    Usage:
+    Usage::
 
         with disabled_simd() as njit_no_simd:
             @njit_no_simd
             def this_will_not_use_simd():
                 # ... your Numba code ...
+
+            # Make sure to compile it inside the with block!
+            _ = this_will_not_use_simd()
     """
     def clear_numba():
         """Remove already imported modules for Numba and LLVMLite."""

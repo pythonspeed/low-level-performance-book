@@ -1,15 +1,10 @@
-# SIMD: Single Instruction, Multiple Data
-
-As we saw in the previous chapter, CPUs can execute multiple instructions at once, for example adding multiple integers at the same time.
-This feature is transparent: the compiler generates code that could be executed linearly, and as a performance optimization the CPU chooses to execute some of the instructions in parallel.
+# Use SIMD (Single Instruction, Multiple Data) to speed up repetitive computations
 
 Single Instruction Multiple Data, or SIMD, are CPU instructions that can execute the same operation on a sequence primitive values (integers or floats) that are stored next to each other in memory, using a single instruction.
 The compiler needs to explicitly generate these instructions, unlike the instruction-level parallelism we previously covered.
 
 For example, if we want to multiply 4 integers by a constant, we can do that with a single SIMD CPU instruction instead of with 4 normal CPU instructions.
 Reducing the number of instructions to run by a factor of 4 can then lead to a significant speedup.
-
-Again, we'll do our standard setup to run the code, but unlike the previous chapter we won't disable automatic usage of SIMD, also known as "vectorization".
 
 ::: {.callout-note}
 This is a different meaning than typically used in Python programming, where "vectorization" means a batch operation implemented in a low-level language.
@@ -35,10 +30,16 @@ We'll also import a context manager that let us disable SIMD on the fly when def
 from book_utilities import disabled_simd
 ```
 
-## SIMD vs. instruction-level parallelism
+## Unlike instruction-level parallelism, SIMD requires work by the compiler
 
 In the previous chapter we discussed instruction-level parallelism, where the CPU runs multiple instructions in parallel.
-For example, consider the following code:
+And SIMD is also a way to execute work in parallel.
+So what is the difference?
+
+* The decision to use instruction-level parallelism happens at runtime, and is made by the CPU.
+* The decision to use SIMD happens when the code is compiled, when the compiler may generate specialized SIMD instructions.
+
+Consider the following code:
 
 ```python
 #| eval: false
@@ -48,7 +49,7 @@ out[2] = a[2] + b[2]
 out[3] = a[3] + b[3]
 ```
 
-If these are arrays of 64-bit integers, and we imagine our CPU has a `add64` instruction, the compiler might turn the above code into 4 CPU instructions, something like:
+If these are arrays of 64-bit integers, and we imagine our CPU has a `add64` instruction, the compiler might turn the above code into 4 regular (non-SIMD) CPU instructions, something like:
 
 ```
 add64 a[0] b[0] → out[0]
@@ -59,170 +60,76 @@ add64 a[3] b[3] → out[3]
 
 When you run these four CPU instructions, the CPU will realize they are independent of each other and run them in parallel.
 If it has the hardware to do four additions in parallel, all of the operations can run at the same time.
+But _you_ don't get to tell the CPU to run those 4 instructions in parallel; if it can't or won't, there's nothing you can do.
 
 SIMD (single instruction multiple data) is different: it involves a _single_ instruction, as its name implies, doing the same thing to multiple pieces of data.
 In particular, SIMD operations run on contiguous chunks of memory of 128-, 256-, or 512-bits, depending on the model of CPU and which operation you are doing.
+Different operations require the compiler to generate machine code using different specialized instructions.
 For example, you might be able to add an array of 4 64-bit integers to another array of 4 64-bit integers, since 4×64 is 256.
 
-If we go back to our example above:
-
-```{python}
-#| eval: false
-out[0] = a[0] + b[0]
-out[1] = a[1] + b[1]
-out[2] = a[2] + b[2]
-out[3] = a[3] + b[3]
-```
-
-Rather than generating 4 CPU instructions, the compiler might decide to generate a single SIMD instruction, a hypothetical `simd_add256` instruction.
+For our code example, rather than generating 4 CPU instructions with 4 adds, the compiler can generate a single SIMD instruction, a hypothetical `simd_add256` instruction.
 That single instruction will do 4 additions with a single instruction:
 
 ```
 simd_add256 a[0:3] b[0:3] → out[0:3]
 ```
 
-So which if faster?
-If we can 4 additions in parallel, and the SIMD instruction takes the same amount of time as a normal addition, the speed of the two options may be the same.
-However, let's consider what happens if we want to add 16 consecutive 16-bit integers in an array:
+When the CPU executes that instruction, it doesn't have a choice about whether to use paralellism or not.
+It must execute what the machine code says it should do: do 4 additions at the same time.
 
-```{python}
-#| eval: false
-out[0] = a[0] + b[0]
-out[1] = a[1] + b[1]
-out[2] = a[2] + b[2]
-out[3] = a[3] + b[3]
-...
-out[15] = a[15] + b[15]
-```
+## Auto-vectorization: the compiler can automatically generate SIMD instructions for you
 
-If we use single CPU instructions (a hypothetical `add16`), the compiler will emit code that looks like this:
+In many situations, the compiler can automatically use SIMD, speeding up your code (or, occasionally, slowing it down).
+This is known as "auto-vectorization".
+Numba, for example, will automatically generate SIMD code optimized for your specific CPU model.
 
-```
-add16 a[0] b[0] → out[0]
-add16 a[1] b[1] → out[1]
-add16 a[2] b[2] → out[2]
-add16 a[3] b[3] → out[3]
-...
-add16 a[15] b[15] → out[15]
-```
-
-The SIMD version is still doing 256 bits at a time, so it can still add all 16 pairs with a single instruction:
-
-```
-simd_add256 a[0:16] b[0:16] → out[0:16]
-```
-
-If we assume we can do 4 additions in parallel using ILP, and that all instructions take the same amount of time, in this case the SIMD instruction will run 4× faster than the version that relies on instruction-level parallelism.
-Here's a few more variations:
-
-| Operation           | ILP (4 parallel instructions) | SIMD (256-bit) |
-|---------------------|-------------------------------|----------------|
-| Add 4 pairs of u64  | 1 cycle                       | 1 cycle        |
-| Add 8 pairs of u64  | 2 cycles                      | 2 cycles       |
-| Add 16 pairs of u16 | 4 cycles                      | 1 cycle        |
-| Add 32 pairs of u16 | 8 cycles                      | 2 cycle        |
-
-Comparing the two alternatives:
-
-|                                          | ILP                                                    | SIMD                                                                                            |
-|------------------------------------------|--------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| Can mix different operation?             | Yes, might run addition and multiplication in parallel | No                                                                                              |
-| Can mix different variables?             | Yes                                                    | No, must be consecutive items in memory (but compiler might be able to rearrange appropriately) |
-| Can happen without compiler intervention | Yes                                                    | No, the compiler must generate special instructions                                             |
-| Can do more with smaller types?          | No                                                     | Yes, batches of 128/256/512 bits                                                                |
-
-## Three ways to use SIMD
-
-If you want to use SIMD, there are different ways you can get the compiler to generate these specialized CPU instructions:
-
-1. **Intrinsics:** You directly tell the compiler to use specific CPU instructions, using special compiler features called "intrinsics".
-   This doesn't work in all languages, for example it's not supported by Numba, and the resulting code is not portable: x86-64 CPU instructions are different than ARM CPU instructions, plus other differences we'll discuss later in the chapter.
-2. **Auto-vectorization:** Compilers can sometimes generate SIMD instructions automatically, especially if you structure your code appropriately.
-   Because this relies on compiler heuristics you have less control, and different compiler versions might give different results.
-3. **SIMD libraries:** Many languages have libraries available providing datastructures that will use SIMD for their mathematical operations.
-   This gives you more abstraction than intrinsics, while being more reliable than auto-vectorization.
-
-In this chapter we'll mostly focus, on auto-vectorization since that is available in all programming languages you're likely to use.
-
-## Often auto-vectorization just works
-
-In many situations, the compiler can just automatically use SIMD, speeding up your code (or, occasionally, slowing it down).
 The compiler will notice you are doing the same operation on a series of items, and instead of doing the work one by one (as your implies) it will do it in batches of 4 or 8 or 16.
 We'll talk about how the batch size is decided in just a bit, but first let's see how SIMD speeds up the following example.
 In particular, we have two versions of the exact same code, one compiled with SIMD (the default) and one with SIMD disabled:
 
 ```{python}
-DATA_UINT64 = np.ones((1_000_000,), dtype=np.uint64)
-DATA_UINT16 = np.ones((1_000_000,), dtype=np.uint16)
+DATA_FLOAT64 = np.ones((1_000_000,), dtype=np.float64)
+DATA_FLOAT32 = np.ones((1_000_000,), dtype=np.float32)
 
 @njit
-def simd(x, y):
+def simd(x):
     out = np.empty(x.shape, dtype=x.dtype)
     for i in range(len(x)):
-        out[i] = x[i] + y[i]
+        out[i] = x[i] * 2
     return out
 
-assert simd(DATA_UINT64, DATA_UINT64)[0] == 2
-assert simd(DATA_UINT16, DATA_UINT16)[0] == 2
+assert simd(DATA_FLOAT64)[0] == 2
+assert simd(DATA_FLOAT32)[0] == 2
 
 # This is like doing @njit, with some behind-the-scenes magic to disable
 # usage of SIMD for this function only.
 with disabled_simd() as njit_no_simd:
     @njit_no_simd
-    def no_simd(x, y):
+    def no_simd(x):
         out = np.empty(x.shape, dtype=x.dtype)
         for i in range(len(x)):
-            out[i] = x[i] + y[i]
+            out[i] = x[i] * 2
         return out
 
-    assert no_simd(DATA_UINT64, DATA_UINT64)[0] == 2
-    assert no_simd(DATA_UINT16, DATA_UINT16)[0] == 2
+    assert no_simd(DATA_FLOAT64)[0] == 2
+    assert no_simd(DATA_FLOAT32)[0] == 2
 ```
 
 Here's how long each variation takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing
-simd(DATA_UINT64, DATA_UINT64)
-no_simd(DATA_UINT64, DATA_UINT64)
-simd(DATA_UINT16, DATA_UINT16)
-no_simd(DATA_UINT16, DATA_UINT16)
+%%compare_timing --measure=simd_256bit
+no_simd(DATA_FLOAT32)
+no_simd(DATA_FLOAT64)
+simd(DATA_FLOAT32)
+simd(DATA_FLOAT64)
 ```
 
-The SIMD version that runs on `uint64` is slightly faster; the SIMD version that runs on `uint16` is much faster.
+## TODO SIMD register size
+
+TODO Why 250K/125K instruction? 1M divided by 8 or 4 depending how many fit in 256 bit register.
 Since the SIMD instructions on my computer are 256-bit, they are able to add more 4 times as many 16-bit integers as 64-bit integers, making SIMD more competitive versus instruction-level parallelism.
-
-## What gets auto-vectorized?
-
-Which code gets auto-vectorized depends very much on which compiler you're using, and it can also change across releases of a single compiler.
-But it can be instructive to look at one particular compiler can do, in particular the [documentation for the clang compiler](https://llvm.org/docs/Vectorizers.html) for C and C++.
-Clang is based on LLVM, so these kinds of optimizations are available to other LLVM-based compilers, notably Numba and Rust.
-
-Clang supports vectorizing loops, like the ones we saw in the previous example.
-It has lots of code for supporting complex expressions inside the loop (including conditionals), reverse iteration, more exotic forms of iteration that can be harder to spot, and so on.
-Even then, it won't always work, as we'll see below.
-
-Clang also supports a different form of vectorization called superword-level parallelism (SLP) which notices similar expressions that can be combined into a single expression or expressions, for example:
-
-```{python}
-@njit
-def add(a, b):
-    out = np.zeros((4,), dtype=a.dtype)
-    out[0] = a[0] + b[0]
-    out[1] = a[1] + b[1]
-    out[2] = a[2] + b[2]
-    out[3] = a[3] + b[3]
-    return out
-```
-
-The loop vectorizer is top-down: it notices a larger code structure, the loop, and then tries to see if the loop's contents can be replaced with SIMD instruction.
-In contrast, the SLP vectorizer is bottom-up: it notices individual expressions that are structurally similar.
-
-::: {.callout-info}
-While SLP is on by default in Clang, some versions of Numba have disabled SLP due to issues with bad code generation (see the [release notes](https://numba.pydata.org/numba-doc/dev/release-notes.html)).
-This is one of the problems with auto-vectorization: it can stop working unexpectedly due to changes in the compiler, both intentional and unintentional.
-:::
 
 ## What prevents auto-vectorization?
 
@@ -239,89 +146,16 @@ In fact, many of the same problems that work against instruction-level paralleli
 * **The potential for memory being non-contiguous.**
   This is particularly an issue with NumPy views, that can skip every N bytes for a variety of reasons, for example a slice across a dimension that doesn't match the data order in memory.
   Code that is given memory that may or may not be contiguous will get optimized differently than code that can assume the data is contiguous.
-  TODO Numba just does two versions automatically
 
-Since the same problems can prevent both ILP and auto-vectorization, the same solutions we discussed in the previous chapter can potentially also help with auto-vectorization.
+Since these issues can affect performance in other ways as well, preventing compiler optimizations and instruction-level parallelism, we'll cover generic solutions in later chapters.
 
 ::: {.callout-info}
 You can usually get your compiler to give you some hints about why it failed to auto-vectorize your code.
 For example, with Numba you can run the following _before_ you import `numba` for the first time:
 
 ```{python}
+#| eval: false
 import llvmlite.binding as llvm
 llvm.set_option('', '--debug-only=loop-vectorize')
 ```
-:::
-
-## Utilizing the local CPU's SIMD support
-
-Different CPU architectures have different SIMD instructions.
-For example, x86-64 CPUs from Intel or AMD have different SIMD instructions (and CPU instructions in general) than ARM CPUs used in newer Macs and servers like AWS Graviton virtual machines.
-But even for a specific architectures, e.g. x86-64, different CPU models will have support for different SIMD instructions.
-
-For example, AVX-512 provides many useful SIMD instructions, including 512-bit wide operations, and became available in some x86-64 CPUs starting in 2016.
-But my computer's CPU, an Intel i7-12700K released in 2021, doesn't support these instructions.
-If I were to run a program that tried to execute an AVX-512 instruction, the process would crash due to using an illegal instruction.
-
-This raises a problem: on the one hand, you want your code to use the specific SIMD instructions available on the production machine's CPU, in order to maximize your code's speed.
-On the other hand, the machine where you develop your code may not be the same as the production machine where you run the code.
-And sometimes your code will run on many differing CPUs, so you can't even predict in advance exactly which SIMD instructions will be available.
-
-There are three basic solutions to this dilemma:
-
-* **Compiling on the machine where the code will run.**
-  Instead of compiling once, and then distributing the compiled code, you distribute the source code and compile on each machine where the code will run.
-  The compiler can therefore always target the capabilities of the current machine's CPU.
-  This is how Numba works, since by default the code is compiled only when you run the function the first time.
-* **Runtime/dynamic dispatch.**
-  The library or application jumps through extra hoops to compile multiple versions of a function, each for different SIMD instructions families (on x86-64 these would include—in descending level of support—SSE, AVX, AVX2, and AVX-512).
-  At runtime when the function is called, the best version for the current CPU is chosen.
-  This means you can compile ahead of time, and can potentially even write hand-tuned versions for different CPUs.
-  The dispatch code at the start of the function adds some overhead, but when you're processing large amounts of data this is typically irrelevant.
-  NumPy use this approach.
-* **Lowest common denominator.**
-  You compile to a target set of CPU capabilities that are available everywhere you care about.
-  For example, in the cloud you can check your vendor's documentation to see what SIMD instruction families are supported by the compute instances you're using.
-  If they all support AVX2 SIMD instructions, but not all support AVX-512, you enable AVX2 but not AVX-512.
-  If you're distributing code to the general public, you'll be very limited in what instructions your code can use.
-
-Comparing the three hardware utilization methods:
-
-| Method                        | CPU performance | Special code? | Cons                                                                                                        |
-|-------------------------------|-----------------|---------------|-------------------------------------------------------------------------------------------------------------|
-| Compile on production machine | Full            | No            | Need to distribute compiler, slower startup since you need to compile the code on every new runtime machine |
-| Runtime dispatch              | Full            | Yes           | Need to write special runtime dispatch code, can sometimes be difficult to optimize everything              |
-| Lowest common denominator     | Partial         | No            | Won't take advantage of newer hardware                                                                      |
-
-Earlier in the chapter we discussed three options for writing SIMD code: using intrinsics, auto-vectorization, and SIMD-specific libraries.
-These interact with the hardware utilization methods:
-
-* Using intrinsics means writing code that deliberately uses a specific CPU instruction.
-  As such, compilation always gives the same results, so even if you have separate development and production machines, there is no point in compiling on production machines.
-* SIMD-specific libraries will sometimes provide the infrastructure to implement runtime dispatch, so you don't have to implement it yourself.
-  For example, the [Highway C++ library](https://github.com/google/highway) supports both fixing the instruction set at compile time and runtime dispatch.
-
-To summarize these interactions:
-
-|                         | Compile in production | Runtime dispatch                          | Lowest common denominator |
-|-------------------------|-----------------------|-------------------------------------------|---------------------------|
-| Intrinisics             | No point              | Yes, manually written dispatch code       | Yes                       |
-| Auto-vectorization      | Yes                   | Yes, manually written dispatch code       | Yes                       |
-| SIMD-specific libraries | Yes                   | Yes, some libraries have built-in support | Yes                       |
-
-::: {.callout-info}
-Your compiler will typically have some way to target which CPU model it is using.
-In Numba, it will be your current CPU by default; in other compilers, the default is typically the lowest common denominator, at least in terms of SIMD support.
-On x86-64 machines this means targeting CPU functionality as of 15-20 years ago, a very long time in hardware terms!
-
-For x86-64 machines on Linux, [a new standard was created](https://developers.redhat.com/blog/2021/01/05/building-red-hat-enterprise-linux-9-for-the-x86-64-v2-microarchitecture-level) to help developers target standardized CPU features that work well across different models.
-You can use these as the target CPU for your compiler, e.g. with `-march` for `gcc` and `clang`.
-
-The additional targets are:
-
-* `x86-64`: Ignores all new CPU features from the past 15-20 years; used by most Linux distributions.
-* `x86-64-v2`: Adds features supported by pretty much every x86-64 CPU in recent years.
-  RedHat Enterprise Linux v9 uses this as its default target.
-* `x86-64-v3`: Adds support for AVX and AVX2 SIMD instruction families.
-* `x86-64-v4`: Adds support for a subset of the AVX-512 SIMD instruction family that is well supported across many CPU models.
 :::
