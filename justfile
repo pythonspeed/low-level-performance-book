@@ -7,4 +7,4 @@ preview:
     . venv/bin/activate && PYTHONPATH=$PWD/src quarto preview book
 
 wc:
-    wc --words book/*.qmd
+    wc --words book/**/*.qmd book/*.qmd
