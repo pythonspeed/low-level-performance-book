@@ -42,6 +42,7 @@ book:
     - 11_example_rescale_contrast.qmd
     - 12_example_dithering.qmd
     - 13_example_memory_layout.qmd
+    - 14_example_branchless.qmd
   appendices:
     - 01_when.qmd
     - 002_prerequisites.qmd
