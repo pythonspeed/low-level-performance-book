@@ -378,13 +378,9 @@ count_sequences_branchless_2(SHUFFLED_DATA)
 Our latest code now has consistent performance for different inputs.
 And for cases where the time series isn't predictable, it runs 3.5× as fast as the original version.
 
-## Branchless programming with expensive branches
+## Don't assume branchless programming is always faster
 
-TODO what if each branch is expensive? The cost of doing both will overwhelm benefit of avoiding branches.
-BUild index.
-
-## When should you use branchless programming?
-
+If you're relying on auto-vectorization 
 TODO May not be necessary depending on the SIMD instructions you have available.
 If you're using SIMD the compiler has removed the branches so branch prediction is irrelevant.
 
@@ -399,15 +395,3 @@ TODO comparisons don't count, it's about different code paths being run
 TODO for loops
 
 TODO Subtle point that we're relying on the compiler to notice the `A if Y else B` pattern it can execute both A and B. short circuiting typically means it won't. demonstrate how a complex/side-effecty A can break the code and how to work around it.
-
-## Hidden sources of branching
-
-In addition to explicit branches you might add to your code, there are other less obvious sources of branching that can be added by the compiler, including handling division by zero and bounds checking.
-
-Dividing by zero is mathematically meaningless, so programming languages need to decide how to handle it for different data types.
-For example, in Python you get a `ZeroDivisionError` by default, whereas NumPy floats return the special value `inf`/`-inf`/`nan` when divided by zero (for positive numbers, negative numbers, and zero, respectively).
-
-If your programming language has any sort of graceful handling for divide by zero, behind the scenes that will require generating an `if` statement any time division by a variable happens.
-Numba, for example, will raise a `ZeroDivisionError` by default.
-
-Another potential source of auto-generated branches is bounds checking, which we will discuss in a later chapter.

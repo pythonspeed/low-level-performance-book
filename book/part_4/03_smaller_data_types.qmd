@@ -1,2 +1,3 @@
 # Use smaller data types to reduce memory accesses
 
+TODO memory bandwidth. even with prefetching, there's a limit to how fast memory can be copied from RAM into caches, so retrieving less memory will be faster.

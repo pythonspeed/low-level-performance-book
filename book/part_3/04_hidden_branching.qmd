@@ -1,0 +1,17 @@
+# Avoid hidden sources of branching
+
+In addition to explicit branches you might add to your code, there are other less obvious sources of branching that can be added by the compiler, including handling division by zero and bounds checking.
+
+## Division by zero
+
+Dividing by zero is mathematically meaningless, so programming languages need to decide how to handle it for different data types.
+For example, in Python you get a `ZeroDivisionError` by default, whereas NumPy floats return the special value `inf`/`-inf`/`nan` when divided by zero (for positive numbers, negative numbers, and zero, respectively).
+
+If your programming language has any sort of graceful handling for divide by zero, behind the scenes that will require generating an `if` statement any time division by a variable happens.
+Numba, for example, will raise a `ZeroDivisionError` by default.
+
+TODO examples
+
+## Bounds checking
+
+TODO
