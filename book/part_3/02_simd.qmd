@@ -77,9 +77,9 @@ simd_add256 a[0:3] b[0:3] → out[0:3]
 When the CPU executes that instruction, it doesn't have a choice about whether to use paralellism or not.
 It must execute what the machine code says it should do: do 4 additions at the same time.
 
-## Auto-vectorization: the compiler can automatically generate SIMD instructions for you
+## The compiler can automatically generate SIMD instructions for you ("auto-vectorization")
 
-In many situations, the compiler can automatically use SIMD, speeding up your code (or, occasionally, slowing it down).
+In many situations, the compiler can automatically convert your code to use SIMD instructions, speeding up your code (or in some cases, slowing it down!).
 This is known as "auto-vectorization".
 Numba, for example, will automatically generate SIMD code optimized for your specific CPU model.
 
@@ -126,12 +126,22 @@ simd(DATA_FLOAT32)
 simd(DATA_FLOAT64)
 ```
 
-## TODO SIMD register size
+## Smaller data types require fewer SIMD instructions
 
-TODO Why 250K/125K instruction? 1M divided by 8 or 4 depending how many fit in 256 bit register.
-Since the SIMD instructions on my computer are 256-bit, they are able to add more 4 times as many 16-bit integers as 64-bit integers, making SIMD more competitive versus instruction-level parallelism.
+On my computer there are 250K floating-point SIMD instructions used to process 1M 64-bit floats, and 125K floating-point SIMD instructions used to proces 1M 32-bit floats.
+And those instructions are 256-bit SIMD instructions.
 
-## What prevents auto-vectorization?
+256-bit SIMD means the instruction operates on 256 bits at once: the code packs as many numbers as will fit into 256 bits, and then the SIMD operation runs on that.
+
+* For 64-bit floats, $256 / 64 = 4$, so we can process 4 `float64` with each SIMD instruction.
+  And $1000000 / 4 = 250000$.
+* For 32-bit floats, $256 / 32 = 8$, so we can process 8 `float32` with each SIMD instruction.
+  And $1000000 / 8 = 125000$.
+
+Needing to use half as many instructions is likely part of the reason that processing 1,000,000 `float32`s was faster than processing the equivalent number of `float64`.
+We'll talk about an additional reason, memory caches and bandwidth, in a later chapter.
+
+## Avoid code patterns that prevent auto-vectorization
 
 Auto-vectorization doesn't always happen: sometimes the compiler can't figure out how generate equivalent SIMD code.
 In fact, many of the same problems that work against instruction-level parallelism also can prevent auto-vectorization:
@@ -158,4 +168,47 @@ For example, with Numba you can run the following _before_ you import `numba` fo
 import llvmlite.binding as llvm
 llvm.set_option('', '--debug-only=loop-vectorize')
 ```
+:::
+
+## Don't assume auto-vectorized code is always faster
+
+Unfortunately, not all code runs faster when auto-vectorized; in some cases it will be slower, depending on the inputs, the compiler version, and your specific CPU model.
+So run code with and without auto-vectorization and see which version is faster.
+
+::: {.callout-info}
+On Numba you can disable auto-vectorization by setting the [environment variables](https://numba.readthedocs.io/en/stable/reference/envvars.html) `NUMBA_LOOP_VECTORIZE` to `0` and `NUMBA_SLP_VECTORIZE` to `0`.
+Other compilers have their own specific options.
+:::
+
+## What gets auto-vectorized?
+
+Which code gets auto-vectorized depends very much on which compiler you're using, and it can also change across releases of a single compiler.
+But it can be instructive to look at one particular compiler can do, in particular the [documentation for the clang compiler](https://llvm.org/docs/Vectorizers.html) for C and C++.
+Clang is based on LLVM, so these kinds of optimizations are available to other LLVM-based compilers, notably Numba and Rust.
+
+Clang supports vectorizing loops, like the ones we saw in the previous example.
+It has lots of code for supporting complex expressions inside the loop (including conditionals), reverse iteration, more exotic forms of iteration that can be harder to spot, and so on.
+
+The loop vectorizer is top-down: it notices a larger code structure, the loop, and then tries to see if the loop's contents can be replaced with SIMD instruction.
+Clang also supports a different form of vectorization called superword-level parallelism (SLP) which notices similar expressions that can be combined into a single expression or expressions.
+Where the loop vector is top-down, the SLP vectorizer is bottom-up: it notices individual expressions that are structurally similar.
+
+```{python}
+import numpy as np
+from numba import njit
+
+@njit
+def add(a, b):
+    out = np.zeros((4,), dtype=a.dtype)
+    out[0] = a[0] + b[0]
+    out[1] = a[1] + b[1]
+    out[2] = a[2] + b[2]
+    out[3] = a[3] + b[3]
+    return out
+```
+
+
+::: {.callout-info}
+While SLP is on by default in Clang, some versions of Numba have disabled SLP due to issues with bad code generation (see the [release notes](https://numba.pydata.org/numba-doc/dev/release-notes.html)).
+This is one of the problems with auto-vectorization: it can stop working unexpectedly due to changes in the compiler, both intentional and unintentional.
 :::

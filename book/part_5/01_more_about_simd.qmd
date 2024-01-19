@@ -1,70 +1,46 @@
-# Understand the different ways to use and distribute SIMD
+# Make sure you're using modern SIMD instructions
 
 ## Three ways to use SIMD
 
 If you want to use SIMD, there are different ways you can get the compiler to generate these specialized CPU instructions:
 
-1. **Intrinsics:** You directly tell the compiler to use specific CPU instructions, using special compiler features called "intrinsics".
-   This doesn't work in all languages, for example it's not supported by Numba, and the resulting code is not portable: x86-64 CPU instructions are different than ARM CPU instructions, plus other differences we'll discuss later in the chapter.
-2. **Auto-vectorization:** Compilers can sometimes generate SIMD instructions automatically, especially if you structure your code appropriately.
+1. **Auto-vectorization:** Compilers can sometimes generate SIMD instructions automatically, especially if you structure your code appropriately.
    Because this relies on compiler heuristics you have less control, and different compiler versions might give different results.
-3. **SIMD libraries:** Many languages have libraries available providing datastructures that will use SIMD for their mathematical operations.
-   This gives you more abstraction than intrinsics, while being more reliable than auto-vectorization.
+   This is what we focused on in earlier chapters.
+2. **Intrinsics:** You directly tell the compiler to use specific CPU instructions, using special compiler features called "intrinsics".
+   This doesn't work in all languages, for example it's not easily supported by Numba, and the resulting code is not portable: x86-64 CPU instructions are different than ARM CPU instructions.
+   Worse, different x86-64 CPU models support different instructions, as we'll discuss next.
+3. **SIMD abstraction libraries:** Many languages have libraries available providing datastructures that will use SIMD for their mathematical operations.
+   This gives you more abstraction than intrinsics, while being more reliable and explicit than auto-vectorization.
 
-## What gets auto-vectorized?
+## When auto-vectorizing, make sure you're actually using SIMD
 
-Which code gets auto-vectorized depends very much on which compiler you're using, and it can also change across releases of a single compiler.
-But it can be instructive to look at one particular compiler can do, in particular the [documentation for the clang compiler](https://llvm.org/docs/Vectorizers.html) for C and C++.
-Clang is based on LLVM, so these kinds of optimizations are available to other LLVM-based compilers, notably Numba and Rust.
+Keep in mind that some compilers in some configurations don't auto-vectorize at all.
+Notably, if you're compiled C/C++/Cython extensions for Python by default no auto-vectorization happens at all.
+See [this article for more details](https://pythonspeed.com/articles/faster-cython-simd/).
 
-Clang supports vectorizing loops, like the ones we saw in the previous example.
-It has lots of code for supporting complex expressions inside the loop (including conditionals), reverse iteration, more exotic forms of iteration that can be harder to spot, and so on.
-Even then, it won't always work, as we'll see below.
+## Make sure you're taking advantage of modern SIMD features
 
-Clang also supports a different form of vectorization called superword-level parallelism (SLP) which notices similar expressions that can be combined into a single expression or expressions, for example:
+Even if you are using SIMD, you might be ignoring most of the available functionality of modern CPUs.
+On x86-64 different CPU models will have support for different SIMD instructions.
 
-```{python}
-@njit
-def add(a, b):
-    out = np.zeros((4,), dtype=a.dtype)
-    out[0] = a[0] + b[0]
-    out[1] = a[1] + b[1]
-    out[2] = a[2] + b[2]
-    out[3] = a[3] + b[3]
-    return out
-```
-
-The loop vectorizer is top-down: it notices a larger code structure, the loop, and then tries to see if the loop's contents can be replaced with SIMD instruction.
-In contrast, the SLP vectorizer is bottom-up: it notices individual expressions that are structurally similar.
-
-::: {.callout-info}
-While SLP is on by default in Clang, some versions of Numba have disabled SLP due to issues with bad code generation (see the [release notes](https://numba.pydata.org/numba-doc/dev/release-notes.html)).
-This is one of the problems with auto-vectorization: it can stop working unexpectedly due to changes in the compiler, both intentional and unintentional.
-:::
-
-## Utilizing the local CPU's SIMD support
-
-Different CPU architectures have different SIMD instructions.
-For example, x86-64 CPUs from Intel or AMD have different SIMD instructions (and CPU instructions in general) than ARM CPUs used in newer Macs and servers like AWS Graviton virtual machines.
-But even for a specific architectures, e.g. x86-64, different CPU models will have support for different SIMD instructions.
-
-For example, AVX-512 provides many useful SIMD instructions, including 512-bit wide operations, and became available in some x86-64 CPUs starting in 2016.
+For example, AVX-512 is a family of useful SIMD instructions, including 512-bit wide operations, that became available in some x86-64 CPU models starting in 2016.
 But my computer's CPU, an Intel i7-12700K released in 2021, doesn't support these instructions.
-If I were to run a program that tried to execute an AVX-512 instruction, the process would crash due to using an illegal instruction.
+If I were to run a program that tried to execute an AVX-512 instruction, the process would crash (or worse) due to using an illegal instruction.
 
 This raises a problem: on the one hand, you want your code to use the specific SIMD instructions available on the production machine's CPU, in order to maximize your code's speed.
 On the other hand, the machine where you develop your code may not be the same as the production machine where you run the code.
-And sometimes your code will run on many differing CPUs, so you can't even predict in advance exactly which SIMD instructions will be available.
+And sometimes your code will need to run on many different CPUs, so you can't even predict in advance exactly which SIMD instructions will be available!
 
-There are three basic solutions to this dilemma:
+There are three basic solutions to this problem:
 
 * **Compiling on the machine where the code will run.**
   Instead of compiling once, and then distributing the compiled code, you distribute the source code and compile on each machine where the code will run.
   The compiler can therefore always target the capabilities of the current machine's CPU.
   This is how Numba works, since by default the code is compiled only when you run the function the first time.
 * **Runtime/dynamic dispatch.**
-  The library or application jumps through extra hoops to compile multiple versions of a function, each for different SIMD instructions families (on x86-64 these would include—in descending level of support—SSE, AVX, AVX2, and AVX-512).
-  At runtime when the function is called, the best version for the current CPU is chosen.
+  The library or application jumps through extra hoops to compile multiple versions of a function, each for different SIMD instructions families (on x86-64 these would include—in descending level of availability—SSE, AVX, AVX2, and AVX-512).
+  At runtime, when the function is called, the best version for the current CPU is chosen.
   This means you can compile ahead of time, and can potentially even write hand-tuned versions for different CPUs.
   The dispatch code at the start of the function adds some overhead, but when you're processing large amounts of data this is typically irrelevant.
   NumPy use this approach.
@@ -73,6 +49,7 @@ There are three basic solutions to this dilemma:
   For example, in the cloud you can check your vendor's documentation to see what SIMD instruction families are supported by the compute instances you're using.
   If they all support AVX2 SIMD instructions, but not all support AVX-512, you enable AVX2 but not AVX-512.
   If you're distributing code to the general public, you'll be very limited in what instructions your code can use.
+  This is the default for most ahead-of-time compilers that use auto-vectorization.
 
 Comparing the three hardware utilization methods:
 
@@ -92,25 +69,32 @@ These interact with the hardware utilization methods:
 
 To summarize these interactions:
 
-|                         | Compile in production | Runtime dispatch                          | Lowest common denominator |
-|-------------------------|-----------------------|-------------------------------------------|---------------------------|
-| Intrinisics             | No point              | Yes, manually written dispatch code       | Yes                       |
-| Auto-vectorization      | Yes                   | Yes, manually written dispatch code       | Yes                       |
-| SIMD-specific libraries | Yes                   | Yes, some libraries have built-in support | Yes                       |
+| Does this support—      | —compiling in production? | —runtime dispatch?                        | —lowest common denominator? |
+|-------------------------|---------------------------|-------------------------------------------|-----------------------------|
+| Intrinisics             | No point                  | Yes, manually written dispatch code       | Yes                         |
+| Auto-vectorization      | Yes                       | Yes, manually written dispatch code       | Yes                         |
+| SIMD-specific libraries | Yes                       | Yes, some libraries have built-in support | Yes                         |
 
-::: {.callout-info}
-Your compiler will typically have some way to target which CPU model it is using.
-In Numba, it will be your current CPU by default; in other compilers, the default is typically the lowest common denominator, at least in terms of SIMD support.
-On x86-64 machines this means targeting CPU functionality as of 15-20 years ago, a very long time in hardware terms!
+
+## Choose a better lowest-common-denominator
+
+If you decide to rely on a lowest-common-denominator, you can make sure you're choosing one that's relevant to your particular situation.
+Your compiler will typically have some way to target which CPU model it is using, with a default target.
+In Numba, the default will be your current CPU, but in other compilers, the default is typically the lowest common denominator, at least in terms of SIMD support.
+On x86-64 machines, this means most compilers will target CPU functionality as of 15-20 years ago, a very long time in hardware terms!
 
 For x86-64 machines on Linux, [a new standard was created](https://developers.redhat.com/blog/2021/01/05/building-red-hat-enterprise-linux-9-for-the-x86-64-v2-microarchitecture-level) to help developers target standardized CPU features that work well across different models.
-You can use these as the target CPU for your compiler, e.g. with `-march` for `gcc` and `clang`.
+You can use these as the target CPU for your compiler, e.g. you can target `x86-64-v3` with the `-march=x86-64-v3` option on `gcc` and `clang`.
 
 The additional targets are:
 
-* `x86-64`: Ignores all new CPU features from the past 15-20 years; used by most Linux distributions.
+* `x86-64`: Ignores all new CPU features from the past 15-20 years.
+   This is the default on most Linux distributions.
 * `x86-64-v2`: Adds features supported by pretty much every x86-64 CPU in recent years.
   RedHat Enterprise Linux v9 uses this as its default target.
 * `x86-64-v3`: Adds support for AVX and AVX2 SIMD instruction families.
 * `x86-64-v4`: Adds support for a subset of the AVX-512 SIMD instruction family that is well supported across many CPU models.
-:::
+
+`x86-64-v2` is probably a reasonable choice for anything running in production that doesn't need to support ancient computers.
+If you have some control over your hardware `x86-64-v3` or `x86-64-v4` may work.
+For example, if you're running on AWS, the [Vantage AWS EC2 instance type page](https://instances.vantage.sh/) lets you filter by instance types that support AVX, AVX2, and AVX-512.
