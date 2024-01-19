@@ -1,4 +1,10 @@
 # Floating point calculations make life hard for the compiler
 
-TODO Not commutative
+TODO Not commutative (associative? what?)
 TODO NaN and SIMD? or maybe just skip it and focus on SIMD and commutativity
+
+TODO
+
+* for opt chapter, Adding parenthesis (with credit)
+
+

@@ -27,7 +27,7 @@ book:
         - part_3/04_hidden_branching.qmd
         - part_3/05_more_compiler_optimizations.qmd
     - part: part_4/00.qmd
-      chapters: # manual optimization, using integers instead, fast math
+      chapters: # manual optimization, using integers instead, fast math plus crt mess
     - part: part_5/00.qmd
       chapters:
         - part_5/01_fit_in_cache.qmd
@@ -38,13 +38,15 @@ book:
     - part: part_6/00.qmd
       chapters:
         - part_6/01_more_about_simd.qmd
+    - part: "More examples"
+      chapters:
+        - 01_example_rescale_contrast.qmd
+        - 02_example_dithering.qmd
+        - 03_example_memory_layout.qmd
+        - 04_example_branchless.qmd
     - 07_floating_point.qmd
     - 08_integers.qmd
     - 10_undefined_behavior.qmd
-    - 11_example_rescale_contrast.qmd
-    - 12_example_dithering.qmd
-    - 13_example_memory_layout.qmd
-    - 14_example_branchless.qmd
   appendices:
     - 01_when.qmd
     - 002_prerequisites.qmd
