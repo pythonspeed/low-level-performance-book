@@ -20,7 +20,7 @@ from numba import njit
 import numpy as np
 from skimage import io
 
-image = io.imread("images/lowcontrast.jpg")
+image = io.imread("../images/lowcontrast.jpg")
 ```
 
 The original image looks like this:

@@ -6,7 +6,7 @@ book:
   author: "Itamar Turner-Trauring"
   date: "7/26/2023"
   chapters:
-    - 001_introduction.qmd
+    - index.qmd
     - part: part_1/00.qmd  # General performance
       chapters:
         - part_1/01_algorithms.qmd
