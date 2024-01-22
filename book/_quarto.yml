@@ -22,6 +22,7 @@ book:
         - part_3/01_instruction_level_parallelism.qmd
         - part_3/02_simd.qmd
         - part_3/03_getting_rid_of_branches.qmd
+        - part_3/03b_getting_rid_of_branches.qmd
         #- complex_branches.qmd  may be a dead end
         - part_3/04_hidden_branching.qmd
         - part_3/05_more_compiler_optimizations.qmd

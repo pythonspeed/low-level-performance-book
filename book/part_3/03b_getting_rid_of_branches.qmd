@@ -1,0 +1,81 @@
+# Get rid of branches by handling edge cases separately
+
+```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+```
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## Borders
+
+```{python}
+DATA = np.random.random((1_000_000,))
+
+from numba import float32
+
+@njit
+def ma_average(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float32)
+    for i in range(len(timeseries)):
+        total = float32(0.0)
+        if i < 6:
+            # Fill in missing values for first few days:
+            total += (6 - i) * float32(timeseries[0])
+        for j in range(max(i - 6, 0), i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+    return result
+```
+
+```{python}
+@njit
+def ma_average_2(timeseries):  # branchless
+    result = np.empty(timeseries.shape, dtype=np.float32)
+    for i in range(len(timeseries)):
+        # Fill in missing values for first few days:
+        total = float32(timeseries[0]) * max(6 - i, 0)
+        for j in range(max(i - 6, 0), i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+    return result
+
+assert np.array_equal(ma_average(DATA), ma_average_2(DATA))
+```
+
+```{python}
+@njit
+def ma_average_3(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float32)
+
+    # Handle first 6 days specially:
+    for i in range(6):
+        total = float32(timeseries[0]) * (6 - i)
+        # Fill in missing values for first few days:
+        for j in range(i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+
+    for i in range(6, len(timeseries)):
+        total = float32(0.0)
+        for j in range(i - 6, i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+    return result
+
+assert np.array_equal(ma_average(DATA), ma_average_3(DATA))
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+ma_average(DATA)
+ma_average_2(DATA)
+ma_average_3(DATA)
+```
+
+## Wrapping
