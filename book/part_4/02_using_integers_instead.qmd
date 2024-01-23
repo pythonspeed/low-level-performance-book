@@ -1,0 +1,87 @@
+# Replace floats with higher-precision integer operations
+
+TODO replace float with higher precision integer
+
+OR NOT? The above is actually slower, but it's also a very tiny calculation
+
+Maybe try the 7-day average
+
+```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+```
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+
+```{python}
+generator = np.random.default_rng(0)
+DATA = generator.integers(0, 256, (1_000_000,), dtype=np.uint8)
+
+from numba import float32, int32
+
+@njit
+def scale(arr, shift, factor):
+    factor = float32(factor)
+    shift = float32(shift)
+    result = np.empty(arr.shape, dtype=arr.dtype)
+    for i in range(len(arr)):
+        value = arr[i] + shift
+        if value < 0:
+            value = 0
+        value *= factor
+        if value > 255:
+            value = 255
+        result[i] = np.round(value)
+    return result
+
+print(scale(DATA, -20, 1.1)[:20])
+```
+
+```{python}
+@njit
+def scale_2(arr, shift, factor):
+    factor = float32(factor)
+    shift = float32(shift)
+    result = np.empty(arr.shape, dtype=arr.dtype)
+    for i in range(len(arr)):
+        value = arr[i] + shift
+        value = 0 if value < 0 else value
+        value *= factor
+        value = 255 if value > 255 else value
+        result[i] = np.round(value)
+    return result
+
+@njit
+def scale_3(arr, shift, factor):
+    factor = int32(np.round(float32(factor) * 1024))
+    shift = int32(shift)
+    result = np.empty(arr.shape, dtype=arr.dtype)
+    for i in range(len(arr)):
+        value = arr[i] + shift
+        value = 0 if value < 0 else value
+        value = (value * factor) >> 10
+        value = 255 if value > 255 else value
+        result[i] = value
+    return result
+
+print(DATA[:20])
+print(scale(DATA, -20, 1.1)[:20])
+print(scale_3(DATA, -20, 1.1)[:20])
+
+assert np.array_equal(scale(DATA, -20, 1.1), scale_2(DATA, -20, 1.1))
+#assert np.array_equal(scale(DATA, -20, 1.1), scale_3(DATA, -20, 1.1))
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+scale(DATA, -20, 1.1)
+scale_2(DATA, -20, 1.1)
+scale_3(DATA, -20, 1.1)
+```
+

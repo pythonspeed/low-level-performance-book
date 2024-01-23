@@ -27,8 +27,10 @@ book:
         - part_3/04_hidden_branching.qmd
         - part_3/05_more_compiler_optimizations.qmd
     - part: part_4/00.qmd  # Floating point
-      chapters: []
-        # manual optimization, using integers instead, fast math plus crt mess
+      chapters:
+        # manual optimization
+        - part_4/02_using_integers_instead.qmd
+        # fast math plus crt mess
     - part: part_5/00.qmd  # CPU memory cache
       chapters:
         - part_5/01_fit_in_cache.qmd

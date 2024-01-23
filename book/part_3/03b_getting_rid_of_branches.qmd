@@ -11,21 +11,20 @@ from numba import njit
 %load_ext book_magics
 ```
 
-## Borders
+## Example: A literal edge case
 
 ```{python}
 DATA = np.random.random((1_000_000,))
 
-from numba import float32
-
 @njit
-def ma_average(timeseries):
-    result = np.empty(timeseries.shape, dtype=np.float32)
+def moving_average(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
+    first_day = timeseries[0]
     for i in range(len(timeseries)):
-        total = float32(0.0)
+        total = 0
         if i < 6:
             # Fill in missing values for first few days:
-            total += (6 - i) * float32(timeseries[0])
+            total += (6 - i) * first_day
         for j in range(max(i - 6, 0), i + 1):
             total += timeseries[j]
         result[i] = total / 7
@@ -34,48 +33,76 @@ def ma_average(timeseries):
 
 ```{python}
 @njit
-def ma_average_2(timeseries):  # branchless
-    result = np.empty(timeseries.shape, dtype=np.float32)
+def moving_average_2(timeseries):  # branchless
+    result = np.empty(timeseries.shape, dtype=np.float64)
+    first_day = timeseries[0]
     for i in range(len(timeseries)):
         # Fill in missing values for first few days:
-        total = float32(timeseries[0]) * max(6 - i, 0)
+        total = first_day * max(6 - i, 0)
         for j in range(max(i - 6, 0), i + 1):
             total += timeseries[j]
         result[i] = total / 7
     return result
 
-assert np.array_equal(ma_average(DATA), ma_average_2(DATA))
+assert np.array_equal(moving_average(DATA), moving_average_2(DATA))
 ```
 
 ```{python}
 @njit
-def ma_average_3(timeseries):
-    result = np.empty(timeseries.shape, dtype=np.float32)
+def moving_average_3(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
 
     # Handle first 6 days specially:
+    first_day = timeseries[0]
     for i in range(6):
-        total = float32(timeseries[0]) * (6 - i)
+        total = first_day * (6 - i)
         # Fill in missing values for first few days:
         for j in range(i + 1):
             total += timeseries[j]
         result[i] = total / 7
 
     for i in range(6, len(timeseries)):
-        total = float32(0.0)
+        total = 0
         for j in range(i - 6, i + 1):
             total += timeseries[j]
         result[i] = total / 7
     return result
 
-assert np.array_equal(ma_average(DATA), ma_average_3(DATA))
+assert np.array_equal(moving_average(DATA), moving_average_3(DATA))
+```
+
+```{python}
+@njit
+def moving_average_4(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
+
+    # Handle first 6 days specially:
+    first_day = timeseries[0]
+    for i in range(6):
+        total = first_day * (6 - i)
+        # Fill in missing values for first few days:
+        for j in range(i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+
+    for i in range(6, len(timeseries)):
+        total = 0
+        for j in range(i - 6, i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+    return result
+
+assert np.array_equal(moving_average(DATA), moving_average_3(DATA))
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing
-ma_average(DATA)
-ma_average_2(DATA)
-ma_average_3(DATA)
+%%compare_timing --measure=instructions
+moving_average(DATA)
+moving_average_2(DATA)
+moving_average_3(DATA)
+moving_average_4(DATA)
 ```
 
 ## Wrapping
+
