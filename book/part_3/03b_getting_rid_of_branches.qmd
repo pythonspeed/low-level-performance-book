@@ -72,36 +72,11 @@ assert np.array_equal(moving_average(DATA), moving_average_3(DATA))
 ```
 
 ```{python}
-@njit
-def moving_average_4(timeseries):
-    result = np.empty(timeseries.shape, dtype=np.float64)
-
-    # Handle first 6 days specially:
-    first_day = timeseries[0]
-    for i in range(6):
-        total = first_day * (6 - i)
-        # Fill in missing values for first few days:
-        for j in range(i + 1):
-            total += timeseries[j]
-        result[i] = total / 7
-
-    for i in range(6, len(timeseries)):
-        total = 0
-        for j in range(i - 6, i + 1):
-            total += timeseries[j]
-        result[i] = total / 7
-    return result
-
-assert np.array_equal(moving_average(DATA), moving_average_3(DATA))
-```
-
-```{python}
 #| echo: false
 %%compare_timing --measure=instructions
 moving_average(DATA)
 moving_average_2(DATA)
 moving_average_3(DATA)
-moving_average_4(DATA)
 ```
 
 ## Wrapping
