@@ -11,7 +11,7 @@ from numba import njit
 %load_ext book_magics
 ```
 
-## ILP
+## Extracting repetitive calculations
 
 ```{python}
 generator = np.random.default_rng(0)
@@ -74,4 +74,3 @@ print(np.abs(result - result_3).mean())
 volume_liters_2(SIZES_INCHES)
 volume_liters_3(SIZES_INCHES)
 ```
-
