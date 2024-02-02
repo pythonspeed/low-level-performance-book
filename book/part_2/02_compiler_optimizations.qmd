@@ -1,4 +1,4 @@
-# The compiler can optimize for you (sometimes)
+# The compiler will optimize your code
 
 The compiler doesn't just translate your code to machine code: it also optimizes the code as it goes.
 In this chapter the optimizations we're focusing on are those you could do yourself, following the principle of avoiding wasted work.
@@ -123,23 +123,13 @@ Only you, the author of the code, can know whether or not it is acceptable to ma
 Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of conservatism.
 In the following chapters we'll consider some of the reasons the compiler might fail to optimize your code, and what you can do about it.
 
-TODO delete everything else, moving it to appropriate places.
+## Beware undefined behavior
 
-### The possibility of aliasing can prevent optimizations
+The guarantee of identical behavior only applies to code that the compiler considers to be well-defined.
+In Rust, so long as you don't use the `unsafe` keyword, all your code has well-defined behavior, so you don't have to worry about this.
+In other languages, and especially C, there are _many_ ways to write code that the compiler will happily compile, but which does something the compiler considers impossible.
 
+When your code is doing something he compiler considers impossible, the compiler's assumptions when optimizing might be very wrong.
+The result will be completely unexpected behavior by the compiled program, from crashes to corrupted data, or worse.
 
-### Function calls can prevent optimizations
-
-When your code calls another function, the compiler may be uncertain whether that other function has side-effects.
-If it does have side-effects, removing calls to that function would change the program's behavior, so the compiler will err on the side of conservatism when optimizing.
-
-In practice, the compiler will often "inline" small functions, essentially copy/pasting their code into the calling function.
-This allows the compiler to analyze all the code together, enabling additional optimizations.
-
-Still, calling large complex functions in hot loops can reduce the compiler's ability to optimize your code if the function doesn't get inlined.
-
-### Floating point calculations can prevent optimizations
-
-Some optimizations the compiler will do for integer math won't happen for floating point calculations.
-This is covered in a later chapter.
-
+TODO example

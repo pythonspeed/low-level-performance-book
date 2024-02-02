@@ -1,26 +1,6 @@
-# Speeding up your code with low-level compilation
+# Use bulk objects when communicating from Python
 
-What do I mean by a low-level compiled language?
-
-1. The code is converted ("compiled") to machine code before it is run.
-   Machine code is the set of binary instructions your CPU runs: the resulting code runs directly on the CPU.
-2. Each variable has a specific type that is known at compile time.
-   It might be a 64-bit integer, it might be something more complex, but this information is available to the compiler.
-
-Examples include C, C++, Rust, Fortran, and Numba.
-Cython compiles to C or C++, and then that code is compiled to machine to code, so it counts too.
-
-In contrast, CPython, the default Python implementation:
-
-1. Does not currently generate machine code, though work is in progress for future versions.
-2. Does not necessarily know what type a variable is.
-
-> In theory, type hints give CPython more information, but in practice they are not currently used.
-> Even if they were, they're hints: even if the function claims it accepts integers, you could still pass it floats if you wanted to.
-
-These differences allow low-level compiled languages to do certain operations much more quickly than Python.
-
-## Python vs. a low-level compiled language
+TODO restructure and reorder, maybe move some of this to another chapter?
 
 Let's look at an example: a function that adds two parameters and returns the result.
 
@@ -104,27 +84,6 @@ As a result:
 * Since the CPU doesn't understand how to add these more complex objects, Python has to convert it back down to low-level values the CPU does understand, do the math, and then create a new `PyLongObject*` with the result.
 
 Put this all together, and doing basic math in Python can be two orders of magnitude slower than doing math in C or Rust.
-
-## Compiler optimizations: the good, bad, and ugly
-
-A compiler takes the code you've written and turns it into machine code that your CPU can run.
-If that code is constrained—adding only 64-bit integers, instead of any arbitrary pair of objects as in Python—the resulting code will do less work and run faster.
-
-But a compiler does more than just translating your code: it also _optimizes_ your code.
-In particular, the compiler will run your code through a series of transformations that will (hopefully) make your code run faster.
-
-There's just one constraint on these optimization passes: the resulting program must behave as if it was exactly the same code you've written.
-What are the consequences of constraining the compiler output to identical behavior?
-
-* **The good:** You don't have to worry about your code's behavior changing, even as it becomes faster with no work on your part.
-* **The bad:** Some optimizations that might seem obvious to you won't happen, if the compiler decides that the resulting behavior might be slightly different.
-  Even if the difference is something you don't care about, the compiler has no way of knowing that, and it will err on the side of conservatism.
-* **The ugly:** The guarantee of identical behavior only applies to code that the compiler considers to be well-defined.
-  In Rust, so long as you don't use the `unsafe` keyword, all your code has well-defined behavior, so you don't have to worry about this.
-  In other languages, and especially C, there are _many_ ways to write code that the compiler will happily compile, but which does something the compiler considers impossible.
-  Since it's doing the impossible, the compiler's assumptions when optimizing might be very wrong, and the result will be completely unexpected behavior by the compiled program, from crashes to corrupted data or worse.
-
-We'll talk about the first two in the next chapter, and about undefined behavior in a later chapter.
 
 ## Connecting low-level code to Python
 
