@@ -11,7 +11,7 @@ book:
       chapters:
         - part_1/01_algorithms.qmd
         - part_1/02_generic_optimization.qmd
-        - part_1/03_trading_accuracy_for_speed.qmd
+        - part_1/03_customize_for_your_data.qmd
     - part: part_2/00.qmd  # Compiler optimizations
       chapters:
         - part_2/01_low_level_compilation.qmd

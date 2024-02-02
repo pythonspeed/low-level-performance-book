@@ -1,0 +1,83 @@
+# Fine tune algorithms to your particular data
+
+TODO Libraries like NumPy, SciPy, and so on have to handle generic data. If you understand your specific data, you can write custom algorithms that will be much faster.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+import pandas as pd
+```
+
+## Trade precision, or even accuracy, for speed
+
+One kind of customization—thought not the only one—is relaxing the precision or even accuracy of your code.
+In many cases, performance optimizations that change the results slightly may be acceptable and even desirable:
+
+* The results you're calculating may be more "precise" than the error.
+  If that extra precision is slowing your code down, it's completely unnecessary.
+  A generic library has no way of knowing what level of precision is acceptable, so it can't make this sort of compromise.
+* In other cases less accurate results may also be acceptable if, for example, the new implementation will reduce compute costs by 90%.
+
+```{python}
+BUS_HEADWAYS = pd.read_parquet(
+    "../data/MBTA-bus-2022-05.parquet",
+    columns=["headway"]
+)["headway"].dropna().values
+
+print("Size:", len(BUS_HEADWAYS))
+print("dtype:", BUS_HEADWAYS.dtype)
+print("Min value:", BUS_HEADWAYS.min())
+print("Max value:", BUS_HEADWAYS.max())
+print("99.9th percentile:", np.quantile(BUS_HEADWAYS, 0.999))
+print("Median:", np.median(BUS_HEADWAYS))
+```
+
+```{python}
+# Limit to 2-hour headways:
+#BUS_HEADWAYS = BUS_HEADWAYS[BUS_HEADWAYS <= 7200].astype(np.uint16)
+print("Size:", len(BUS_HEADWAYS))
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+np.median(BUS_HEADWAYS)
+```
+
+```{python}
+@njit
+def histogram_median(bus_headways):
+    # Histogram by minutes, maxing out at 3 hours (10,800 seconds). This is
+    # higher than 99.9th percentile values, so it shouldn't have a meaningful
+    # impact on results.
+    by_minutes = np.zeros((181,), dtype=np.uint32)
+    for headway in bus_headways:
+        by_minutes[min(np.uint8(headway / 60), 180)] += 1
+
+    median_location = len(bus_headways) / 2
+    cumulative_samples = 0
+    median = 0
+    for i in range(len(by_minutes)):
+        cumulative_samples += by_minutes[i]
+        if cumulative_samples >= median_location:
+            median = i
+            break
+
+    return median * 60.0
+
+print("Median:", np.median(BUS_HEADWAYS), "secs")
+print("Approximate median:", histogram_median(BUS_HEADWAYS), "secs")
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+np.median(BUS_HEADWAYS)
+histogram_median(BUS_HEADWAYS)
+```

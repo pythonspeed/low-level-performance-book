@@ -189,7 +189,6 @@ The second implementation is faster, because it does no allocations in the hot i
 ```{python}
 #| echo: false
 %%compare_timing
-
 allocate_in_loop(DATA)
 no_allocate_in_loop(DATA)
 ```

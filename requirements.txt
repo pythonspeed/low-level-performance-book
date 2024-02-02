@@ -5,3 +5,5 @@ pytablewriter==1.0.0
 scikit-image
 benchit
 py-perf-event
+pandas
+pyarrow
