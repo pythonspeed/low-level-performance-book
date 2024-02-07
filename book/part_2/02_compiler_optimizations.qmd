@@ -5,9 +5,11 @@ In this chapter the optimizations we're focusing on are those you could do yours
 Having the compiler do them saves you the effort, and the compiler will often apply optimizations you wouldn't have thought of.
 
 ```{python}
-# Disable SIMD so it doesn't distort or hide certain effects:
+# Disable automatic usage of SIMD so it doesn't distort or hide certain
+# effects; we'll talk about SIMD in later chapters.
 import os
 os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
+
 from numba import njit
 import numpy as np
 ```
