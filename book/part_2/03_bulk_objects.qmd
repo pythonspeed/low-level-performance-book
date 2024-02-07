@@ -1,8 +1,17 @@
-# Use bulk objects when communicating from Python
+# Use appropriate data structures when communicating to and from Python
 
-TODO restructure and reorder, maybe move some of this to another chapter?
+This book is aimed at Python developers, with the assumption you're probably going to use Python code to interact with any low-level code you write.
+This means you need to get data back and forth from Python to the compiled code, and you want to do that efficiently.
+
+There's a problem, though: CPython represents objects rather differently than compiled languages do.
+For example, let's say you have a 64-bit integer, and you want to turn it into a Python integer.
+Here's the CPython interpreter does it; you don't have to understand the code, the important thing is to notice it's doing quite a bit of work:
 
 ```c
+// This code snippet is copyright © 2001-2023 Python Software Foundation;
+// All Rights Reserved.
+//
+// See https://docs.python.org/3/license.html for the full license.
 PyObject *
 PyLong_FromLong(long ival)
 {
@@ -42,111 +51,31 @@ PyLong_FromLong(long ival)
     return (PyObject *)v;
 ```
 
-Let's look at an example: a function that adds two parameters and returns the result.
+If you're passing an integer or two, this overhead probably doesn't matter.
+But for large amounts of data, this overhead adds up.
+Imagine you want to pass an array of 64-bit integers to CPython, so normal Python code can interact with it.
+This would involve creating a Python list, and then running the above conversion code for every integer.
+This is quite a bit of effort just to pass some data around, not to mention all the extra memory you will need to allocate.
 
-Here's a Python function:
+And this is just one direction, from compiled code to Python.
+The other direction, converting a Python list of integers into an array of 64-bit integers so you an easily access the low-level code, is equally time-consuming and expensive.
+Plus, you'll need to check that every value actually is an integer, and that it fits in 64-bit.
+All of this will slow down your code, reducing the performance benefit of using a compiled language.
 
-```{python}
-def add(a, b):
-    return a + b
-```
+The way to avoid this expense: using container objects specifically designed for fast access from low-level compiled languages.
 
-And here's a similar Rust function:
+## Choose appropriate data structures
 
-```rust
-fn add(a: i64, b: i64) -> i64 {
-    a + b
-}
-```
+Different data structures are available in common Python libraries, specifically designed to allow efficient access from low-level languages.
+Some examples:
 
-On the face of it they are quite similar: you can add two integers with one or the other.
-But dig into the implementation and you get a very different perspective.
-
-The Rust code is compiled directly to machine code.
-Here's the x86-64 assembly generated for this function:
-
-```assembly
-lea     rax, [rdi + rsi]
-ret
-```
-
-You don't need to understand what `lea` or `ret` do.
-The important point here is that this function is just two machine code instructions, a trivial amount of work.
-There's a reason Rust has `i64` as a built-in numeric type: most CPUs you are likely to encounter have built-in support for math on 64-bit integers.
-
-Next, let's consider what happens when you call the Python function.
-First, the Python interpreter that is running your code may not know what type the passed in objects are, so it needs to inspect the types of `a` and `b` to figure out what add function to use.
-This already takes more effort than the two CPU instructions above.
-
-In this case, for two integers, Python will eventually call the C function `_PyLong_Add`.
-Here's what it looks like:
-
-```c
-PyObject *
-_PyLong_Add(PyLongObject *a, PyLongObject *b)
-{
-    if (IS_MEDIUM_VALUE(a) && IS_MEDIUM_VALUE(b)) {
-        return _PyLong_FromSTwoDigits(medium_value(a) + medium_value(b));
-    }
-
-    PyLongObject *z;
-    if (Py_SIZE(a) < 0) {
-        if (Py_SIZE(b) < 0) {
-            z = x_add(a, b);
-            if (z != NULL) {
-                /* x_add received at least one multiple-digit int,
-                   and thus z must be a multiple-digit int.
-                   That also means z is not an element of
-                   small_ints, so negating it in-place is safe. */
-                assert(Py_REFCNT(z) == 1);
-                Py_SET_SIZE(z, -(Py_SIZE(z)));
-            }
-        }
-        else
-            z = x_sub(b, a);
-    }
-    else {
-        if (Py_SIZE(b) < 0)
-            z = x_sub(a, b);
-        else
-            z = x_add(a, b);
-    }
-    return (PyObject *)z;
-}
-```
-
-Notice how it might be calling other functions, like `medium_value()` and `x_add()`.
-Why so complex?
-For one thing, whereas the Rust integers are 64-bit, Python integers are unlimited in size.
-As a result:
-
-* Where C or Rust 64-bit integers are just an 8-byte value that the CPU already understands, Python integers are a much more complex object that takes a minimum of 28 bytes, but can be more.
-* Since the CPU doesn't understand how to add these more complex objects, Python has to convert it back down to low-level values the CPU does understand, do the math, and then create a new `PyLongObject*` with the result.
-
-Put this all together, and doing basic math in Python can be two orders of magnitude slower than doing math in C or Rust.
-
-## Connecting low-level code to Python
-
-This book is aimed at Python developers, with the assumption you're probably going to use Python code to interact with any low-level code you write.
-That adds a wrinkle: you need to get data back and forth from Python to the low-level language.
-This adds overhead and complexity.
-For example, if we're passing arguments from Python to the low-level language:
-
-* As we've seen above, Python's representation of integers allows for arbitrarily-sized values, whereas low-level programming languages typically operate on 8-bit, 16-bit, 32-bit, or 64-bit integers.
-* A Python list can contain multiple different types, for example `[1, "hello", 2.3]`; you can't just assume all the items are integers, for example.
-  Handling this sort of data structure involves using the Python C APIs to introspect each item, which is expensive.
-
-As a result, converting a Python list of integers to a C array or Rust vector of integers would involve some relatively expensive code, before you've even started implementing any of the logic you need.
-And when moving the data back to the Python in the other direction, the same problem applies, doubling the cost.
-
-The solution is to use data structures designed to allow efficient access from low-level languages while still allowing access from Python.
-For example:
-
-* NumPy arrays have a specific data type, for example a 64-bit signed integer, and internally are created as a contiguous array.
+**N-dimensional arrays:** NumPy arrays have a specific data type, for example a 64-bit signed integer, and internally are created as a contiguous array.
 That means low-level code can access the items in a NumPy array with dtype `np.int64` just like it would any array of 64-bit signed integers: very quickly.
-* Older versions of Pandas used NumPy arrays internally, and newer versions still support this format for now.
-* Polars (always) and Pandas 2 (for now optionally) use Apache Arrow, which is a data structure designed for efficient access from low-level languages.
-  There are Arrow implementations for C++, Rust, and other languages, and it can also be used from Cython.
+
+**Dataframes:** Dataframes have named columns which can e different types, similar to a spreadsheet.
+Older versions of Pandas used NumPy arrays internally, and newer versions still support this format for now.
+However, newer libraries like Polars (always) and Pandas 2 (for now optionally) use Apache Arrow, which is a columnar data structure designed for efficient access from low-level languages.
+There are Arrow implementations for C++, Rust, and other languages, and it can also be used from Cython, but all of them can interoperate because they use the same in-memory representation.
 
 For both NumPy arrays and Apache Arrow, as well as other data structures designed with this use case in mind, the cost of transferring between Python and the low-level language is negligible.
 In this book we'll mostly use example involving NumPy arrays, but the same principles apply to any data structure that can be cheaply passed between Python and low-level languages.
