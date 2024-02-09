@@ -82,7 +82,7 @@ But a good test suite will at least catch some problems before they start impact
 To completely avoid undefined behavior, your options are:
 
 1. Memorize all the edge cases that produce undefined behavior in your language of choice, and then avoid writing buggy code.
-2. Use a language that prevents them in the first place.
+2. Use a language that won't shoot you in the foot.
    In particular, Rust guarantees no undefined behavior so long as you don't use the `unsafe` feature, which isn't necessary for standard data processing.
 
 For more on the topic, ["Falsehoods programmers believe about undefined behavior"](https://predr.ag/blog/falsehoods-programmers-believe-about-undefined-behavior/) is a good start.
