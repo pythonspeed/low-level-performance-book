@@ -1,7 +1,7 @@
 from timeit import timeit
 from io import BytesIO
 import locale
-from time import perf_counter_ns
+from time import perf_counter_ns, sleep
 
 from IPython.core.magic import (
     register_cell_magic,
@@ -22,8 +22,18 @@ locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
 
 def ns_per_iteration(line, globals):
-    return timeit(line, globals=globals, number=100, timer=perf_counter_ns) // 100
+    estimated_ns = int(timeit(line, globals=globals, number=10, timer=perf_counter_ns) / 10)
+    iterations = max(10_000_000 // estimated_ns, 100)
+    return timeit(line, globals=globals, number=iterations, timer=perf_counter_ns) // iterations
 
+def _validate_ns_per_iteration():
+    elapsed_ns = ns_per_iteration("sleep(0.001)", globals())
+    assert 900_000 < elapsed_ns < 1_100_000, elapsed_ns
+    elapsed_ns = ns_per_iteration("(lambda: None)()", globals())
+    assert elapsed_ns < 1000, elapsed_ns
+
+_validate_ns_per_iteration()
+del _validate_ns_per_iteration
 
 MEASUREMENTS = {
     "instructions": (
