@@ -1,8 +1,11 @@
-# The compiler will optimize your code
+# Rely on the compiler to optimize your code
 
-The compiler doesn't just translate your code to machine code: it also optimizes the code as it goes.
-In this chapter the optimizations we're focusing on are those you could do yourself, following the principle of avoiding wasted work.
-Having the compiler do them saves you the effort, and the compiler will often apply optimizations you wouldn't have thought of.
+When your code gets compiled, the compiler runs it through a series of optimization passes, with each pass transforming the code in the some way.
+The hope is that the cumulative series of transformations will result in code that is more efficient by:
+
+1. Removing redundant code execution, our focus in this chapter.
+2. Utilizing the CPU as efficiently as possible.
+   We won't consider these optimizations here, but we'll cover at least some of them in later chapters.
 
 ```{python}
 # Disable automatic usage of SIMD so it doesn't distort or hide certain
@@ -19,20 +22,9 @@ import numpy as np
 %load_ext book_magics
 ```
 
-## Compiler optimizations and their limitations
+## Get a sense of what the compiler can do
 
-When your code gets compiled, the compiler runs it through a series of optimization passes, with each pass transforming the code in the some way.
-The hope is that the cumulative series of transformations will result in code that is more efficient by:
-
-1. Removing redundant code execution, our focus in this chapter.
-2. Utilizing the CPU as efficiently as possible.
-   We won't consider these optimizations here, but we'll cover at least some of them in later chapters.
-
-## Some examples of what the compiler can do
-
-Even with this constraint mind, there is still plenty the compiler can do to speed up your code.
-
-#### Precalculating mathematical expressions
+### Precalculating mathematical expressions
 
 If you have a fixed mathematical expression, the compiler can often just execute it at compilation time and replace the expression with the result.
 For example, notice how the first function is slower, while the latter two take the same amount of time:
@@ -66,7 +58,7 @@ calc_fixed()
 just_the_result()
 ```
 
-#### Hoisting expressions out of inner loops
+### Hoisting expressions out of inner loops
 
 The compiler can also hoist repetitive expressions out of loops, so they're called once instead of many times.
 For example, the expression `((n ** 2) * (1.5 / n) + n)` in the `compiler_will_hoist()` is repeated in every iteration, but it also always give the same result.
@@ -105,33 +97,57 @@ manually_hoisted(1_000_000, 3)
 
 While both versions have the same speed, the manually hoisted version is arguably clearer about what is going on in the calculation, and the compiler won't always be able to hoist expressions, so doing it manually might still be worth it.
 
-#### Inlining
+### Inlining
 
-TODO
+Calling a function takes some time, even in a low-level language.
+What's, it's difficult for the compiler to optimize across function boundaries.
+Thus, the compiler will sometimes take the contents of a function and put them inside the calling function, so that it can do more optimization passes.
+This is known as "function inlining".
 
-Calling a function has overhead, even in a low-level language.
-And perhaps more importantly, it's difficult for the compiler to optimize across function boundaries: combining different parts 
+```{python}
+@njit
+def in_to_cm(cm):
+    return cm * 0.394
+
+@njit
+def cm3_to_liters(cm3):
+    return cm3 / 1000
+
+@njit
+def volume_liters(width_in, height_in, depth_in):
+    width_cm = in_to_cm(width_in)
+    height_cm = in_to_cm(height_in)
+    depth_cm = in_to_cm(depth_in)
+    return cm3_to_liters(width_cm * height_cm * depth_cm)
+
+@njit
+def volume_liters_manual_inlining(width_in, height_in, depth_in):
+    width_cm = width_in * 0.394
+    height_cm = height_in * 0.394
+    depth_cm = depth_in * 0.394
+    return (width_cm * height_cm * depth_cm) / 1000
+
+assert (
+    volume_liters(17.0, 23.0, 52.0) ==
+    volume_liters_manual_inlining(17.0, 23.0, 52.0)
+)
+```
+
+We can see that the extra function calls in `volume_liters()` don't add overhead, presumably because the compiler inlined them.
+
+```{python}
+#| echo: false
+%%compare_timing
+volume_liters(17.0, 23.0, 53.0)
+volume_liters_manual_inlining(17.0, 23.0, 53.0)
+```
 
 There are many other optimizations the compiler can do, with more added or tweaked with every compiler release.
 
-## What the compiler won't do
+## Understand the compiler's key constraint: optimized code must have identical behavior
 
-A key requirement for the compiler's optimization passes is that your code continues behave the same way, even as it gets faster.
+A key requirement for the compiler's optimization passes is that your code continues to behave the same way, even as it gets faster.
 **To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
-
-As a result, even if you had a perfect compiler that could identify every single optimization possibility, there would still be optimizations that couldn't be applied.
-Only you, the author of the code, can know whether or not it is acceptable to make a change to the code's results and side-effects.
 
 Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of conservatism.
 In the following chapters we'll consider some of the reasons the compiler might fail to optimize your code, and what you can do about it.
-
-## Beware undefined behavior
-
-The guarantee of identical behavior only applies to code that the compiler considers to be well-defined.
-In Rust, so long as you don't use the `unsafe` keyword, all your code has well-defined behavior, so you don't have to worry about this.
-In other languages, and especially C, there are _many_ ways to write code that the compiler will happily compile, but which does something the compiler considers impossible.
-
-When your code is doing something he compiler considers impossible, the compiler's assumptions when optimizing might be very wrong.
-The result will be completely unexpected behavior by the compiled program, from crashes to corrupted data, or worse.
-
-TODO example

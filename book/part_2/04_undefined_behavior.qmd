@@ -1,0 +1,86 @@
+## Beware of undefined behavior
+
+Recall that compilers will optimize your code while guaranteeing identical behavior.
+Unfortunately, this guarantee only applies to code that the compiler considers to be well-defined.
+In many languages, especially C and C++, you can easily write code that the compiler will happily compile, but which does something the compiler considers impossible.
+
+When your code is doing something he compiler considers impossible, the compiler's assumptions when optimizing might be very wrong.
+The result will be completely unexpected behavior by the compiled program, from crashes to corrupted data, or worse.
+
+## Stare into the abyss
+
+To demonstrate the intersection of undefined behavior and the compiler's optimizer, we'll use Cython.
+
+```{python}
+%load_ext cython
+```
+
+Cython is a bit like Numba, in that it lets you compile a Python-like language to machine code, but unlike Numba it first gets converted to C or C++, and then that get compiled into machine code.
+The following is based on [an example by Paul J. Lucas](https://medium.com/@pauljlucas/undefined-behavior-in-c-and-c-f30844f20e2a1).
+
+First, we'll start with this code example:
+
+```{python}
+#| error: true
+#| output-overflow: wrap
+%%cython
+cdef extern int external_array[4];
+
+def in_array(int value):
+    cdef int i = 0
+    while i < 4:
+        if external_array[i] == value:
+            return True
+        i += 1
+    return False
+```
+
+This failed to compile because the compiler can't find `external_array`.
+No surprise there, we have indeed not defined it.
+
+Next, we'll tweak the code very slightly, converting `while i < 4` into `while i <= 4`.
+
+```{python}
+%%cython
+cdef extern int external_array[4];
+
+def in_array(int value):
+    cdef int i = 0
+    while i <= 4:
+        if external_array[i] == value:
+            return True
+        i += 1
+    return False
+```
+
+We still haven't defined `external_array`, yet the code compiles!
+What happens if we call it?
+
+```{python}
+print(in_array(173))
+print(in_array(25))
+print(in_array(6))
+```
+
+The function `in_array()` _always_ returns `True`.
+What's happening is that the compiler notices we're reading from `arr[4]`, which is an out-of-bounds read: since the array is of size 4, only entries `arr[0]`, `arr[1]`, `arr[2]`, and `arr[3]` exist.
+The compiler considers out-of-bounds reads to be impossible, so we have introduced undefined behavior.
+
+Given out-of-bounds reads _do not exist_ as far as the C compiler is concerned, It can therefore assume that the 5th iteration of the loop will never reached.
+That means the loop "must" exist beforehand... so the code can be optimized into just returning `True`.
+
+Oops.
+
+## Avoid undefined behavior
+
+Importantly, the fact your code works doesn't mean undefined behavior isn't present.
+Because the compiler optimizations may change over time, undefined behavior may cause problems in the future even if your current code is seemingly fine.
+But a good test suite will at least catch some problems before they start impacting your calculations.
+
+To completely avoid undefined behavior, your options are:
+
+1. Memorize all the edge cases that produce undefined behavior in your language of choice, and then avoid writing buggy code.
+2. Use a language that prevents them in the first place.
+   In particular, Rust guarantees no undefined behavior so long as you don't use the `unsafe` feature, which isn't necessary for standard data processing.
+
+For more on the topic, ["Falsehoods programmers believe about undefined behavior"](https://predr.ag/blog/falsehoods-programmers-believe-about-undefined-behavior/) is a good start.
