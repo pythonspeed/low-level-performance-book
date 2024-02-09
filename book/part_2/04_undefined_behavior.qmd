@@ -4,7 +4,7 @@ Recall that compilers will optimize your code while guaranteeing identical behav
 Unfortunately, this guarantee only applies to code that the compiler considers to be well-defined.
 In many languages, especially C and C++, you can easily write code that the compiler will happily compile, but which does something the compiler considers impossible.
 
-When your code is doing something he compiler considers impossible, the compiler's assumptions when optimizing might be very wrong.
+When your code is doing something the compiler considers impossible, the compiler's assumptions when optimizing might be very wrong.
 The result will be completely unexpected behavior by the compiled program, from crashes to corrupted data, or worse.
 
 ## Stare into the abyss
