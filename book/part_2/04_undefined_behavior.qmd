@@ -5,7 +5,7 @@ Unfortunately, this guarantee only applies to code that the compiler considers t
 In many languages, especially C and C++, you can easily write code that the compiler will happily compile, but which does something the compiler considers impossible.
 
 When your code is doing something the compiler considers impossible, the compiler's assumptions when optimizing might be very wrong.
-The result will be completely unexpected behavior by the compiled program, from crashes to corrupted data, or worse.
+The result will be completely unexpected behavior by the compiled program, from crashes to corrupted data, or [much much worse](https://stackoverflow.com/questions/18506029/can-undefined-behavior-erase-the-hard-drive#comment27209771_18506029).
 
 ## Stare into the abyss
 
@@ -24,6 +24,7 @@ First, we'll start with this code example:
 #| error: true
 #| output-overflow: wrap
 %%cython
+# Indicate this array exists somewhere else, but don't actually create it.
 cdef extern int external_array[4];
 
 def in_array(int value):
@@ -35,8 +36,8 @@ def in_array(int value):
     return False
 ```
 
-This failed to compile because the compiler can't find `external_array`.
-No surprise there, we have indeed not defined it.
+This compiled code fails to load because `external_array` doesn't exist; we neglected to create it anywhere.
+So the `ImportError` is a reasonable outcome.
 
 Next, we'll tweak the code very slightly, converting `while i < 4` into `while i <= 4`.
 
@@ -53,8 +54,9 @@ def in_array(int value):
     return False
 ```
 
-We still haven't defined `external_array`, yet the code compiles!
-What happens if we call it?
+We still haven't defined `external_array`, yet the compiled code imports.
+Apparently it no longer cares about `external_array`.
+What happens if we call this function?
 
 ```{python}
 print(in_array(173))
@@ -63,7 +65,7 @@ print(in_array(6))
 ```
 
 The function `in_array()` _always_ returns `True`.
-What's happening is that the compiler notices we're reading from `arr[4]`, which is an out-of-bounds read: since the array is of size 4, only entries `arr[0]`, `arr[1]`, `arr[2]`, and `arr[3]` exist.
+What's happening is that the compiler notices we're reading from `external_array[4]`, which is an out-of-bounds read: since the array is of size 4, only entries `external_array[0]`, `external_array[1]`, `external_array[2]`, and `external_array[3]` exist.
 The compiler considers out-of-bounds reads to be impossible, so we have introduced undefined behavior.
 
 Given out-of-bounds reads _do not exist_ as far as the C compiler is concerned, It can therefore assume that the 5th iteration of the loop will never reached.
