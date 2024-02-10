@@ -137,22 +137,36 @@ generate_random_numbers_2(1_000_000)
 
 ### Interleaving to avoid a data dependency
 
-We can preserve the pseudo-randomness, while breaking the data dependency, a different way: by doing two different calculations that don't share a data dependency.
+We can preserve the pseudo-randomness, while breaking the data dependency, a different way: by doing multiple different calculations that don't share a data dependency.
+For random numbers, this is straightforward, we can just calculate multiple streams of random numbers and interleave them.
 This should allow us to do a bunch of the calculation in parallel, while still getting better results:
 
 ```{python}
 @njit
 def generate_random_numbers_3(n):
     result = np.empty((n,), dtype=np.uint32)
-    random_number1 = 1
+    random_number1 = uint64(1)
     random_number2 = lcg(lcg(random_number1) + 1)
-    for i in range(n // 2):
-        random_number1 = lcg(random_number1)
-        result[i * 2] = random_number1 >> 32
-        random_number2 = lcg(random_number2)
-        result[i * 2 + 1] = random_number2 >> 32
+    random_number3 = lcg(lcg(random_number2) + 1)
+    random_number4 = lcg(lcg(random_number3) + 1)
 
-    result[-1] = lcg(n - 1)
+    # Do 4 unrelated calculations that don't share data dependencies with each
+    # other, allowing the CPU to run them in parallel:
+    for i in range(n // 4):
+        random_number1 = lcg(random_number1)
+        random_number2 = lcg(random_number2)
+        random_number3 = lcg(random_number3)
+        random_number4 = lcg(random_number4)
+        result[i * 4    ] = random_number1 >> 32
+        result[i * 4 + 1] = random_number2 >> 32
+        result[i * 4 + 2] = random_number3 >> 32
+        result[i * 4 + 3] = random_number4 >> 32
+
+    # Calculate the remaining last few values:
+    for i in range(n % 4):
+        random_number1 = lcg(random_number1)
+        result[-i] = random_number1 >> 32
+
     return result
 
 RAND3 = to_image(generate_random_numbers_3)
@@ -165,7 +179,7 @@ This is how it looks:
 %display_image RAND3
 ```
 
-We now have more opportunity for parallelism, as the two code paths in each loop iteration are independent of each other.
+We now have more opportunity for parallelism, as the four code paths in each loop iteration are independent of each other.
 
 ```{python}
 #| echo: false
@@ -174,17 +188,6 @@ generate_random_numbers(1_000_000)
 generate_random_numbers_2(1_000_000)
 generate_random_numbers_3(1_000_000)
 ```
-
-::: {.callout-note}
-For Numba, you can see the underlying compiler's optimized output—specifically, the LLVM intermediate representation—by setting this option before you import `numba` for the first time:
-
-```{python}
-#| eval: false
-os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
-```
-
-You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
-:::
 
 ## TODO something with parallel accumulators
 
