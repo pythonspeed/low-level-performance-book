@@ -63,22 +63,44 @@ For one thing, a calculation can't be run if its inputs aren't yet available.
 In our example above, the CPU cannot run the instructions for `x_squared + y_squared` until both inputs have been calculated, and this addition blocks the square root from being calculated.
 
 To see the speed impact of ILP, let's look at an example: generating an array of random numbers.
-For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node7.html) and write the following code:
+For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
 
 ```{python}
+from numba import uint64
+
+# 64-bit linear congruent generator; we'll use the top 32-bits only for the
+# result to maximize the cycle.
+@njit("uint64(uint64)")
+def lcg(seed):
+    return uint64(seed * 2862933555777941757) + 3037000493
+
 @njit
 def generate_random_numbers(n):
-    result = np.empty((n,), dtype=np.uint64)
-    random_number = 1
+    result = np.empty((n,), dtype=np.uint32)
+    random_number = uint64(1)
     for i in range(n):
-        random_number = (random_number * 437799614237992725) % (2 ** 61 - 1)
-        result[i] = random_number
+        random_number = lcg(random_number)
+        result[i] = random_number >> 32
     return result
-
-_ = generate_random_numbers(3)
 ```
 
-Unfortunately, this calculation does not have a lot of parallelism: `result[i+1]` cannot be calculated without knowing `result[i]`.
+To get a sense of the randomness, we can visualize the result as an image:
+
+```{python}
+def to_image(f):
+    return f(256 * 256 // 4).view(np.uint8).reshape((256, 256))
+
+RAND1 = to_image(generate_random_numbers)
+```
+
+For example, in this case:
+
+```{python}
+#| echo: false
+%display_image RAND1
+```
+
+Unfortunately, this calculation does not allow a lot of parallelism: `result[i+1]` cannot be calculated without knowing `result[i]`.
 
 ### Removing a data dependency
 
@@ -87,49 +109,71 @@ Let's try a different variant, where we calculate the random number based just o
 ```{python}
 @njit
 def generate_random_numbers_2(n):
-    result = np.empty((n,), dtype=np.uint64)
+    result = np.empty((n,), dtype=np.uint32)
     for i in range(n):
-        random_number = (i * 437799614237992725) % (2 ** 61 - 1)
-        result[i] = random_number
+        random_number = lcg(i)
+        result[i] = random_number >> 32
     return result
 
-_ = generate_random_numbers_2(3)
+RAND2 = to_image(generate_random_numbers_2)
 ```
 
-A little thought will suggest this is a terrible way to generate random numbers, so we won't want to use this code in practice.
+This is how it looks:
+
+```{python}
+#| echo: false
+%display_image RAND2
+```
+
+Clearly this is a terrible way to generate random numbers, so we won't want to use this code in practice.
 However, this change does enable a massive speedup; the number of instructions isn't that different, but the speed at which they run drops dramatically thanks to ILP:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions
 generate_random_numbers(1_000_000)
 generate_random_numbers_2(1_000_000)
 ```
 
-### Loop unrolling
+### Interleaving to avoid a data dependency
 
-Our compiler know about the CPU's ILP feature, and so it often uses "loop unrolling" to transform our code into an equivalent form that enables more instruction-level parallelism.
-Instead of doing one execution of the core logic of the loop, it restructures the code to do 2 or more steps within each loop iteration.
-We can do so manually, with code that looks like this:
+We can preserve the pseudo-randomness, while breaking the data dependency, a different way: by doing two different calculations that don't share a data dependency.
+This should allow us to do a bunch of the calculation in parallel, while still getting better results:
 
 ```{python}
-#| eval: false
-# This is usually not necessary; the compiler will do it for you:
 @njit
-def generate_random_numbers_unrolled(n):
-    result = np.empty((n,), dtype=np.uint64)
+def generate_random_numbers_3(n):
+    result = np.empty((n,), dtype=np.uint32)
+    random_number1 = 1
+    random_number2 = lcg(lcg(random_number1) + 1)
     for i in range(n // 2):
-        random_number1 = ((i * 2) * 437799614237992725) % (2 ** 61 - 1)
-        result[i * 2] = random_number1
-        random_number2 = ((i * 2 + 1) * 437799614237992725) % (2 ** 61 - 1)
-        result[i * 2 + 1] = random_number2
+        random_number1 = lcg(random_number1)
+        result[i * 2] = random_number1 >> 32
+        random_number2 = lcg(random_number2)
+        result[i * 2 + 1] = random_number2 >> 32
 
-    result[-1] = ((n - 1) * 437799614237992725) % (2 ** 61 - 1)
+    result[-1] = lcg(n - 1)
     return result
+
+RAND3 = to_image(generate_random_numbers_3)
 ```
 
-Notice that depending how smart the CPU is, we now have more opportunity for parallelism, as more code paths in each loop iteration are independent of each other.
-You can do loop unrolling manually, but depending on your language and compiler options, the compiler will often do it for you, which means you can stick to more readable code.
+This is how it looks:
+
+```{python}
+#| echo: false
+%display_image RAND3
+```
+
+We now have more opportunity for parallelism, as the two code paths in each loop iteration are independent of each other.
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+generate_random_numbers(1_000_000)
+generate_random_numbers_2(1_000_000)
+generate_random_numbers_3(1_000_000)
+```
 
 ::: {.callout-note}
 For Numba, you can see the underlying compiler's optimized output—specifically, the LLVM intermediate representation—by setting this option before you import `numba` for the first time:
