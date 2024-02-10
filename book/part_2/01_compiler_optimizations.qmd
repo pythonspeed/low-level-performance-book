@@ -144,6 +144,17 @@ volume_liters_manual_inlining(17.0, 23.0, 53.0)
 
 There are many other optimizations the compiler can do, with more added or tweaked with every compiler release.
 
+::: {.callout-note}
+For Numba, you can see the underlying compiler's optimized output—specifically, the LLVM intermediate representation—by setting this option before you import `numba` for the first time:
+
+```{python}
+#| eval: false
+os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
+```
+
+You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
+:::
+
 ## Understand the compiler's key constraint: optimized code must have identical behavior
 
 A key requirement for the compiler's optimization passes is that your code continues to behave the same way, even as it gets faster.
