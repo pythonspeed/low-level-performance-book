@@ -78,10 +78,9 @@ def lcg(seed):
 @njit
 def generate_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
-    random_number = uint32(1)
-    for i in range(n):
-        random_number = lcg(random_number)
-        result[i] = random_number
+    result[0] = uint32(1)
+    for i in range(1, n):
+        result[i] = lcg(result[i - 1])
     return result
 ```
 
@@ -103,15 +102,15 @@ For example, in this case:
 
 Unfortunately, this calculation does not allow a lot of parallelism: `result[i+1]` cannot be calculated without knowing `result[i]`.
 
-### Removing a data dependency
+### Removing a calculation data dependency
 
-Let's try a different variant, where we calculate the random number based just on `i`, making `result[i+1]` independent of `result[i]`:
+Let's try a different variant, where we calculate the random number based just on `i`:
 
 ```{python}
 @njit
 def generate_random_numbers_2(n):
     result = np.empty((n,), dtype=np.uint32)
-    for i in range(n):
+    for i in range(1, n):
         result[i] = lcg(i)
     return result
 
@@ -145,6 +144,51 @@ This should allow us to do a bunch of the calculation in parallel, while still g
 @njit
 def generate_random_numbers_3(n):
     result = np.empty((n,), dtype=np.uint32)
+    result[0] = uint32(1)
+    result[1] = lcg(lcg(result[0]) + 1)
+    result[2] = lcg(lcg(result[1]) + 1)
+    result[3] = lcg(lcg(result[2]) + 1)
+
+    # Do 4 unrelated calculations that don't share data dependencies with each
+    # other, allowing the CPU to run them in parallel:
+    for i in range(1, n // 4):
+        result[i * 4    ] = lcg(result[(i - 1) * 4    ])
+        result[i * 4 + 1] = lcg(result[(i - 1) * 4 + 1])
+        result[i * 4 + 2] = lcg(result[(i - 1) * 4 + 2])
+        result[i * 4 + 3] = lcg(result[(i - 1) * 4 + 3])
+
+    # Calculate the remaining last few values:
+    for i in range(n % 4):
+        result[n - (3 - i)] = lcg(result[n - (3 - i) - 1])
+
+    return result
+
+RAND3 = to_image(generate_random_numbers_3)
+```
+
+This is how it looks:
+
+```{python}
+#| echo: false
+%display_image RAND3
+```
+
+This is better than the first version, but still pretty slow:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+generate_random_numbers(1_000_000)
+generate_random_numbers_2(1_000_000)
+generate_random_numbers_3(1_000_000)
+```
+
+### Removing memory reads/writes as a dependency
+
+```{python}
+@njit
+def generate_random_numbers_4(n):
+    result = np.empty((n,), dtype=np.uint32)
     random_number1 = uint32(1)
     random_number2 = lcg(lcg(random_number1) + 1)
     random_number3 = lcg(lcg(random_number2) + 1)
@@ -169,14 +213,14 @@ def generate_random_numbers_3(n):
 
     return result
 
-RAND3 = to_image(generate_random_numbers_3)
+RAND4 = to_image(generate_random_numbers_4)
 ```
 
 This is how it looks:
 
 ```{python}
 #| echo: false
-%display_image RAND3
+%display_image RAND4
 ```
 
 We now have more opportunity for parallelism, as the four code paths in each loop iteration are independent of each other.
@@ -187,6 +231,7 @@ We now have more opportunity for parallelism, as the four code paths in each loo
 generate_random_numbers(1_000_000)
 generate_random_numbers_2(1_000_000)
 generate_random_numbers_3(1_000_000)
+generate_random_numbers_4(1_000_000)
 ```
 
 ## TODO something with parallel accumulators
