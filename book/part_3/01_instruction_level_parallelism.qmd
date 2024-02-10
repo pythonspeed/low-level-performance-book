@@ -1,4 +1,4 @@
-# Instruction-level parallelism and branch prediction
+# Remove data dependencies to enable instruction-level parallelism
 
 Choosing more scalable algorithms and removing redundant work don't require a particularly sophisticated mental model of how CPUs or compilers work.
 But if you're going to write faster code, you need a more realistic model of CPUs work.
@@ -66,21 +66,22 @@ To see the speed impact of ILP, let's look at an example: generating an array of
 For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
 
 ```{python}
-from numba import uint64
+from numba import uint32, uint64
 
 # 64-bit linear congruent generator; we'll use the top 32-bits only for the
 # result to maximize the cycle.
-@njit("uint64(uint64)")
+@njit("uint32(uint32)")
 def lcg(seed):
-    return uint64(seed * 2862933555777941757) + 3037000493
+    temp = uint64(seed) * 2862933555777941757 + 3037000493
+    return temp >> 32
 
 @njit
 def generate_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
-    random_number = uint64(1)
+    random_number = uint32(1)
     for i in range(n):
         random_number = lcg(random_number)
-        result[i] = random_number >> 32
+        result[i] = random_number
     return result
 ```
 
@@ -111,8 +112,7 @@ Let's try a different variant, where we calculate the random number based just o
 def generate_random_numbers_2(n):
     result = np.empty((n,), dtype=np.uint32)
     for i in range(n):
-        random_number = lcg(i)
-        result[i] = random_number >> 32
+        result[i] = lcg(i)
     return result
 
 RAND2 = to_image(generate_random_numbers_2)
@@ -145,7 +145,7 @@ This should allow us to do a bunch of the calculation in parallel, while still g
 @njit
 def generate_random_numbers_3(n):
     result = np.empty((n,), dtype=np.uint32)
-    random_number1 = uint64(1)
+    random_number1 = uint32(1)
     random_number2 = lcg(lcg(random_number1) + 1)
     random_number3 = lcg(lcg(random_number2) + 1)
     random_number4 = lcg(lcg(random_number3) + 1)
@@ -157,15 +157,15 @@ def generate_random_numbers_3(n):
         random_number2 = lcg(random_number2)
         random_number3 = lcg(random_number3)
         random_number4 = lcg(random_number4)
-        result[i * 4    ] = random_number1 >> 32
-        result[i * 4 + 1] = random_number2 >> 32
-        result[i * 4 + 2] = random_number3 >> 32
-        result[i * 4 + 3] = random_number4 >> 32
+        result[i * 4    ] = random_number1
+        result[i * 4 + 1] = random_number2
+        result[i * 4 + 2] = random_number3
+        result[i * 4 + 3] = random_number4
 
     # Calculate the remaining last few values:
     for i in range(n % 4):
         random_number1 = lcg(random_number1)
-        result[-i] = random_number1 >> 32
+        result[-i] = random_number1
 
     return result
 
@@ -193,7 +193,7 @@ generate_random_numbers_3(1_000_000)
 
 TODO think about how to solve the problem in parallel
 
-## Bottleneck #2: Conditionals and failed branch prediction
+## TODO MOVE ME TODO Bottleneck #2: Conditionals and failed branch prediction
 
 Another code structure that potentially prevents instruction-level parallelism is a conditional statement: an `if` or equivalent.
 Given there are two possible sets of future instructions, the two branches of the `if`, how can the CPU know which set it should be executing in parallel?
