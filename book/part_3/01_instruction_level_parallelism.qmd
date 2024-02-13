@@ -31,7 +31,9 @@ from numba import njit
 A reasonable minimal mental model of CPUs is that they execute one instruction at a time.
 Putting aside parallelism between multiple CPU cores, which results in some very complex interactions that we won't be getting into, from the outside the CPU will indeed operate _as if_ it were executing one instruction at a time, in order.
 
-Consider the following function:
+Consider the following function.
+Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
+We don't care how the CPU executes the resulting code: so long as we get the correct result, faster is better.
 
 ```{python}
 #| eval: false
@@ -44,23 +46,39 @@ def pythagorean_theorem(x_length, y_length):
     return sqrt(x_squared + y_squared)
 ```
 
-Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
-And all things being equal, faster results are better.
-Thus we don't care how the CPU executes the resulting code: so long as we get the same results, faster is better.
+A simplistic CPU will execute each instruction in order.
+First a multiply, then another, then an addition, the calculation of the square root:
 
-A simplistic CPU will execute each instruction in order: first a multiply, then another, then an addition, the calculation of the square root.
-But the CPUs you are using in laptops, desktops, and servers can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
+```{mermaid}
+flowchart TD
+ A("x_squared = x_length ** 2") --> B("y_squared = y_length ** 2")
+ B --> C("__temp = x_squared + y_squared")
+ C --> D("result = sqrt(__temp)")
+```
 
+Modern CPUs, like those used in laptops, desktops, and servers, can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
 In this case, calculating `x_squared` and `y_squared` is completely independent, so your CPU is likely to run both at once if it can.
 This happens transparently: the compiler doesn't have to do anything special, the CPU will do this all on its own.
+
 Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes: this is parallelism within a single core.
 If you later switch to a parallel implementation, each individual CPU core will still be able to do instruction-level parallelism.
 
-## Bottleneck #1: Data dependencies
+```{mermaid}
+flowchart TD
+ A("x_squared = x_length ** 2") --> C("__temp = x_squared + y_squared")
+ B("y_squared = y_length ** 2") --> C
+ C --> D("result = sqrt(__temp)")
+```
 
 Not all code can be transparently run in parallel.
-For one thing, a calculation can't be run if its inputs aren't yet available.
-In our example above, the CPU cannot run the instructions for `x_squared + y_squared` until both inputs have been calculated, and this addition blocks the square root from being calculated.
+For one thing, a calculation can't be run if its inputs aren't yet available:
+
+* The CPU _cannot_ run the instructions for `x_squared + y_squared` until both inputs have been calculated.
+* Similarly, the `sqrt()` can't be run until `x_squared + y_squared` finishes.
+
+We can say that these are "data dependencies" that prevent instruction-level parallelism, and therefore reduce the code's potential runtime speed.
+
+## Example: Removing data dependencies
 
 To see the speed impact of ILP, let's look at an example: generating an array of random numbers.
 For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
@@ -69,7 +87,7 @@ For educational purposes, we find [an example of how to do this](https://nuclear
 from numba import uint32, uint64
 
 # 64-bit linear congruent generator; we'll use the top 32-bits only for the
-# result to maximize the cycle.
+# result to maximize the cycle length and therefore perceived randomness.
 @njit("uint32(uint32)")
 def lcg(seed):
     temp = uint64(seed) * 2862933555777941757 + 3037000493
@@ -84,7 +102,8 @@ def generate_random_numbers(n):
     return result
 ```
 
-To get a sense of the randomness, we can visualize the result as an image:
+To get a sense of the randomness, we can visualize the result as an image.
+If we see any patterns, the data definitely isn't random (though lack of patterns isn't conclusive, of course).
 
 ```{python}
 def to_image(f):
@@ -93,14 +112,21 @@ def to_image(f):
 RAND1 = to_image(generate_random_numbers)
 ```
 
-For example, in this case:
+Our first result looks pretty good:
 
 ```{python}
 #| echo: false
 %display_image RAND1
 ```
 
-Unfortunately, this calculation does not allow a lot of parallelism: `result[i+1]` cannot be calculated without knowing `result[i]`.
+Unfortunately, this calculation does not allow a lot of parallelism.
+Imagine we asked for 4 values:
+
+* `result[3] = lcg(result[2])`, so we need `result[2]` before proceeding.
+* `result[2] = lcg(result[1])`, so we need `result[1]`.
+* `result[1] = lcg(result[0])`, so we need `result[0]`.
+
+In short, each value in the array has a data dependency on the previous value in the array; they cannot be calculated in parallel.
 
 ### Removing a calculation data dependency
 
@@ -108,42 +134,49 @@ Let's try a different variant, where we calculate the random number based just o
 
 ```{python}
 @njit
-def generate_random_numbers_2(n):
+def generate_not_so_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
     for i in range(1, n):
         result[i] = lcg(i)
     return result
 
-RAND2 = to_image(generate_random_numbers_2)
+RAND2 = to_image(generate_not_so_random_numbers)
 ```
 
-This is how it looks:
+In this case we've broken the dependency chain.
+These calculations are completely unrelated and can be calculated in parallel:
+
+* `result[3] = lcg(3)`
+* `result[2] = lcg(2)`
+
+Unfortunately, when visualized we can see the results have an obvious pattern, so this isn't a good random number generator:
 
 ```{python}
 #| echo: false
 %display_image RAND2
 ```
 
-Clearly this is a terrible way to generate random numbers, so we won't want to use this code in practice.
-However, this change does enable a massive speedup; the number of instructions isn't that different, but the speed at which they run drops dramatically thanks to ILP:
+However, this change does enable a massive speedup; the number of instructions is higher, but the speed at which they run drops dramatically thanks to ILP:
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
 generate_random_numbers(1_000_000)
-generate_random_numbers_2(1_000_000)
+generate_not_so_random_numbers(1_000_000)
 ```
 
 ### Interleaving to avoid a data dependency
 
-We can preserve the pseudo-randomness, while breaking the data dependency, a different way: by doing multiple different calculations that don't share a data dependency.
-For random numbers, this is straightforward, we can just calculate multiple streams of random numbers and interleave them.
+We can preserve the pseudo-randomness, while breaking the data dependency.
+Specifically, we can interleave multiple streams that don't share a data dependency.
 This should allow us to do a bunch of the calculation in parallel, while still getting better results:
 
 ```{python}
 @njit
 def generate_random_numbers_3(n):
     result = np.empty((n,), dtype=np.uint32)
+
+    # Make sure we have 4 sufficiently different starting points:
     result[0] = uint32(1)
     result[1] = lcg(lcg(result[0]) + 1)
     result[2] = lcg(lcg(result[1]) + 1)
@@ -173,17 +206,22 @@ This is how it looks:
 %display_image RAND3
 ```
 
-This is better than the first version, but still pretty slow:
+This is faster than the first version, but still pretty slow:
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
 generate_random_numbers(1_000_000)
-generate_random_numbers_2(1_000_000)
 generate_random_numbers_3(1_000_000)
 ```
 
-### Removing memory reads/writes as a dependency
+### Simplifying the calculation
+
+So why is our latest version slower than our second attempt?
+The fact that the number of instructions is so much higher seems like a problem.
+
+To try to reduce the number of instructions, instead of reading and writing intermediate values from the array, we can store them in temporary variables.
+In addition to doing less math, variables with numeric variables are easier for the compiler to optimize away compared to memory reads and writes:
 
 ```{python}
 @njit
@@ -194,8 +232,6 @@ def generate_random_numbers_4(n):
     random_number3 = lcg(lcg(random_number2) + 1)
     random_number4 = lcg(lcg(random_number3) + 1)
 
-    # Do 4 unrelated calculations that don't share data dependencies with each
-    # other, allowing the CPU to run them in parallel:
     for i in range(n // 4):
         random_number1 = lcg(random_number1)
         random_number2 = lcg(random_number2)
@@ -206,10 +242,8 @@ def generate_random_numbers_4(n):
         result[i * 4 + 2] = random_number3
         result[i * 4 + 3] = random_number4
 
-    # Calculate the remaining last few values:
     for i in range(n % 4):
-        random_number1 = lcg(random_number1)
-        result[-i] = random_number1
+        result[n - (3 - i)] = lcg(result[n - (3 - i) - 1])
 
     return result
 
@@ -223,14 +257,12 @@ This is how it looks:
 %display_image RAND4
 ```
 
-We now have more opportunity for parallelism, as the four code paths in each loop iteration are independent of each other.
+And now our code is much faster, with approximately the same number of instructions as our original version, but with significant parallelism:
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
 generate_random_numbers(1_000_000)
-generate_random_numbers_2(1_000_000)
-generate_random_numbers_3(1_000_000)
 generate_random_numbers_4(1_000_000)
 ```
 
