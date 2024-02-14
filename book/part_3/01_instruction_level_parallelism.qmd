@@ -12,7 +12,7 @@ Let's do our initial setup, and then learn about:
 In order to better demonstrate the effects of these CPU features, we will disable SIMD code generation in the code examples in this chapter; we'll talk about what SIMD means and what it does in the next chapter.
 
 ```{python}
-# Disable SIMD, so it doesn't hide other effects:
+# Tell Numba to disable SIMD, so it doesn't hide other effects:
 import os
 os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
 os.environ["NUMBA_SLP_VECTORIZE"] = "0"
@@ -314,3 +314,10 @@ And as we hoped, the second version allows more scope for parallelism:
 sum1(DATA)
 sum2(DATA)
 ```
+
+::: {.callout-note}
+If you were to run the above code with SIMD enabled, the `sum1()` function would actually be faster than `sum2()` when run on `uint64`s.
+That's because the compiler would figure out it can use SIMD in the first case, but not the second, and using SIMD is apparently faster than instruction-level parallelism.
+
+This technique is still worth trying, though, as we'll see in an example in a later chapter.
+:::
