@@ -1,15 +1,7 @@
 # Remove data dependencies to enable instruction-level parallelism
 
-Choosing more scalable algorithms and removing redundant work don't require a particularly sophisticated mental model of how CPUs or compilers work.
-But if you're going to write faster code, you need a more realistic model of CPUs work.
-
-Let's do our initial setup, and then learn about:
-
-1. Instruction-level parallelism (ILP).
-2. Branch prediction, and the cost of misprediction.
-3. How to take advantage of these CPU features.
-
-In order to better demonstrate the effects of these CPU features, we will disable SIMD code generation in the code examples in this chapter; we'll talk about what SIMD means and what it does in the next chapter.
+Your CPU is capable of running multiple instructions at the same time on the same core, transparently, making your code run that much faster... but only if your code allows it.
+In order to better demonstrate the effects of this CPU feature, we will disable SIMD code generation in the code examples in this chapter; we'll talk about what SIMD means and what it does in the next chapter.
 
 ```{python}
 # Tell Numba to disable SIMD, so it doesn't hide other effects:
