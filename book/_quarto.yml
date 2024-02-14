@@ -22,6 +22,7 @@ book:
       chapters:
         - part_3/01_instruction_level_parallelism.qmd
         - part_3/02_simd.qmd
+        - part_3/03_more_about_simd.qmd
     - part: part_4/00.qmd  # Branches
       chapters:
         - part_4/01_getting_rid_of_branches.qmd
@@ -39,8 +40,7 @@ book:
         - part_6/03_smaller_data_types.qmd
         - part_6/04_n_dimensional.qmd
     - part: part_7/00.qmd  # Additional topics
-      chapters:
-        - part_7/01_more_about_simd.qmd
+      chapters: []
         # non-contiguous views' impact on compiler?
     - part: "More examples"
       chapters:
