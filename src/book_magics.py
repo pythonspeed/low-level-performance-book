@@ -102,7 +102,7 @@ MEASUREMENTS = {
             Raw(0x8c7),
         ],
         lambda double, single: double + single
-    )
+    ),
 }
 
 def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,object]) -> list[int]:

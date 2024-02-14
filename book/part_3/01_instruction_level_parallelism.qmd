@@ -15,6 +15,7 @@ In order to better demonstrate the effects of these CPU features, we will disabl
 # Disable SIMD, so it doesn't hide other effects:
 import os
 os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
+os.environ["NUMBA_SLP_VECTORIZE"] = "0"
 
 # Import the dependencies we'll need:
 import numpy as np
@@ -266,9 +267,55 @@ generate_random_numbers(1_000_000)
 generate_random_numbers_4(1_000_000)
 ```
 
-## TODO something with parallel accumulators
+## Remove accumulator data dependencies with MapReduce
 
-TODO think about how to solve the problem in parallel
+Let's look at another data dependency bottleneck: an accumulator.
+If we sum the values in an array, we keep adding values to the same place, `total`.
+Because we keep accumulating results in the same variable, that variable acts as a data dependency, and prevents instruction-level parallelism:
+
+```{python}
+DATA = np.arange(0, 1_000_000, dtype=np.uint64)
+
+@njit
+def sum1(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+
+_ = sum1(DATA)
+```
+
+We can solve this by having two accumulators, and switching back and forth between them.
+At the end of the algorithm we add the two accumulators.
+
+```{python}
+@njit
+def sum2(arr):
+    total1, total2 = 0, 0
+    for i in range(len(arr)):
+        total1 += arr[i]
+        # Swap the accumulators so the next iteration adds to the other one:
+        total2, total1 = total1, total2
+    return total1 + total2
+
+assert sum1(DATA) == sum2(DATA)
+```
+
+This is a variation of the MapReduce design pattern:
+
+1. **Map:** Run multiple copies of the same algorithm on different parts of the data to get parallelism.
+   In this case, the parallelism comes from CPU's ILP.
+2. **Reduce:** Combine all the partial results into one final result.
+
+And as we hoped, it allows more scope for parallelism:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+sum1(DATA)
+sum2(DATA)
+```
 
 ## TODO MOVE ME TODO Bottleneck #2: Conditionals and failed branch prediction
 
