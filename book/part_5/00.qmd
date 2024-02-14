@@ -1,10 +1,10 @@
-# Make memory access more efficient
+# Floating point calculations make life hard for the compiler
 
-So far we've been ignoring memory reads and writes, assuming that they're fairly fast and take a fixed amount of time.
-As always, a more accurate mental model can help you speed up our code.
+TODO Not commutative (associative? what?)
+TODO NaN and SIMD? or maybe just skip it and focus on SIMD and commutativity
 
-As it turns out, from a CPU's perspective, reading from RAM—the active memory of the computer—is actually quite slow.
-To speed things up, CPU designers provide a series of caches to reduce the need to access RAM.
-Recently used data is stored in those caches, and that speeds up memory access... some of the time.
-If the data you need isn't in a fast cache, you might end up with a slow memory read from RAM.
+TODO
+
+* for opt chapter, Adding parenthesis (with credit)
+
 

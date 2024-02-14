@@ -22,31 +22,32 @@ book:
       chapters:
         - part_3/01_instruction_level_parallelism.qmd
         - part_3/02_simd.qmd
-        - part_3/03_getting_rid_of_branches.qmd
-        - part_3/03b_getting_rid_of_branches.qmd
-        #- complex_branches.qmd  may be a dead end
-        - part_3/04_hidden_branching.qmd
-    - part: part_4/00.qmd  # Floating point
+    - part: part_4/00.qmd  # Branches
       chapters:
-        - part_4/01_manual_optimization.qmd
-        - part_4/02_using_integers_instead.qmd
+        - part_4/01_getting_rid_of_branches.qmd
+        - part_4/02_edge_case_branches.qmd
+        - part_4/03_hidden_branching.qmd
+    - part: part_5/00.qmd  # Floating point
+      chapters:
+        - part_5/01_manual_optimization.qmd
+        - part_5/02_using_integers_instead.qmd
         # fast math plus crt mess
-    - part: part_5/00.qmd  # CPU memory cache
+    - part: part_6/00.qmd  # CPU memory cache
       chapters:
-        - part_5/01_fit_in_cache.qmd
-        - part_5/02_linear_scan.qmd
-        - part_5/03_smaller_data_types.qmd
-        - part_5/04_n_dimensional.qmd
-    - part: part_6/00.qmd  # Additional topics
+        - part_6/01_fit_in_cache.qmd
+        - part_6/02_linear_scan.qmd
+        - part_6/03_smaller_data_types.qmd
+        - part_6/04_n_dimensional.qmd
+    - part: part_7/00.qmd  # Additional topics
       chapters:
-        - part_6/01_more_about_simd.qmd
+        - part_7/01_more_about_simd.qmd
         # non-contiguous views' impact on compiler?
     - part: "More examples"
       chapters:
-        - part_7/01_example_rescale_contrast.qmd
-        - part_7/02_example_dithering.qmd
-        - part_7/03_example_memory_layout.qmd
-        - part_7/04_example_branchless.qmd
+        - part_8/01_example_rescale_contrast.qmd
+        - part_8/02_example_dithering.qmd
+        - part_8/03_example_memory_layout.qmd
+        - part_8/04_example_branchless.qmd
   appendices:
     - appendices/01_when.qmd
     - appendices/02_prerequisites.qmd
