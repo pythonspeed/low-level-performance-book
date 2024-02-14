@@ -27,10 +27,7 @@ from numba import njit
 %load_ext book_magics
 ```
 
-## Faster results with instruction-level parallelism
-
-A reasonable minimal mental model of CPUs is that they execute one instruction at a time.
-Putting aside parallelism between multiple CPU cores, which results in some very complex interactions that we won't be getting into, from the outside the CPU will indeed operate _as if_ it were executing one instruction at a time, in order.
+## Data dependencies are a bottleneck for instruction-level parallelism
 
 Consider the following function.
 Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
@@ -58,11 +55,12 @@ flowchart TD
 ```
 
 Modern CPUs, like those used in laptops, desktops, and servers, can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
+Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes.
+This is parallelism within a _single_ CPU core.
+If you later switch to a parallel implementation running on multiple cores, each individual core will still be able to do instruction-level parallelism internally.
+
 In this case, calculating `x_squared` and `y_squared` is completely independent, so your CPU is likely to run both at once if it can.
 This happens transparently: the compiler doesn't have to do anything special, the CPU will do this all on its own.
-
-Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes: this is parallelism within a single core.
-If you later switch to a parallel implementation, each individual CPU core will still be able to do instruction-level parallelism.
 
 ```{mermaid}
 flowchart TD
@@ -79,7 +77,7 @@ For one thing, a calculation can't be run if its inputs aren't yet available:
 
 We can say that these are "data dependencies" that prevent instruction-level parallelism, and therefore reduce the code's potential runtime speed.
 
-## Example: Removing data dependencies
+## Example #1: Removing data dependencies from a recursive algorithm
 
 To see the speed impact of ILP, let's look at an example: generating an array of random numbers.
 For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
@@ -267,11 +265,11 @@ generate_random_numbers(1_000_000)
 generate_random_numbers_4(1_000_000)
 ```
 
-## Remove accumulator data dependencies with MapReduce
+## Example #2: Removing accumulator data dependencies with MapReduce
 
 Let's look at another data dependency bottleneck: an accumulator.
-If we sum the values in an array, we keep adding values to the same place, `total`.
-Because we keep accumulating results in the same variable, that variable acts as a data dependency, and prevents instruction-level parallelism:
+If we sum the values in an array, in every iteration of the loop we add values to the same variable, `total`.
+That variable acts as a data dependency, and prevents instruction-level parallelism:
 
 ```{python}
 DATA = np.arange(0, 1_000_000, dtype=np.uint64)
@@ -287,7 +285,7 @@ _ = sum1(DATA)
 ```
 
 We can solve this by having two accumulators, and switching back and forth between them.
-At the end of the algorithm we add the two accumulators.
+At the end of the function we add the two accumulators to get the final sum:
 
 ```{python}
 @njit
@@ -308,7 +306,7 @@ This is a variation of the MapReduce design pattern:
    In this case, the parallelism comes from CPU's ILP.
 2. **Reduce:** Combine all the partial results into one final result.
 
-And as we hoped, it allows more scope for parallelism:
+And as we hoped, the second version allows more scope for parallelism:
 
 ```{python}
 #| echo: false
