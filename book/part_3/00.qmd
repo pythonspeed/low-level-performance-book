@@ -1,3 +1,10 @@
 # Take advantage of modern CPUs' in-core parallelism
 
-TODO
+A reasonable minimal mental model of CPUs is that they execute one instruction at a time.
+Putting aside parallelism between multiple CPU cores, which results in some very complex interactions that we won't be getting into, from the outside the CPU will indeed operate _as if_ it were executing one instruction at a time, in order.
+
+But modern CPUs can actually run code in parallel within a single core, in two different ways:
+
+* **Implicit, automatic parallelism:** Instruction-level parallelism allows the CPU to take pre-existing code and run parts of it in parallel.
+* **Explicit, opt-in parallelism:** Single Instruction Multiple Data (SIMD) instructions are specialized CPU instructions the compiler emits that tells the CPU to run the same operation on a larger-than-usual amount of data.
+  For example, instead of adding four pairs of 64-bit integers one by one, you can add together all four of them with a single SIMD instruction.
