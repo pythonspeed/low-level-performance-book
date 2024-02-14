@@ -1,12 +1,15 @@
 # Make sure you're using modern SIMD instructions
 
+While Numba makes using SIMD automatic and transparent, using SIMD in other programming languages can take some configuration and thought.
+Since this is a more advanced topic, I suggest skipping this chapter on first reading the book and returning to it later if relevant.
+
 ## Three ways to use SIMD
 
 If you want to use SIMD, there are different ways you can get the compiler to generate these specialized CPU instructions:
 
 1. **Auto-vectorization:** Compilers can sometimes generate SIMD instructions automatically, especially if you structure your code appropriately.
    Because this relies on compiler heuristics you have less control, and different compiler versions might give different results.
-   This is what we focused on in earlier chapters.
+   This is what we focused on in the previous chapter.
 2. **Intrinsics:** You directly tell the compiler to use specific CPU instructions, using special compiler features called "intrinsics".
    This doesn't work in all languages, for example it's not easily supported by Numba, and the resulting code is not portable: x86-64 CPU instructions are different than ARM CPU instructions.
    Worse, different x86-64 CPU models support different instructions, as we'll discuss next.
