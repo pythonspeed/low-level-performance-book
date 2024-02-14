@@ -18,7 +18,7 @@ book:
         - part_2/02_aliasing.qmd
         - part_2/03_bulk_objects.qmd
         - part_2/04_undefined_behavior.qmd
-    - part: part_3/00.qmd  # Modern CPUs
+    - part: part_3/00.qmd  # Modern CPUs parallelism
       chapters:
         - part_3/01_instruction_level_parallelism.qmd
         - part_3/02_simd.qmd
@@ -26,7 +26,6 @@ book:
         - part_3/03b_getting_rid_of_branches.qmd
         #- complex_branches.qmd  may be a dead end
         - part_3/04_hidden_branching.qmd
-        - part_3/05_more_compiler_optimizations.qmd
     - part: part_4/00.qmd  # Floating point
       chapters:
         - part_4/01_manual_optimization.qmd
