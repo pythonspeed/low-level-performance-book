@@ -1,0 +1,123 @@
+# Reduce the cost of bounds checking
+
+In addition to explicit branches you might add to your code, there are other less obvious sources of branching that can be automatically added by the compiler.
+In this chapter we'll cover bounds checking, and in the next chapter will cover division by zero.
+
+## Bounds checking adds performance overhead
+
+Let's say you have an NumPy array with 4 items, and you read the 5th item.
+What happens?
+There are two possible behaviors:
+
+* **Error:** Some sort of error is raised, for example an `IndexError` Python exception.
+* **Undefined behavior:** This can range from segfaults to corrupted data to completely arbitrary behavior.
+
+You really want to get an error, not undefined behavior.
+But that means that every time you read or write a value at a given index, you need to check if that index is within bounds.
+And that is an extra branch being inserted into your code.
+It's a predictable branch, since only buggy code will do out-of-bounds reads or writes, but it will slow down your code.
+
+The behavior you get depends on the language you're using:
+
+* C and C++ have no bounds checking; they will happily corrupt memory or crash your program in the name of performance.
+    However, you can use [sanitizers and other tools](https://developers.redhat.com/blog/2021/05/05/memory-error-checking-in-c-and-c-comparing-sanitizers-and-valgrind) to catch problems when testing your code.
+* Numba and Cython (the latter with some caveats, since it compiles to C or C++) allow you to turn bounds checking on or off.
+* Rust always has bounds checking on[^rust].
+
+[^rust]: Technically Rust also has additional `unsafe` APIs to do lookups without bounds checking. Using `unsafe` is tricky, and misuse invalidates all of Rust's safety guarantees, so I would suggest pretending these APIs don't exist.
+
+In Numba, by default bounds checking is disabled, but we can manually enable or disable it to compare the performance impact.
+
+TODO more prose here
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import njit
+
+DATA = np.random.random((1_000_000))
+
+@njit(boundscheck=False)
+def moving_average(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
+    first_day = timeseries[0]
+    for i in range(len(timeseries)):
+        total = 0
+        for j in range(max(i - 6, 0), i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+    return result
+
+# Same function, but bounds checks enabled:
+@njit(boundscheck=True)
+def moving_average_bc(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
+    first_day = timeseries[0]
+    for i in range(len(timeseries)):
+        total = 0
+        for j in range(max(i - 6, 0), i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+    return result
+
+assert np.array_equal(
+    moving_average(DATA),
+    moving_average_bc(DATA)
+)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+moving_average(DATA)
+moving_average_bc(DATA)
+```
+
+## Strategy #1: Leave bounds checking on, live with slower code
+
+Quickly calculating the wrong answer is not very helpful.
+As such, there's a strong argument to be made for always leaving bounds-checking enabled, even if this means a performance hit.
+
+## Strategy #2: Help the compiler optimize bounds checking out of existence
+
+In some cases you can leave bounds checking on, but give enough information to the compiler that it will remove the bounds checks as part of its optimization passes.
+This gives you the best of both worlds: the safety guarantees of bounds checking, without the performance cost.
+I first learned about this strategy from [this excellent article about applying it to Rust](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e).
+
+
+# Same function, but bounds checks enabled:
+
+```{python}
+@njit(boundscheck=True)
+def moving_average_bc_2(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
+    first_day = timeseries[0]
+    for i in range(len(timeseries)):
+        total = 0
+        sub_slice = timeseries[max(i - 6, 0):(i + 1)]
+        for j in range(len(sub_slice)):
+            total += sub_slice[j]
+        result[i] = total / 7
+    return result
+
+assert np.array_equal(
+    moving_average(DATA),
+    moving_average_bc_2(DATA)
+)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+moving_average(DATA)
+moving_average_bc_2(DATA)
+```
+
+## Strategy #2: Enable bounds checking when testing, disable in production
+
+
+
