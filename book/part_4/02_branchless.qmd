@@ -168,16 +168,13 @@ remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_3(NOISY_IMAGE, 1000)
 ```
 
-## Sometimes branchless programming will be slower
+## Don't assume branchless programming is faster
 
-Branchless programming is a trade-off: in return for getting rid of the cost of branch misprediction, you pay the cost of calculating both branches, instead of just one.
+Branchless programming is a trade-off: in return for getting rid of the cost of branch misprediction, you pay the cost of calculating two or more branches, instead of just one.
+That means branchless programming may well be slower, depending on how predictable your branch is, and how expensive the different branches are.
+And that can depend on the specifics of your data.
 
-TODO SIMD goes both ways. branchless might make it easier to generate SIMD code and then that will hopefully undo or prevent the cost of calculating both branches. Or auto-vectorization may be able to turn seemingly branching code into non-branching code use masking. explicit SIMD is another way to avoid branches.
+In addition, SIMD auto-vectorization may or may not be happen depending on how the code is written.
+And if the right SIMD instructions are used, you won't have any branches, since the compiler might be able to use "masked" operations where the instruction can be applied to only some of the data.
 
-TODO For branch prediction purposes, Whether or not branchless code is actually faster depends on the specific data and how predictable the branches are!
-Need to measure with real, or realistic, data that will match predictability.
-Consider whether consistent outcomes are more important than speed of the likely case.
-
-## Beware branchless programming that has branches
-
-Maybe? TODO Subtle point that we're relying on the compiler to notice the `A if Y else B` pattern it can execute both A and B. short circuiting typically means it won't. demonstrate how a complex/side-effecty A can break the code and how to work around it.
+As always, it's critical to benchmark your code with real, or at least realistic, data that will match how the code will run in the real-world.
