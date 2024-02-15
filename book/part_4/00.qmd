@@ -1,27 +1,4 @@
-# Avoiding branches and branch misprediction
+# Branches and their performance impact
 
-TODO
-Another code structure that potentially prevents instruction-level parallelism is a conditional statement: an `if` or equivalent.
-Given there are two possible sets of future instructions, the two branches of the `if`, how can the CPU know which set it should be executing in parallel?
-
-Instead of just stopping execution until the `if` statement can be calculated, the CPU will instead make a guess, a "branch prediction".
-Based on this prediction, the CPU keeps executing in parallel as if that prediction is correct.
-If it turns out to be correct, all is well.
-If the guess turns out to be wrong—a branch misprediction—then the work done so far has to be undone.
-And that can get expensive.
-
-However, many conditionals have very consistent answers for long stretches of time, so branch prediction will end up being very accurate.
-TODO make the below a more complete code example, explaining why loops don't prevent instruction parallelism
-
-For example, if we're iterating over a range of numbers from `0` to `N`, the CPU keeps asking "is `i` smaller than `N`?"
-
-* Is 0 smaller than `N`?
-* Is 1 smaller than `N`?
-* Is 3 smaller than `N`?
-* etc.
-
-The conditional will be true for the first `N` times; only when the iteration ends does the conditional go the other way.
-Given how common this sort of loop is, you can assume the branch predictor will get things right.
-
-Some branches are unpredictable, however, and those can significantly slow down execution.
-We'll talk about how to deal with those in a later chapter.
+`if` statements, `for` loops, `while` loop, and other less obvious code structures can result in branches in your code.
+These branches can cause performance problems, as we'll discuss in the next chapter.

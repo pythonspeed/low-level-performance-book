@@ -1,0 +1,76 @@
+# Avoid unnecessary branches, especially hard-to-predict ones
+
+Branches in your code can cause performance problems for a number of reasons.
+
+## Understand what constitutes a branch
+
+A branch in your code is a place where two different CPU instructions might end up running.
+Consider the following example—depending on the value of `x`, execution will take different paths through the function, executing different code:
+
+```python
+import numpy as np
+from numba import njit
+
+@njit
+def abs(x):
+    if x > 0: # <-- this is a branch
+        x = -x
+    return x
+```
+
+Merely having a conditional statement doesn't mean the code is a branch; the key is executing different CPU instructions depending on the conditional.
+For example, the following function does not have a branch:
+
+```python
+@njit
+def abs_branchless(x):
+    # is_negative will be either 0 or 1:
+    is_negative = np.int64(x > 0)  # <-- this is NOT a branch
+    # choose appropriate multiplier:
+    multiplier = (1, -1)[is_negative]
+    # convert x to a positive version:
+    return x * multiplier
+```
+
+But the following function does have a branch, because the `while` may or may not continue in each iteration:
+
+```python
+@njit
+def loop(x):
+    while x > 0: # <-- this is a branch
+        x = transform(x)
+    return x
+```
+
+## Branches can make it harder to compile efficient code
+
+Code with branches makes it harder for the CPU to generate efficient code:
+
+* **The compiler may have harder time using auto-vectorization to generate SIMD code.**
+  SIMD instructions do the same thing to multiple data values, and a branch might make it impossible to do the same thing.
+  Modern CPUs have "masked" SIMD operations that allow running operations on only a subset of values, and compilers will take advantage of this, but there's a limit to how much these instructions can do.
+* **The compiler might have a harder time optimizing your code in general.**
+  If your code has two different branches, it will be difficult or impossible for the compiler to combine that code with previous and later code.
+
+TODO example
+
+## ILP, branch prediction, and the cost of misprediction
+
+Branches have another performance impact at runtime, due to interactions with instruction-level parallelism.
+As we discussed in a previous chapter, ILP allows the CPU to run multiple instructions in parallel if it knows they don't depend on each other.
+Branches present a problem for ILP: given there are two possible sets of future instructions, for example the two branches of an `if` statement, how can the CPU know which set it should be executing in parallel?
+
+Instead of just stopping execution until the `if` statement can be calculated, the CPU will instead make a guess, a "branch prediction."
+Based on this prediction, the CPU speculatively keeps executing in parallel _as if_ that prediction is correct.
+
+* If the chosen branch turns out to be correct, all is well.
+* If the guess turns out to be wrong—a branch misprediction—then the work done so far has to be undone.
+  And that can slow down your code significantly.
+
+In practice, many conditionals have very consistent answers for long stretches of time, in which case branch prediction will end up being very accurate.
+The main performance issue, then, is when branches are unpredictable.
+
+```{python}
+# TODO example
+```
+

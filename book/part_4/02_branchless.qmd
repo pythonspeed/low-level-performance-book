@@ -1,21 +1,6 @@
 # Get rid of branches with branchless programming
 
-In general, branches can make it harder for both the compiler and CPU to generate and run your code quickly, for a number of reasons.
-Some of the reasons depend on the CPU's ability to predict branches, which means you will get different performance results depending on the data:
-
-* **Mispredicting branches in the CPU is very expensive.**
-  Recall that your CPU tries to predict which branch your code will take, so it can speculatively continue with executing instructions in parallel.
-  When your conditionals' outcomes are hard to predict, the CPU may speculatively execute the wrong branch, and then have to undo all that work and go back and execute the other branch.
-
-In addition, the compiler may generate less efficient code, with slow downs that are broader and less dependent on the specific data:
-
-* **The compiler may have harder time using auto-vectorization to generate SIMD code.**
-  SIMD instructions do the same thing to multiple data values, and a branch might make it impossible to do the same thing.
-  There are SIMD instructions designed to help in these situations, but there's a limit to how much they can do.
-* **The compiler might have a harder time optimizing your code in general.**
-  If your code has two branches, it is harder for the compiler to combine that code with previous and later code.
-
-One solution to these problems is branchless programming, where we restructure code to get rid of branches altogether.
+One potential solution to the performance costs of branches is branchless programming, where we restructure code to get rid of branches altogether.
 
 ```{python}
 import numpy as np

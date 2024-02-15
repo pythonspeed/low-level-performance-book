@@ -25,9 +25,10 @@ book:
         - part_3/03_more_about_simd.qmd
     - part: part_4/00.qmd  # Branches
       chapters:
-        - part_4/01_getting_rid_of_branches.qmd
-        - part_4/02_edge_case_branches.qmd
-        - part_4/03_hidden_branching.qmd
+        - part_4/01_avoid_branches.qmd
+        - part_4/02_branchless.qmd
+        - part_4/03_edge_case_branches.qmd
+        - part_4/04_hidden_branching.qmd
     - part: part_5/00.qmd  # Floating point
       chapters:
         - part_5/01_manual_optimization.qmd
@@ -42,6 +43,7 @@ book:
     - part: part_7/00.qmd  # Additional topics
       chapters: []
         # non-contiguous views' impact on compiler?
+        # more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
     - part: "More examples"
       chapters:
         - part_8/01_example_rescale_contrast.qmd
