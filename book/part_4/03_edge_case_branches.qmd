@@ -1,4 +1,8 @@
-# Get rid of branches by handling edge cases separately
+# Get rid of edge case branches
+
+Some branches are there to handle a rare edge case.
+Given most data won't be an edge choice, the branch choice will easy to predict.
+Even so, calling the same code over and over in an inner loop is a waste of resources; ideally you'd just handle edge cases separately.
 
 ```{python}
 # Import the dependencies we'll need:
@@ -12,6 +16,11 @@ from numba import njit
 ```
 
 ## Example: A literal edge case
+
+Let's say we have a daily time series of values between 0 and 1, and we want to calculate the 7-day moving average.
+For most values we just calculate the average of the previous (inclusive) 7 values.
+But for the first few values we don't have 7 previous values.
+There are various strategies to deal with this missing data, and in this case we'll just repeat the value in the first day:
 
 ```{python}
 DATA = np.random.random((1_000_000,))
@@ -31,6 +40,13 @@ def moving_average(timeseries):
     return result
 ```
 
+One performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
+
+## Don't use branchless code when the branch is predictable
+
+In the previous chapter we saw how branchless code can replace branches, where the main benefit is getting rid of mispredicted branches.
+We can do that here:
+
 ```{python}
 @njit
 def moving_average_2(timeseries):  # branchless
@@ -46,6 +62,22 @@ def moving_average_2(timeseries):  # branchless
 
 assert np.array_equal(moving_average(DATA), moving_average_2(DATA))
 ```
+
+This isn't a great improvement, however, because the branch we just replaced is very predictable.
+After the first 6 iterations, it's never taken.
+So a branchless solution is still doing extra, unnecessary work for the vast majority of iterations.
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branch_mispredictions
+moving_average(DATA)
+moving_average_2(DATA)
+```
+
+## Move edge-case handling into a separate code path
+
+A better solution is to handle the first 6 days separately, with their own code path.
+That means the rest of the calculations can safely assume that 7 days of data are always available:
 
 ```{python}
 @njit
@@ -71,13 +103,11 @@ def moving_average_3(timeseries):
 assert np.array_equal(moving_average(DATA), moving_average_3(DATA))
 ```
 
+This version is faster, by removing work from the main loop:
+
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
 moving_average(DATA)
-moving_average_2(DATA)
 moving_average_3(DATA)
 ```
-
-## Wrapping
-

@@ -1,0 +1,16 @@
+## Replace wrapping-prevention logic with larger data types
+
+One edge case you will sometimes encounter is wrapping around in limited integer types.
+For example, `np.int8` has a minimum value of -128 and maximum value of 127.
+If you do a mathematical operation that results in a value outside those bounds, it will wrap around, which is not usually what you want:
+
+```{python}
+arr = np.array([12, 120, -120], dtype=np.int8)
+arr2 = np.array([100, 10, -13], dtype=np.int8)
+print(arr + arr2)
+```
+
+Notice how `np.int8(120) + np.int8(10) == np.int8(-126)`.
+
+In many situations, instead of wrapping you want saturation, staying with the largest (or smallest) value when you would otherwise go past it.
+And this requires a bunch of `if` statements.
