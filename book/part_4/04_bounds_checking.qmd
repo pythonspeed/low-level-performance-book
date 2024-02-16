@@ -27,6 +27,7 @@ The behavior you get depends on the language you're using:
 [^rust]: Technically Rust also has additional `unsafe` APIs to do lookups without bounds checking. Using `unsafe` is tricky, and misuse invalidates all of Rust's safety guarantees, so I would suggest pretending these APIs don't exist.
 
 In Numba, by default bounds checking is disabled, but we can manually enable or disable it to compare the performance impact.
+As an example we'll using a moving average function again, but this time we'll just use zeros to fill in the missing first few values.
 
 ```{python}
 #| echo: false
@@ -73,20 +74,29 @@ moving_average(DATA)
 moving_average_bc(DATA)
 ```
 
-## Strategy #1: Leave bounds checking on, live with slower code
+## Strategy #1: Enable bounds checking when testing, disable in production
+
+If you don't want to enable bounds checking in production, you should at least enable it when running tests.
+Combined with a thorough test suite, using both realistic data and property-based testing using [Hypothesis](https://hypothesis.readthedocs.io/), you can hopefully catch any bugs causing out-of-bounds reads or writes, and fix them.
+If your code doesn't have bugs, disabling bounds checking in production isn't a problem.
+
+That being said, decades of experience suggests that it is _very_ difficult to catch all such bugs once your software is complex enough.
+
+## Strategy #2: Leave bounds checking on, live with slower code
 
 Quickly calculating the wrong answer is not very helpful.
 As such, there's a strong argument to be made for always leaving bounds-checking enabled, even if this means a performance hit.
 
-## Strategy #2: Help the compiler optimize bounds checking out of existence
+## Strategy #3: Help the compiler optimize bounds checking out of existence
 
-In some cases you can leave bounds checking on, but give enough information to the compiler that it will remove the bounds checks as part of its optimization passes.
+In some cases you can leave bounds checking on, but provide enough information to the compiler that it will remove the bounds checks as part of its optimization passes.
 This gives you the best of both worlds: the safety guarantees of bounds checking, without the performance cost.
 I first learned about this strategy from [this excellent article about applying it to Rust](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e).
 
-The general approach is to figure out idioms that are transparent enough to the compiler that it can prove to itself that the bounds will never be violated.
+The general approach is to figure out idioms that are transparent enough to the compiler that it can prove to itself that the bounds will never be violated, or alternatively providing asserts that give it more information.
 The specific approach is language-specific, or rather compiler-specific.
 
+Let's start with a trivial example.
 To reduce duplication of code, we'll write a little utility to generate two `@njit` versions of the same function, with and without bounds checking:
 
 ```{python}
@@ -97,7 +107,7 @@ def with_and_without_boundscheck(f):
     return (with_bc, without_bc)
 ```
 
-Next, we'll use the standard technique we've been using for iteration, a `for` loop over a `range(len(arr))`, and compare runtime with and without bounds checking:
+First, we'll use the standard technique we've been using for iteration, a `for` loop over a `range(len(arr))`, and compare runtime with and without bounds checking:
 
 ```{python}
 DATA = np.arange(0, 1_000_000, dtype=np.uint64)
@@ -119,27 +129,52 @@ sum_for_bc(DATA)
 sum_for_no_bc(DATA)
 ```
 
-Clearly this idiom is not enough to convince the compiler.
-But what if we switched away from a `for` loop to a more explicit `while` loop?
+Clearly this idiom is not enough to convince the compiler to optimize bounds checks away.
+
+How about if we do `for value in arr:`?
+This seems like it ought to avoid bounds checking altogether.
 
 ```{python}
-def sum_while(arr):
+DATA = np.arange(0, 1_000_000, dtype=np.uint64)
+
+def sum_for2(arr):
     total = 0
-    i = 0
-    while i < arr.shape[0]:
-        total += arr[i]
-        i += 1
+    for value in arr:
+        total += value
     return total
 
-sum_while_bc, sum_while_no_bc = with_and_without_boundscheck(sum_while)
-assert sum_while_bc(DATA) == sum_while_no_bc(DATA)
+sum_for2_bc, sum_for2_no_bc = with_and_without_boundscheck(sum_for2)
+assert sum_for2_bc(DATA) == sum_for2_no_bc(DATA)
 ```
 
 ```{python}
 #| echo: false
 %%compare_timing
-sum_while_bc(DATA)
-sum_while_no_bc(DATA)
+sum_for2_bc(DATA)
+sum_for2_no_bc(DATA)
+```
+
+Bounds checking has no cost... but now our function is much slower even with bounds checking disabled.
+So it seems like we want to keep the `arr[i]`, because some experimentation suggests it [makes it easier for auto-vectorization to happen](https://github.com/numba/numba/issues/9210), while still doing `for value in arr:`.
+
+Here's what I came up with:
+
+```{python}
+def sum_for3(arr):
+    total = 0
+    for i, _ in enumerate(arr):
+        total += arr[i]
+    return total
+
+sum_for3_bc, sum_for3_no_bc = with_and_without_boundscheck(sum_for3)
+assert sum_for3_bc(DATA) == sum_for3_no_bc(DATA)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+sum_for3_bc(DATA)
+sum_for3_no_bc(DATA)
 ```
 
 Success! Both versions are almost the same speed, which means we can leave bounds checking on and still get the safety benefits without a large performance hit.
@@ -150,16 +185,13 @@ The new version has no performance impact from bounds checking, and even better,
 ```{python}
 def moving_average_2(timeseries):
     result = np.empty(timeseries.shape, dtype=np.float64)
-    i = 0
-    while i < len(timeseries):
+    for i, _ in enumerate(timeseries):
         total = 0
         # Get a slice of timeseries, so we can apply the
         # while loop technique here as well.
         window = timeseries[max(i - 6, 0):i + 1]
-        j = 0
-        while j < len(window):
+        for j, _ in enumerate(window):
             total += window[j]
-            j += 1
         result[i] = total / 7
         i += 1
     return result
@@ -184,11 +216,3 @@ moving_average(DATA)
 moving_average_2_bc(DATA)
 moving_average_2_no_bc(DATA)
 ```
-
-## Strategy #3: Enable bounds checking when testing, disable in production
-
-If you don't want to enable bounds checking in production, you should at least enable it when running tests.
-Combined with a thorough test suite, using both realistic data and property-based testing using [Hypothesis](https://hypothesis.readthedocs.io/), you can hopefully catch any bugs causing out-of-bounds reads or writes, and fix them.
-If your code doesn't have bugs, disabling bounds checking in production isn't a problem.
-
-That being said, decades of experience suggests that it is _very_ difficult to catch all such bugs once your software is complex enough.
