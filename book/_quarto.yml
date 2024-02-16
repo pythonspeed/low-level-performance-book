@@ -18,6 +18,7 @@ book:
         - part_2/02_aliasing.qmd
         - part_2/03_bulk_objects.qmd
         - part_2/04_undefined_behavior.qmd
+        - part_2/05_writing_for_the_compiler.qmd
     - part: part_3/00.qmd  # Modern CPUs parallelism
       chapters:
         - part_3/01_instruction_level_parallelism.qmd

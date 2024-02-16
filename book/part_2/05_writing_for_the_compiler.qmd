@@ -1,0 +1,48 @@
+# Tune your code for your compiler's quirks
+
+Your compiler is not magic: it will have bugs, limitations, and quirks.
+If you want to maximize your code's speed, you might need to take them into account.
+This is of course _very_ specific to your language, compiler, and version of compiler, so these sort of optimizations can be very brittle.
+Like tuning your code for a specific CPU model, consider them as a last resource.
+
+To demonstrate, we'll demonstrate a limitation of Numba's options for looping.
+In particular, we're going to look at the performance impacts of two different ways of looping over an array.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import njit
+
+@njit
+def sum_direct_for(arr):
+    total = 0
+    for value in arr:
+        total += value
+    return total
+
+@njit
+def sum_indexing(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+
+DATA = np.arange(0, 1_000_000, dtype=np.uint64)
+assert sum_direct_for(DATA) == sum_indexing(DATA)
+```
+
+If we compare these two functions, the second is much faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+sum_direct_for(DATA)
+sum_indexing(DATA)
+```
+
+I filed [a bug against Numba about this](https://github.com/numba/numba/issues/9210), so this difference in performance may eventually go away.
+And in a later chapter we'll see the `for value in arr:` idiom actually has some benefits.
