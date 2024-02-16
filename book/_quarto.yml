@@ -28,7 +28,8 @@ book:
         - part_4/01_avoid_branches.qmd
         - part_4/02_branchless.qmd
         - part_4/03_edge_case_branches.qmd
-        - part_4/04_hidden_branching.qmd
+        - part_4/04_bounds_checking.qmd
+        - part_4/05_divide_by_zero.qmd
     - part: part_5/00.qmd  # Floating point
       chapters:
         - part_5/01_manual_optimization.qmd
