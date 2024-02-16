@@ -41,7 +41,7 @@ from numba import njit
 DATA = np.random.random((1_000_000))
 
 @njit(boundscheck=False)
-def moving_average(timeseries):
+def moving_average_no_bc(timeseries):
     result = np.empty(timeseries.shape, dtype=np.float64)
     for i in range(len(timeseries)):
         total = 0
@@ -62,17 +62,21 @@ def moving_average_bc(timeseries):
     return result
 
 assert np.array_equal(
-    moving_average(DATA),
-    moving_average_bc(DATA)
+    moving_average_bc(DATA),
+    moving_average_no_bc(DATA)
 )
 ```
+
+If we compare the two versions, the one with bounds checking unfortunately runs rather slower:
 
 ```{python}
 #| echo: false
 %%compare_timing
-moving_average(DATA)
 moving_average_bc(DATA)
+moving_average_no_bc(DATA)
 ```
+
+What can you do to balance safety and speed?
 
 ## Strategy #1: Enable bounds checking when testing, disable in production
 
@@ -131,8 +135,7 @@ sum_for_no_bc(DATA)
 
 Clearly this idiom is not enough to convince the compiler to optimize bounds checks away.
 
-How about if we do `for value in arr:`?
-This seems like it ought to avoid bounds checking altogether.
+Another thing we can try is `for value in arr:`, since this seems like it ought to avoid bounds checking altogether.
 
 ```{python}
 DATA = np.arange(0, 1_000_000, dtype=np.uint64)
@@ -147,6 +150,8 @@ sum_for2_bc, sum_for2_no_bc = with_and_without_boundscheck(sum_for2)
 assert sum_for2_bc(DATA) == sum_for2_no_bc(DATA)
 ```
 
+And as expected, bounds checking doesn't _add_ much cost... but unfortunately our function is much slower even with bounds checking disabled.
+
 ```{python}
 #| echo: false
 %%compare_timing
@@ -154,7 +159,6 @@ sum_for2_bc(DATA)
 sum_for2_no_bc(DATA)
 ```
 
-Bounds checking has no cost... but now our function is much slower even with bounds checking disabled.
 So it seems like we want to keep the `arr[i]`, because some experimentation suggests it [makes it easier for auto-vectorization to happen](https://github.com/numba/numba/issues/9210), while still doing `for value in arr:`.
 
 Here's what I came up with:
@@ -180,7 +184,7 @@ sum_for3_no_bc(DATA)
 Success! Both versions are almost the same speed, which means we can leave bounds checking on and still get the safety benefits without a large performance hit.
 
 With a little experimentation, I was able to apply the technique to the moving average function above.
-The new version has no performance impact from bounds checking, and even better, it's faster!
+The new version has a much more modest performance impact from bounds checking, and even better, it's faster!
 
 ```{python}
 def moving_average_2(timeseries):
@@ -200,11 +204,11 @@ moving_average_2_bc, moving_average_2_no_bc = with_and_without_boundscheck(
     moving_average_2
 )
 assert np.array_equal(
-    moving_average(DATA),
+    moving_average_no_bc(DATA),
     moving_average_2_bc(DATA)
 )
 assert np.array_equal(
-    moving_average(DATA),
+    moving_average_no_bc(DATA),
     moving_average_2_no_bc(DATA)
 )
 ```
@@ -212,7 +216,7 @@ assert np.array_equal(
 ```{python}
 #| echo: false
 %%compare_timing
-moving_average(DATA)
+moving_average_no_bc(DATA)  # our original function
 moving_average_2_bc(DATA)
 moving_average_2_no_bc(DATA)
 ```
