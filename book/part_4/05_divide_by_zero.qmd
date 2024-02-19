@@ -9,9 +9,9 @@ If your programming language has any sort of error handling for divide by zero, 
 This is complicated by the fact that there are two possible policies, one for integers and one for floating point numbers.
 For performance purposes, the languages that add these hidden branches for potential division by zero are:
 
-* **Rust:** Integer division only, since it will cause a panic.
-* **Numba:** Both floating point and integer division by zero will cause a `ZeroDivisionError` exception by default.
-* **Cython:** Both floating point and integer division by zero will cause a `ZeroDivisionError` exception by default.
+* **Rust:** Integer division adds a branch to check for division by zero, floating point division by zero returns `inf`/`-inf`/`nan` and therefore doesn't need extra branches.
+* **Numba:** By default, both floating point and integer division by zero will cause a `ZeroDivisionError` exception.
+* **Cython:** By default, both floating point and integer division by zero will cause a `ZeroDivisionError` exception.
 
 ```{python}
 #| echo: false
@@ -38,7 +38,7 @@ FLOAT_DATA2 = np.ones(1_000_000, dtype=np.float64)
 def add(arr, arr2):
     out = np.empty(arr.shape, dtype=arr.dtype)
     for i in range(len(arr)):
-        out[i] = arr[i] + arr2[i]
+        out[i] = arr[i] / arr2[i]
     return out
 
 @njit(boundscheck=False)
@@ -66,14 +66,14 @@ Our hypothesis is that the reason the `float_divide()` function wasn't auto-vect
 
 How to fix this?
 
-## Strategy #1: Get rid of the branch
+## Switch to a mode without zero-division branches
 
 Numba and Cython allow you to disable the `ZeroDivisionError` check that adds an additional branch.
 For Numba you do this by choosing the "NumPy error model", which means:
 
 * Integer division by zero returns zero, which is perhaps not what you'd expect.
   Plus, it doesn't actually help much with speeding up integer division.
-  The Cython equivalent (`cdivision`) probably does help, but has a large number of semantic impacts so [read the documentation carefully](https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives).
+  The Cython equivalent (`cdivision`) probably does help performance for integer division, but has a large number of semantic impacts so [read the documentation carefully](https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives).
 * Floating point division by zero gives `inf`, `NaN`, or `-inf` depending on whether it's dividing a positive number, zero, or a negative number.
 
 Here's how we enable this mode:
