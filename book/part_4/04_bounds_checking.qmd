@@ -71,7 +71,7 @@ If we compare the two versions, the one with bounds checking unfortunately runs 
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches
 moving_average_bc(DATA)
 moving_average_no_bc(DATA)
 ```
@@ -128,7 +128,7 @@ assert sum_for_bc(DATA) == sum_for_no_bc(DATA)
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches
 sum_for_bc(DATA)
 sum_for_no_bc(DATA)
 ```
@@ -154,7 +154,7 @@ And as expected, bounds checking doesn't _add_ much cost... but unfortunately ou
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches
 sum_for2_bc(DATA)
 sum_for2_no_bc(DATA)
 ```
@@ -176,7 +176,7 @@ assert sum_for3_bc(DATA) == sum_for3_no_bc(DATA)
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches
 sum_for3_bc(DATA)
 sum_for3_no_bc(DATA)
 ```
@@ -203,6 +203,7 @@ def moving_average_2(timeseries):
 moving_average_2_bc, moving_average_2_no_bc = with_and_without_boundscheck(
     moving_average_2
 )
+
 assert np.array_equal(
     moving_average_no_bc(DATA),
     moving_average_2_bc(DATA)
@@ -215,7 +216,7 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches
 moving_average_no_bc(DATA)  # our original function
 moving_average_2_bc(DATA)
 moving_average_2_no_bc(DATA)
