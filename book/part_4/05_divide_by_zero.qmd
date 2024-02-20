@@ -25,7 +25,7 @@ from numba import njit
 
 ## Example: The potential for divide by zero adds branches
 
-In some cases the compiler can optimize the check for zero division so it only happens once, if you're repeatedly dividing by the same number.
+In some cases the compiler may be able to optimize the check for zero division so it only happens once, for example if you're repeatedly dividing by the same number.
 In other cases, however, the compiler can't help.
 Let's compare addition to float division, and see how many branches each version of the code has.
 We'll disable bounds checking so that its impact doesn't confuse the impact of division:
