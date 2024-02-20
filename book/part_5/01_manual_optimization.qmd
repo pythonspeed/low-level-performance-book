@@ -11,7 +11,7 @@ from numba import njit
 %load_ext book_magics
 ```
 
-## Extracting repetitive calculations
+## Extract repetitive calculations
 
 ```{python}
 generator = np.random.default_rng(0)
@@ -52,7 +52,7 @@ print(np.array_equal(result, result_2))
 print(np.abs(result - result_2).mean())
 ```
 
-## Division into multiplication
+## Use faster multiplication instead of division
 
 ```{python}
 @njit
@@ -71,6 +71,7 @@ print(np.abs(result - result_3).mean())
 ```{python}
 #| echo: false
 %%compare_timing
-volume_liters_2(SIZES_INCHES)
+volume_liters(SIZES_INCHES)
 volume_liters_3(SIZES_INCHES)
 ```
+
