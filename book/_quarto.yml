@@ -43,15 +43,12 @@ book:
         - part_6/03_smaller_data_types.qmd
         - part_6/04_n_dimensional.qmd
         - part_6/05_learn_implementation_details.qmd
-    - part: part_7/00.qmd  # Additional topics
-      chapters: []
-        # non-contiguous views' impact on compiler?
-        # more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
     - part: "More examples"
       chapters:
-        - part_8/01_example_rescale_contrast.qmd
-        - part_8/02_example_dithering.qmd
-        - part_8/03_example_memory_layout.qmd
+        - part_7/01_example_rescale_contrast.qmd
+        - part_7/02_example_dithering.qmd
+        - part_7/03_example_memory_layout.qmd
+    # conclusion.qmd: more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
   appendices:
     - appendices/01_when.qmd
     - appendices/02_prerequisites.qmd
