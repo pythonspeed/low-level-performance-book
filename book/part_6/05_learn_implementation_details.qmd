@@ -1,0 +1,9 @@
+# Understand how abstractions lay out their memory
+
+In the previous chapter we saw how the order of iteration over an N-dimensional array can have a performance impact.
+This is an example of a broader point: you need to understand how data structures structure their memory, in order to get the most performance.
+Point another way, while abstractions are critical to writing software, for the best performance you will need to peer behind the curtain and see how the code really works.
+
+In this chapter we'll look at a particular example, NumPy views, but similar issues apply to any data structure you are using.
+
+## TODO
