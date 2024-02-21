@@ -42,6 +42,8 @@ But when we start from zero, the accumulation of small numbers eventually become
 assert add_in_order(0, SMALL, LARGE) > LARGE
 ```
 
-Because of this lack of flexibility in re-ordering floating point operations, and more broadly the ways in which floating point is complex to deal with, the compiler can do less.
-And that means fewer optimizations and slower code.
-In the next few chapters, then, we'll discuss ways to speed up your floating point calculations.
+Recall that the compiler will only apply optimizations if it knows the result will be _identical_ to the original code.
+Clearly, re-ordering floating point calculations does not always give identical results!
+As a result, the compiler can apply fewer optimizations to floating-point calculations than it would to equivalent integer calculations, resulting in slower code.
+
+Keeping this problem in mind, in the next few chapters we'll discuss ways to speed up your floating point calculations.

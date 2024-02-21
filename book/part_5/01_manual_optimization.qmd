@@ -1,5 +1,9 @@
 # Manually optimize floating-point calculations
 
+As we discussed in the previous chapter, the compiler won't apply many "obvious" optimization to floating-point calculations because the result will be different.
+But it might only be _slightly_ different, or different in ways that you, the author of the code, know don't matter.
+So there's nothing stopping you from applying similar optimizations manually.
+
 ```{python}
 # Import the dependencies we'll need:
 import numpy as np
@@ -11,34 +15,55 @@ from numba import njit
 %load_ext book_magics
 ```
 
-## Extract repetitive calculations
+## Extract and hoist repetitive calculations out of a loop
+
+Imagine we have the dimensions of a series of boxes sold by our company, stored in array that has triples of width, height.
+We want to calculate the volume of these boxes in liters, so we first must convert the inches to centimeters by multiplying by `2.54`.
+
+Here's what a first pass calculation might look like:
 
 ```{python}
 generator = np.random.default_rng(0)
+# Containers are between 1 and 10 inches in each dimension:
 SIZES_INCHES = generator.uniform(1, 10, (1_000_000, 3)).astype(np.float32)
 
 @njit
 def volume_liters(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     for i in range(sizes.shape[0]):
-        width, height, depth = sizes[i][0], sizes[i][1], sizes[i][2]
-        result[i] = (width * 2.54 * height * 2.54 * depth * 2.54) / 1000.0
+        width_in, height_in, depth_in = sizes[i]
+        # Convert to centimeters:
+        width_cm = width_in * 2.54
+        height_cm = height_in * 2.54
+        depth_cm = depth_in * 2.54
+        # Convert to liters:
+        result[i] = (width_cm * height_cm * depth_cm) / 1000.0
     return result
 
 result = volume_liters(SIZES_INCHES)
+```
 
+With a little tweaking, we can move part of the calculation out of the inner loop, hopefully resulting in faster code:
+
+```{python}
 @njit
 def volume_liters_2(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     in3_to_cm3 = 2.54 * 2.54 * 2.54
     for i in range(sizes.shape[0]):
-        width, height, depth = sizes[i][0], sizes[i][1], sizes[i][2]
-        result[i] = (width * height * depth * in3_to_cm3) / 1000.0
+        width_in, height_in, depth_in = sizes[i]
+        result[i] = (width_in * height_in * depth_in * in3_to_cm3) / 1000.0
     return result
 
 result_2 = volume_liters_2(SIZES_INCHES)
+
+# This gives us different results...
+assert not np.array_equal(result, result_2)
+# ...but only very slightly different:
+assert np.abs(result - result_2).max() < 0.001
 ```
 
+And our new version is faster:
 
 ```{python}
 #| echo: false
@@ -47,26 +72,32 @@ volume_liters(SIZES_INCHES)
 volume_liters_2(SIZES_INCHES)
 ```
 
-```{python}
-print(np.array_equal(result, result_2))
-print(np.abs(result - result_2).mean())
-```
 
 ## Use faster multiplication instead of division
+
+In general, floating-point multiplication is faster than division.
+So another optimization we can apply is replacing division by `X` with multiplication by `1 / X`.
+Again, the compiler won't apply this optimization by default because it may change the results slightly.
 
 ```{python}
 @njit
 def volume_liters_3(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
-    in3_to_liter = 2.54 * 2.54 * 2.54 / 1000.0
+    in3_to_liter = (2.54 * 2.54 * 2.54) / 1000
     for i in range(sizes.shape[0]):
-        width, height, depth = sizes[i][0], sizes[i][1], sizes[i][2]
-        result[i] = width * height * depth * in3_to_liter
+        width_in, height_in, depth_in = sizes[i]
+        result[i] = width_in * height_in * depth_in * in3_to_liter
     return result
 
 result_3 = volume_liters_3(SIZES_INCHES)
-print(np.abs(result - result_3).mean())
+
+# This gives us different results...
+assert not np.array_equal(result, result_3)
+# ...but again, only very slightly different:
+assert np.abs(result - result_3).max() < 0.001
 ```
+
+And the new version is indeed faster:
 
 ```{python}
 #| echo: false
