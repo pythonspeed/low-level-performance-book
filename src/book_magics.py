@@ -2,6 +2,7 @@ from timeit import timeit
 from io import BytesIO
 import locale
 from time import perf_counter_ns, sleep
+import gc
 
 from IPython.core.magic import (
     register_cell_magic,
@@ -22,9 +23,12 @@ locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
 
 def ns_per_iteration(line, globals):
+    gc.disable()
     estimated_ns = int(timeit(line, globals=globals, number=10, timer=perf_counter_ns) / 10)
     iterations = max(10_000_000 // estimated_ns, 100)
-    return timeit(line, globals=globals, number=iterations, timer=perf_counter_ns) // iterations
+    result = timeit(line, globals=globals, number=iterations, timer=perf_counter_ns) // iterations
+    gc.enable()
+    return result
 
 def _validate_ns_per_iteration():
     elapsed_ns = ns_per_iteration("sleep(0.001)", globals())
@@ -130,6 +134,7 @@ def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,
 @register_cell_magic
 def compare_timing(line, cell, local_ns):
     numba_config.DISABLE_JIT = True
+
     arguments = parse_argstring(compare_timing, line)
     measurements = [m for m in arguments.measure.split(",") if m]
 
