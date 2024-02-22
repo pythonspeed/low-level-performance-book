@@ -33,8 +33,8 @@ Here's how we'd do it with NumPy:
 
 ```{python}
 def mean_threshold_numpy(image):
-    mean = image.mean()
-    result = (image > mean).astype(np.uint8)
+    threshold = image.mean()
+    result = (image > threshold).astype(np.uint8)
     result *= 255
     return result
 
@@ -50,7 +50,7 @@ And here's what the result looks like:
 
 Our goal is to make this code faster.
 As a first pass, we can write a implementation using Numba.
-Because we're accumulating a large number of `uint8` to create the same, we need to store it in a larger value, so we'll use a `float64`:
+Because we're accumulating a large number of `uint8` to create the same, we need to store it in a larger type, so we'll use a `float64`:
 
 ```{python}
 from numba import float64
@@ -62,11 +62,11 @@ def mean_threshold_1(image):
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
             total += image[y, x]
-    mean = total / image.size
+    threshold = total / image.size
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
-            result[y, x] = (image[y, x] >= mean) * 255
+            result[y, x] = (image[y, x] >= threshold) * 255
     return result
 
 THRESHOLD_1 = mean_threshold_1(IMAGE)
@@ -95,11 +95,11 @@ def mean_threshold_2(image):
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
             total += image[y, x]
-    mean = total / image.size
+    threshold = total / image.size
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
-            result[y, x] = (image[y, x] >= mean) * 255
+            result[y, x] = (image[y, x] >= threshold) * 255
     return result
 
 THRESHOLD_2 = mean_threshold_2(IMAGE)
@@ -131,11 +131,11 @@ def mean_threshold_3(image):
             total += image[y, x]
 
     # Convert mean to uint8 before we do the comparison:
-    mean = uint8(np.round(total / image.size))
+    threshold = uint8(np.round(total / image.size))
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
-            result[y, x] = (image[y, x] >= mean) * 255
+            result[y, x] = (image[y, x] >= threshold) * 255
     return result
 
 THRESHOLD_3 = mean_threshold_3(IMAGE)
