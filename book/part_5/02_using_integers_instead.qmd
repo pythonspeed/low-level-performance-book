@@ -17,71 +17,121 @@ from numba import njit
 %load_ext book_magics
 ```
 
-
 ```{python}
-generator = np.random.default_rng(0)
-DATA = generator.integers(0, 256, (1_000_000,), dtype=np.uint8)
+from skimage import io
 
-from numba import float32, int32
-
-@njit
-def scale(arr, shift, factor):
-    factor = float32(factor)
-    shift = float32(shift)
-    result = np.empty(arr.shape, dtype=arr.dtype)
-    for i in range(len(arr)):
-        value = arr[i] + shift
-        if value < 0:
-            value = 0
-        value *= factor
-        if value > 255:
-            value = 255
-        result[i] = np.round(value)
-    return result
-
-print(scale(DATA, -20, 1.1)[:20])
-```
-
-```{python}
-@njit
-def scale_2(arr, shift, factor):
-    factor = float32(factor)
-    shift = float32(shift)
-    result = np.empty(arr.shape, dtype=arr.dtype)
-    for i in range(len(arr)):
-        value = arr[i] + shift
-        value = 0 if value < 0 else value
-        value *= factor
-        value = 255 if value > 255 else value
-        result[i] = np.round(value)
-    return result
-
-@njit
-def scale_3(arr, shift, factor):
-    factor = int32(np.round(float32(factor) * 1024))
-    shift = int32(shift)
-    result = np.empty(arr.shape, dtype=arr.dtype)
-    for i in range(len(arr)):
-        value = arr[i] + shift
-        value = 0 if value < 0 else value
-        value = (value * factor) >> 10
-        value = 255 if value > 255 else value
-        result[i] = value
-    return result
-
-print(DATA[:20])
-print(scale(DATA, -20, 1.1)[:20])
-print(scale_3(DATA, -20, 1.1)[:20])
-
-assert np.array_equal(scale(DATA, -20, 1.1), scale_2(DATA, -20, 1.1))
-#assert np.array_equal(scale(DATA, -20, 1.1), scale_3(DATA, -20, 1.1))
+IMAGE = io.imread("../images/hallway.jpg")
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing
-scale(DATA, -20, 1.1)
-scale_2(DATA, -20, 1.1)
-scale_3(DATA, -20, 1.1)
+%display_image IMAGE
 ```
 
+```{python}
+@njit
+def mean_threshold_numpy(image):
+    mean = image.mean()
+    return image > mean
+
+THRESHOLD_0 = mean_threshold_numpy(IMAGE)
+```
+
+```{python}
+#| echo: false
+%display_image THRESHOLD_0
+```
+
+```{python}
+from numba import float64
+
+@njit
+def mean_threshold(image):
+    # Image is uint8, so we need an accumulator that can hold larger values:
+    total = float64(0.0)
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            total += image[y, x]
+    mean = total / image.size
+    result = np.empty(image.shape, dtype=np.uint8)
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            result[y, x] = (image[y, x] >= mean) * 255
+    return result
+
+THRESHOLD_1 = mean_threshold(IMAGE)
+```
+
+```{python}
+#| echo: false
+%display_image THRESHOLD_1
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+mean_threshold_numpy(IMAGE)
+mean_threshold(IMAGE)
+```
+
+```{python}
+from numba import uint64, uint8
+
+@njit
+def mean_threshold_2(image):
+    total = uint64(0)
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            total += image[y, x]
+    mean = total / image.size
+    result = np.empty(image.shape, dtype=np.uint8)
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            result[y, x] = (image[y, x] >= mean) * 255
+    return result
+
+THRESHOLD_2 = mean_threshold_2(IMAGE)
+```
+
+```{python}
+#| echo: false
+%display_image THRESHOLD_2
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+mean_threshold(IMAGE)
+mean_threshold_2(IMAGE)
+```
+
+```{python}
+@njit
+def mean_threshold_3(image):
+    total = uint64(0)
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            total += image[y, x]
+
+    # Convert mean to uint8 before we do the comparison:
+    mean = uint8(np.round(total / image.size))
+    result = np.empty(image.shape, dtype=np.uint8)
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            result[y, x] = (image[y, x] >= mean) * 255
+    return result
+
+THRESHOLD_3 = mean_threshold_3(IMAGE)
+```
+
+```{python}
+#| echo: false
+%display_image THRESHOLD_3
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+mean_threshold(IMAGE)
+mean_threshold_3(IMAGE)
+```
