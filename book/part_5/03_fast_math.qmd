@@ -1,0 +1,138 @@
+# Use "fast math" to tell the compiler to optimize floating point
+
+By default, the compiler will be cautious about optimizing floating point code.
+However, most compilers include a "fast math" option that tells the compiler that it is OK to change code in ways that change the results.
+If enabled, the compiler will apply optimizations it wouldn't otherwise do, hopefully resulting in faster code.
+
+## An example: enabling fast math in Numba
+
+```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import njit
+```
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+Let's return to our original example:
+
+```{python}
+generator = np.random.default_rng(0)
+# Containers are between 1 and 10 inches in each dimension:
+SIZES_INCHES = generator.uniform(1, 10, (1_000_000, 3)).astype(np.float32)
+
+@njit
+def volume_liters(sizes):
+    result = np.empty((sizes.shape[0],), dtype=np.float32)
+    for i in range(sizes.shape[0]):
+        width_in, height_in, depth_in = sizes[i]
+        width_cm = width_in * 2.54
+        height_cm = height_in * 2.54
+        depth_cm = depth_in * 2.54
+        result[i] = (width_cm * height_cm * depth_cm) / 1000.0
+    return result
+
+result = volume_liters(SIZES_INCHES)
+```
+
+We can compile this with fast math mode:
+
+```{python}
+@njit(fastmath=True)
+def volume_liters_fm(sizes):
+    result = np.empty((sizes.shape[0],), dtype=np.float32)
+    for i in range(sizes.shape[0]):
+        width_in, height_in, depth_in = sizes[i]
+        width_cm = width_in * 2.54
+        height_cm = height_in * 2.54
+        depth_cm = depth_in * 2.54
+        result[i] = (width_cm * height_cm * depth_cm) / 1000.0
+    return result
+
+result2 = volume_liters_fm(SIZES_INCHES)
+```
+
+If we compare the speed of the two, the fast math version is faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+volume_liters(SIZES_INCHES)
+volume_liters_fm(SIZES_INCHES)
+```
+
+We can also try benchmarking our manually optimized version and a fast math equivalent.
+In this case, the compiler can't improve on the manual optimizations we've already done, so fast math mode adds no performance:
+
+```{python}
+@njit
+def volume_liters_3(sizes):
+    result = np.empty((sizes.shape[0],), dtype=np.float32)
+    in3_to_liter = (2.54 * 2.54 * 2.54) / 1000
+    for i in range(sizes.shape[0]):
+        width_in, height_in, depth_in = sizes[i]
+        result[i] = width_in * height_in * depth_in * in3_to_liter
+    return result
+
+@njit(fastmath=True)
+def volume_liters_3_fm(sizes):
+    result = np.empty((sizes.shape[0],), dtype=np.float32)
+    in3_to_liter = (2.54 * 2.54 * 2.54) / 1000
+    for i in range(sizes.shape[0]):
+        width_in, height_in, depth_in = sizes[i]
+        result[i] = width_in * height_in * depth_in * in3_to_liter
+    return result
+
+_ = volume_liters_3(SIZES_INCHES)
+_ = volume_liters_3_fm(SIZES_INCHES)
+```
+
+In this case the fast math mode doesn't speed things up:
+
+```{python}
+#| echo: false
+%%compare_timing
+volume_liters_3(SIZES_INCHES)
+volume_liters_3_fm(SIZES_INCHES)
+```
+
+## Avoid full fast math mode
+
+Enabling fast math in your compiler typically involves enabling multiple different optimizations, with different effects.
+For example, Numba and the clang C/C++ can enable all or some of [LLVM's fast math transformations](https://llvm.org/docs/LangRef.html#fast-math-flags).
+One transformation allows replacing division with multiplication by the reciprocal; this one is fairly innocuous.
+But another assumes you will never have a `NaN` in your calculation results; if you do, you will trigger undefined behavior.
+
+In addition, on Linux older versions of `gcc` and all versions of `clang` have a bonus behavior where linking in fast math mode will link in extra code that can break _other_ Python extensions.
+[See this blog post for the details](https://moyix.blogspot.com/2022/09/someones-been-messing-with-my-subnormals.html).
+GCC 13 fixed this behavior, but [LLVM/`clang` have not](https://github.com/llvm/llvm-project/issues/57589).
+
+Given these potentially undesirable side-effects, it's likely better to only enable specific fast math optimizations, rather than enabling all of them.
+The options are compiler-specific; here's how you'd do it in Numba:
+
+```{python}
+@njit(fastmath={"nsz", "arcp", "contract", "afn", "reassoc"})
+def volume_liters_fm_explicit(sizes):
+    result = np.empty((sizes.shape[0],), dtype=np.float32)
+    for i in range(sizes.shape[0]):
+        width_in, height_in, depth_in = sizes[i]
+        width_cm = width_in * 2.54
+        height_cm = height_in * 2.54
+        depth_cm = depth_in * 2.54
+        result[i] = (width_cm * height_cm * depth_cm) / 1000.0
+    return result
+
+_ = volume_liters_fm_explicit(SIZES_INCHES)
+```
+
+Here's how it runs:
+
+```{python}
+#| echo: false
+%%compare_timing
+volume_liters_fm(SIZES_INCHES)
+volume_liters_fm_explicit(SIZES_INCHES)
+```

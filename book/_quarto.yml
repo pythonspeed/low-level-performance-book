@@ -35,7 +35,7 @@ book:
       chapters:
         - part_5/01_manual_optimization.qmd
         - part_5/02_using_integers_instead.qmd
-        # fast math plus crt mess
+        - part_5/03_fast_math.qmd
     - part: part_6/00.qmd  # CPU memory cache
       chapters:
         - part_6/01_fit_in_cache.qmd
