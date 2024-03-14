@@ -2,14 +2,13 @@
 
 To understand the problem we'll cover in this chapter, we first need to cover a couple of definitions:
 
-* A pointer is a programming language construct that points at a memory address.
-  In the CPython interpreter you use to run Python, for example, every Python object you interact with is a pointer to a `PyObject`.
-  In Numba, every NumPy array or view has a pointer internally.
+* A pointer is a piece of data that points at another memory address.
+  For example, in Numba every NumPy array or view has a pointer that points at the location in memory of the underlying data.
 * Aliasing means having multiple pointers referencing the same memory address at the same time.
 
 When you slice a NumPy array, for example, by default the data doesn't get copied.
-Instead, you get a view object that points at the same memory.
-Now you have two pointers at the original memory: the original array and the view into it.
+Instead, you get a view object that has a pointer that points at the same memory as the original array.
+Now you have two pointers to the same memory address: one from the original array, and one from the view.
 
 ```{python}
 #| echo: false
@@ -35,7 +34,9 @@ That's because seemingly identically behaved functions can actually behave diffe
 
 ## An example of the problem
 
-TODO note source of example, the systems programming book, in footnote or osmething
+Here's an example of two functions that seem identical, but behave differently when the inputs are aliased[^example]:
+
+[^example]: This example was inspired by one in _Computer Systems: A Programmer's Perspective_, by Bryant and O'Hallaron.
 
 ```{python}
 @njit

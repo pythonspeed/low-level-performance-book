@@ -46,7 +46,7 @@ print("Median (seconds):", np.median(BUS_HEADWAYS))
 
 ### Customizing the algorithm
 
-We can build a custom histogram algorithm based on two assumptions:
+We can build a custom median algorithm based on two assumptions:
 
 **Longer headways aren't relevant.:** As we can see above, 99.9% of headways are less than 68 minutes (4067 seconds).
 And from a passenger experience perspective, the impact of headways is much more meaningful for frequent buses.
@@ -62,14 +62,17 @@ Using these two constraints, we can write a much faster median algorithm, by usi
 @njit
 def histogram_median(bus_headways):
     # Histogram by number of half-minutes, with a maximum of 500 × 15 = 7,500
-    # seconds, which is higher than the 99.9th percentile value.
+    # seconds.
     by_quarter_minutes = np.zeros((500,), dtype=np.uint32)
     for headway in bus_headways:
         number_quarter_minutes = np.uint16(headway / 15)
+        # If the data is too large, just use the highest bucket. Since 7500 is
+        # higher than the 99.9th percentile value, we're underestimating less
+        # than 0.1% of the data.
         by_quarter_minutes[min(number_quarter_minutes, 499)] += 1
 
-    # Now that we know how many samples for every quarter minutes index,
-    # add up the cumulative counts until we hit 50% of values:
+    # Now that we know how many samples there are for every quarter minutes
+    # index, add up the cumulative counts until we hit 50% of values:
     median_location = len(bus_headways) / 2
     cumulative_samples = 0
     median = 0

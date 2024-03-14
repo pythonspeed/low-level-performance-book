@@ -76,13 +76,13 @@ Oops.
 ## Avoid undefined behavior
 
 Importantly, the fact your code works doesn't mean undefined behavior isn't present.
-Because the compiler optimizations may change over time, undefined behavior may cause problems in the future even if your current code is seemingly fine.
-But a good test suite will at least catch some problems before they start impacting your calculations.
+Because compiler optimizations may change over time, undefined behavior may cause problems in the future even if your current code is seemingly fine.
+A good test suite catch some problems before they start impacting your calculations, but probably not all.
 
 To completely avoid undefined behavior, your options are:
 
 1. Memorize all the edge cases that produce undefined behavior in your language of choice, and then avoid writing buggy code.
-2. Use a language that won't shoot you in the foot.
+2. Use a programming language that isn't fundamentally broken.
    In particular, Rust guarantees no undefined behavior so long as you don't use the `unsafe` feature, which isn't necessary for standard data processing.
 
 For more on the topic, ["Falsehoods programmers believe about undefined behavior"](https://predr.ag/blog/falsehoods-programmers-believe-about-undefined-behavior/) is a good start.

@@ -24,7 +24,17 @@ import numpy as np
 %load_ext book_magics
 ```
 
+## The compiler's key constraint: optimized code must have identical behavior to the original code
+
+A key requirement for the compiler's optimization passes is that your code continues to behave the same way, even as it gets faster.
+**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
+
+Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of safer, more conservative behavior.
+
 ## Get a sense of what the compiler can do
+
+In later chapters we'll consider some of the reasons the compiler might fail to optimize your code, and what you can do about it.
+But before seeing the reasons compilations won't work, it's worth understanding some of what the compiler can do.
 
 ### Precalculating mathematical expressions
 
@@ -65,7 +75,6 @@ just_the_result()
 The compiler can also hoist repetitive expressions out of loops, so they're called once instead of many times.
 For example, the expression `((n ** 2) * (1.5 / n) + n)` in the `compiler_will_hoist()` is repeated in every iteration, but it also always give the same result.
 The compiler is therefore able to move it out of the loop and run it only once, as we do manually in `manually_hoisted()`.
-Thus both functions take the same amount of time to run:
 
 ```{python}
 @njit
@@ -227,11 +236,3 @@ os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
 
 You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
 :::
-
-## Understand the compiler's key constraint: optimized code must have identical behavior
-
-A key requirement for the compiler's optimization passes is that your code continues to behave the same way, even as it gets faster.
-**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
-
-Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of conservatism.
-In the following chapters we'll consider some of the reasons the compiler might fail to optimize your code, and what you can do about it.

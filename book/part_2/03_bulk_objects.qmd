@@ -49,6 +49,7 @@ PyLong_FromLong(long ival)
         }
     }
     return (PyObject *)v;
+}
 ```
 
 If you're passing an integer or two, this overhead probably doesn't matter.
@@ -72,11 +73,11 @@ Some examples:
 **N-dimensional arrays:** NumPy arrays have a specific data type, for example a 64-bit signed integer, and internally are created as a contiguous array.
 That means low-level code can access the items in a NumPy array with dtype `np.int64` just like it would any array of 64-bit signed integers: very quickly.
 
-**Dataframes:** Dataframes have named columns which can e different types, similar to a spreadsheet.
+**Dataframes:** Dataframes have named columns which can be different types, similar to a spreadsheet.
 Older versions of Pandas used NumPy arrays internally, and newer versions still support this format for now.
 However, newer libraries like Polars (always) and Pandas 2 (for now optionally) use Apache Arrow, which is a columnar data structure designed for efficient access from low-level languages.
-There are Arrow implementations for C++, Rust, and other languages, and it can also be used from Cython, but all of them can interoperate because they use the same in-memory representation.
+There are Arrow implementations for C++, Rust, and other languages, and it can also be used from Cython, and all of them can easily inter-operate because they use the same in-memory representation.
 
 For both NumPy arrays and Apache Arrow, as well as other data structures designed with this use case in mind, the cost of transferring between Python and the low-level language is negligible.
-In this book we'll mostly use example involving NumPy arrays, but the same principles apply to any data structure that can be cheaply passed between Python and low-level languages.
+In this book we'll mostly use examples involving NumPy arrays, but the same principles apply to any data structure that can be cheaply passed between Python and low-level languages.
 

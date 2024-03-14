@@ -43,7 +43,7 @@ You can speed up this sort of code by:
 ## Don't process data you don't need to
 
 The fastest code is code you don't run at all.
-If you can avoid processing data when it's unnecessary, that can provide significant speeds.
+If you can avoid processing data when it's unnecessary, that can provide significant speed-ups.
 
 As an example, let's implement the Sieve of Eratosthenes.
 We'll find prime numbers by crossing out multiples of 2 (4, 6, 8, ...), and then multiples of 3 (6, 9, 12, ...), multiples of 5 (10, 15, 20, ...), and so on.

@@ -5,8 +5,8 @@ If you want to maximize your code's speed, you might need to take them into acco
 This is of course _very_ specific to your language, compiler, and version of compiler, so these sort of optimizations can be very brittle.
 Like tuning your code for a specific CPU model, consider them as a last resource.
 
-To demonstrate, we'll demonstrate a limitation of Numba's options for looping.
-In particular, we're going to look at the performance impacts of two different ways of looping over an array.
+To demonstrate, let's look at a limitation in Numba's options for looping.
+We're going to look at the performance impacts of two different ways of looping over an array:
 
 ```{python}
 #| echo: false
@@ -44,5 +44,6 @@ sum_direct_for(DATA)
 sum_indexing(DATA)
 ```
 
-I filed [a bug against Numba about this](https://github.com/numba/numba/issues/9210), so this difference in performance may eventually go away.
-And in a later chapter we'll see the `for value in arr:` idiom actually has some benefits.
+I filed [a bug against Numba about this](https://github.com/numba/numba/issues/9210).
+Hopefully it will be fixed one day, at which point you'll be able to use either idiom and get the same performance.
+
