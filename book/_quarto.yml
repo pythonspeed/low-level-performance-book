@@ -7,37 +7,43 @@ book:
   date: "7/26/2023"
   chapters:
     - index.qmd
-    - part: part_1/00.qmd  # General performance
+    - part: "General performance"
       chapters:
+        - part_1/00.qmd
         - part_1/01_algorithms.qmd
         - part_1/02_generic_optimization.qmd
         - part_1/03_customize_for_your_data.qmd
-    - part: part_2/00.qmd  # Compiler optimizations
+    - part: "Compiler optimizations"
       chapters:
+        - part_2/00.qmd
         - part_2/01_compiler_optimizations.qmd
         - part_2/02_aliasing.qmd
         - part_2/03_bulk_objects.qmd
         - part_2/04_undefined_behavior.qmd
         - part_2/05_writing_for_the_compiler.qmd
-    - part: part_3/00.qmd  # Modern CPUs parallelism
+    - part: "Parallelism in modern CPUs"
       chapters:
+        - part_3/00.qmd
         - part_3/01_instruction_level_parallelism.qmd
         - part_3/02_simd.qmd
         - part_3/03_more_about_simd.qmd
-    - part: part_4/00.qmd  # Branches
+    - part: "Branches"
       chapters:
+        - part_4/00.qmd
         - part_4/01_avoid_branches.qmd
         - part_4/02_branchless.qmd
         - part_4/03_edge_case_branches.qmd
         - part_4/04_bounds_checking.qmd
         - part_4/05_divide_by_zero.qmd
-    - part: part_5/00.qmd  # Floating point
+    - part: "Floating point"
       chapters:
+        - part_5/00.qmd
         - part_5/01_manual_optimization.qmd
         - part_5/02_using_integers_instead.qmd
         - part_5/03_fast_math.qmd
-    - part: part_6/00.qmd  # CPU memory cache
+    - part: "Memory caches"
       chapters:
+        - part_6/00.qmd
         - part_6/01_fit_in_cache.qmd
         - part_6/02_linear_scan.qmd
         - part_6/03_smaller_data_types.qmd
