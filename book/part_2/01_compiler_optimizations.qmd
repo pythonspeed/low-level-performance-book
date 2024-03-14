@@ -1,6 +1,8 @@
 # Rely on the compiler to optimize your code
 
-When your code gets compiled, the compiler runs it through a series of optimization passes, with each pass transforming the code in the some way.
+A compiler translates your code—human text, intended to be read and written by humans—to machine code, the instructions the CPU understands.
+But the compiler does more than that.
+When your code gets compiled, the compiler also runs it through a series of optimization passes, with each pass transforming the code in the some way.
 The hope is that the cumulative series of transformations will result in code that is more efficient by:
 
 1. Removing redundant code execution, our focus in this chapter.

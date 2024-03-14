@@ -4,9 +4,9 @@ How long it takes your program to run depends on two sets of decisions embedded 
 
 1. The choice of algorithm.
 2. The implementation.
-   For example, as we'll be repeating repeatedly, low-level languages like C usually run the same algorithm much faster than Python can.
+   For example, as we'll be repeatedly repeating, low-level languages like C usually run the same algorithm much faster than Python can.
 
-In the rest of the book we'll focus on the implementation, but the choice of algorithm is just as important, as we'll see in this chapter.
+In the rest of the book we'll focus on the implementation part, but in this chapter we'll focus on the choice of algorithm.
 
 ```{python}
 #| echo: false
@@ -18,19 +18,18 @@ In the rest of the book we'll focus on the implementation, but the choice of alg
 How long your program runs depends on the size of the input: processing a 1,000,000-base DNA sequence will probably take longer than processing a 1,000-base sequence.
 And once you're dealing with large input sizes, an algorithm that scales badly will be so slow that your implementation speed won't matter.
 
-In much of this book we'll be using the NumPy library for examples.
-NumPy's core data structure, the `ndarray`, is a bit like a standard Python list, except that `ndarrays`s:
-
-1. Are fixed in size.
-2. Only contain items of a single data type or "dtype", e.g. a 32-bit unsigned integer.
-3. Can be multi-dimensional.
-
-Because of the second item an `ndarray` can be accessed efficiently from compiled languages, unlike Python lists.
-
 Let's consider an example: quadratic algorithms, which are very easy to write accidentally, to the point that there is [a blog showcasing examples](https://accidentallyquadratic.tumblr.com/).
 A typical mistake is to have a loop, and then call a function that doesn't look like a loop but actually causes another loop over the same data.
 
-Here's an example, a naive implementation of a quadratic algorithm that filters an array down to only those items that are present in the second array.
+In much of this book we'll be using the NumPy library for examples.
+NumPy's core data structure, the `ndarray`, is a bit like a standard Python list, except that `ndarray`s:
+
+1. Are fixed in size.
+2. Only contain items of a single data type or "dtype", e.g. a 32-bit unsigned integer.
+   This allows them to be accessed efficiently from compiled languages, unlike Python lists.
+3. Can be multi-dimensional.
+
+The following example shows a naive implementation of a quadratic algorithm that filters an array down to only those items that are present in the second array.
 We'll assume both arrays have approximately the same length.
 
 ```{python}
@@ -194,5 +193,6 @@ But once inputs are large enough, the linear algorithm in Python is faster than 
 
 **That's why it's so important to pick a scalable algorithm: once your inputs are large enough, a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language.**
 In this book I'm assuming you're dealing with sufficiently-large amounts of data, where the choice of algorithm is critical.
-But once you've picked a scalable algorithm, what else can you do to speed up your code?
+
+Once you've picked a scalable algorithm, what else can you do to speed up your code?
 That's what we'll be covering in the rest of the book.

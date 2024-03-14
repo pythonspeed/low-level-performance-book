@@ -1,11 +1,10 @@
-# Speeding up your code with a low-level compiled language
+# Switch to compiled code
 
 So far the optimizations we've covered are language-agnostic: you can apply them whether you're writing Python or C++.
 But beyond a certain point, Python will be too slow, and you'll need to switch to a faster compiled language.
 
 Examples include C, C++, Rust, Fortran, and Numba.
 Similarly, Cython compiles to C or C++, and then that code is compiled to machine code.
-
 For all of these:
 
 1. Before the code can be run, the code is converted ("compiled") to machine code using a tool called a "compiler".
@@ -15,3 +14,4 @@ For all of these:
    It might be a 64-bit integer, it might be something more complex, but this information is available to the compiler.
    Some languages providing higher-level features that loosen this restriction, but the most common case (templates in C++, generics in Rust) just mean temporarily delaying this knowledge to a later stage in the compilation process.
 
+Over the next few chapters, we'll see how the compilation, coupled with knowledge of data types, generates code that can run quickly.
