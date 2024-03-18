@@ -29,7 +29,6 @@ book:
         - part_3/03_more_about_simd.qmd
     - part: "Branches"
       chapters:
-        - part_4/00.qmd
         - part_4/01_avoid_branches.qmd
         - part_4/02_branchless.qmd
         - part_4/03_edge_case_branches.qmd

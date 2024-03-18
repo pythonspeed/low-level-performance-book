@@ -36,8 +36,8 @@ def pythagorean_theorem(x_length, y_length):
     return sqrt(x_squared + y_squared)
 ```
 
-A simplistic CPU will execute each instruction in order.
-First a multiply, then another, then an addition, the calculation of the square root:
+In our original, simplistic mental model, we assumed the CPU core will execute each instruction in order.
+First a multiply, then another multiply, then an addition, then whatever instructions are necessary to calculate the square root:
 
 ```{mermaid}
 flowchart TD
@@ -77,8 +77,8 @@ For educational purposes, we find [an example of how to do this](https://nuclear
 ```{python}
 from numba import uint32, uint64
 
-# 64-bit linear congruent generator; we'll use the top 32-bits only for the
-# result to maximize the cycle length and therefore perceived randomness.
+# 64-bit linear congruent generator; we'll use the top 32-bits only, in order
+# to maximize the cycle length and therefore perceived randomness.
 @njit("uint32(uint32)")
 def lcg(seed):
     temp = uint64(seed) * 2862933555777941757 + 3037000493
