@@ -1,7 +1,7 @@
 # Get rid of edge case branches
 
 Some branches are there to handle a rare edge case.
-Given most data won't be an edge choice, the branch choice will easy to predict.
+Given most data won't be an edge choice, the branch should be easy to predict.
 Even so, calling the same code over and over in an inner loop is a waste of resources; ideally you'd just handle edge cases separately.
 
 ```{python}
@@ -17,9 +17,9 @@ from numba import njit
 
 ## Example: A literal edge case
 
-Let's say we have a daily time series of values between 0 and 1, and we want to calculate the 7-day moving average.
+Let's say we have a time series of daily values between 0 and 1, and we want to calculate the 7-day moving average.
 For most values we just calculate the average of the previous (inclusive) 7 values.
-But for the first few values we don't have 7 previous values.
+But for the first 6 days, we won't have sufficient previous values.
 There are various strategies to deal with this missing data, and in this case we'll just repeat the value in the first day:
 
 ```{python}
@@ -44,12 +44,12 @@ One performance problem with this code is the `if i < 6`: it's being called on e
 
 ## Don't use branchless code when the branch is predictable
 
-In the previous chapter we saw how branchless code can replace branches, where the main benefit is getting rid of mispredicted branches.
-We can do that here:
+In the previous chapter we saw how we can replace branches with branchless code, which can help get rid of the cost of mispredicted branches.
+We can do that here too:
 
 ```{python}
 @njit
-def moving_average_2(timeseries):  # branchless
+def moving_average_branchless(timeseries):
     result = np.empty(timeseries.shape, dtype=np.float64)
     first_day = timeseries[0]
     for i in range(len(timeseries)):
@@ -60,18 +60,18 @@ def moving_average_2(timeseries):  # branchless
         result[i] = total / 7
     return result
 
-assert np.array_equal(moving_average(DATA), moving_average_2(DATA))
+assert np.array_equal(moving_average(DATA), moving_average_branchless(DATA))
 ```
 
-This isn't a great improvement, however, because the branch we just replaced is very predictable.
+This won't speed up our code, because the branch we just replaced is very predictable.
 After the first 6 iterations, it's never taken.
-So a branchless solution is still doing extra, unnecessary work for the vast majority of iterations.
+So a branchless solution is still doing extra, unnecessary work for the vast majority of iterations:
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branch_mispredictions
 moving_average(DATA)
-moving_average_2(DATA)
+moving_average_branchless(DATA)
 ```
 
 ## Move edge-case handling into a separate code path
@@ -84,7 +84,7 @@ That means the rest of the calculations can safely assume that 7 days of data ar
 def moving_average_3(timeseries):
     result = np.empty(timeseries.shape, dtype=np.float64)
 
-    # Handle first 6 days specially:
+    # Handle the first 6 days specially:
     first_day = timeseries[0]
     for i in range(6):
         total = first_day * (6 - i)
@@ -93,6 +93,7 @@ def moving_average_3(timeseries):
             total += timeseries[j]
         result[i] = total / 7
 
+    # Then handle the bulk of the data:
     for i in range(6, len(timeseries)):
         total = 0
         for j in range(i - 6, i + 1):

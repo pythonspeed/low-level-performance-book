@@ -1,11 +1,11 @@
 # Reduce the cost of bounds checking
 
 In addition to explicit branches you might add to your code, there are other less obvious sources of branching that can be automatically added by the compiler.
-In this chapter we'll cover bounds checking, and in the next chapter will cover division by zero.
+In this chapter we'll cover bounds checking, and in the next chapter we'll cover division by zero.
 
 ## Bounds checking adds performance overhead
 
-Let's say you have an NumPy array with 4 items, and you read the 5th item.
+Let's say you have an NumPy array of length 4, and you read the 5th item.
 What happens?
 There are two possible behaviors:
 
@@ -19,15 +19,15 @@ It's a predictable branch, since only buggy code will do out-of-bounds reads or 
 
 The behavior you get depends on the language you're using:
 
-* C and C++ have no bounds checking; they will happily corrupt memory or crash your program in the name of performance.
-    However, you can use [sanitizers and other tools](https://developers.redhat.com/blog/2021/05/05/memory-error-checking-in-c-and-c-comparing-sanitizers-and-valgrind) to catch problems when testing your code.
+* C and C++ have no built-in bounds checking; they will happily corrupt memory or crash your program in the name of performance.
+    However, some data structures will provide them, and more broadly you can use [sanitizers and other tools](https://developers.redhat.com/blog/2021/05/05/memory-error-checking-in-c-and-c-comparing-sanitizers-and-valgrind) to catch problems when testing your code.
 * Numba and Cython (the latter with some caveats, since it compiles to C or C++) allow you to turn bounds checking on or off.
 * Rust always has bounds checking on[^rust].
 
 [^rust]: Technically Rust also has additional `unsafe` APIs to do lookups without bounds checking. Using `unsafe` is tricky, and misuse invalidates all of Rust's safety guarantees, so I would suggest pretending these APIs don't exist.
 
-In Numba, by default bounds checking is disabled, but we can manually enable or disable it to compare the performance impact.
-As an example we'll using a moving average function again, but this time we'll just use zeros to fill in the missing first few values.
+In Numba, bounds checking is disabled by default, but we can manually enable or disable it to compare the performance impact.
+As an example we'll use a moving average function again, but this time we'll just use zeros to fill in the missing first few values.
 
 ```{python}
 #| echo: false
@@ -67,7 +67,7 @@ assert np.array_equal(
 )
 ```
 
-If we compare the two versions, the one with bounds checking unfortunately runs rather slower:
+If we compare the two versions, the one with bounds checking is slower:
 
 ```{python}
 #| echo: false
@@ -76,6 +76,8 @@ moving_average_bc(DATA)
 moving_average_no_bc(DATA)
 ```
 
+On the one hand, bounds checking is a great way to catch bugs, both in testing and production usage.
+On the other hand, it slows down your code.
 What can you do to balance safety and speed?
 
 ## Strategy #1: Enable bounds checking when testing, disable in production
@@ -98,7 +100,7 @@ This gives you the best of both worlds: the safety guarantees of bounds checking
 I first learned about this strategy from [this excellent article about applying it to Rust](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e).
 
 The general approach is to figure out idioms that are transparent enough to the compiler that it can prove to itself that the bounds will never be violated, or alternatively providing asserts that give it more information.
-The specific approach is language-specific, or rather compiler-specific.
+The specific approach is language-specific, and often compiler-specific.
 
 Let's start with a trivial example.
 To reduce duplication of code, we'll write a little utility to generate two `@njit` versions of the same function, with and without bounds checking:
@@ -116,21 +118,21 @@ First, we'll use the standard technique we've been using for iteration, a `for` 
 ```{python}
 DATA = np.arange(0, 1_000_000, dtype=np.uint64)
 
-def sum_for(arr):
+def sum1(arr):
     total = 0
     for i in range(len(arr)):
         total += arr[i]
     return total
 
-sum_for_bc, sum_for_no_bc = with_and_without_boundscheck(sum_for)
-assert sum_for_bc(DATA) == sum_for_no_bc(DATA)
+sum_bc, sum_no_bc = with_and_without_boundscheck(sum1)
+assert sum_bc(DATA) == sum_no_bc(DATA)
 ```
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branches
-sum_for_bc(DATA)
-sum_for_no_bc(DATA)
+sum_bc(DATA)
+sum_no_bc(DATA)
 ```
 
 Clearly this idiom is not enough to convince the compiler to optimize bounds checks away.
@@ -140,14 +142,14 @@ Another thing we can try is `for value in arr:`, since this seems like it ought 
 ```{python}
 DATA = np.arange(0, 1_000_000, dtype=np.uint64)
 
-def sum_for2(arr):
+def sum2(arr):
     total = 0
     for value in arr:
         total += value
     return total
 
-sum_for2_bc, sum_for2_no_bc = with_and_without_boundscheck(sum_for2)
-assert sum_for2_bc(DATA) == sum_for2_no_bc(DATA)
+sum2_bc, sum2_no_bc = with_and_without_boundscheck(sum2)
+assert sum2_bc(DATA) == sum2_no_bc(DATA)
 ```
 
 And as expected, bounds checking doesn't _add_ much cost... but unfortunately our function is much slower even with bounds checking disabled.
@@ -155,8 +157,8 @@ And as expected, bounds checking doesn't _add_ much cost... but unfortunately ou
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branches
-sum_for2_bc(DATA)
-sum_for2_no_bc(DATA)
+sum2_bc(DATA)
+sum2_no_bc(DATA)
 ```
 
 So it seems like we want to keep the `arr[i]`, because some experimentation suggests it [makes it easier for auto-vectorization to happen](https://github.com/numba/numba/issues/9210), while still doing `for value in arr:`.
@@ -164,21 +166,21 @@ So it seems like we want to keep the `arr[i]`, because some experimentation sugg
 Here's what I came up with:
 
 ```{python}
-def sum_for3(arr):
+def sum3(arr):
     total = 0
     for i, _ in enumerate(arr):
         total += arr[i]
     return total
 
-sum_for3_bc, sum_for3_no_bc = with_and_without_boundscheck(sum_for3)
-assert sum_for3_bc(DATA) == sum_for3_no_bc(DATA)
+sum3_bc, sum3_no_bc = with_and_without_boundscheck(sum3)
+assert sum3_bc(DATA) == sum3_no_bc(DATA)
 ```
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branches
-sum_for3_bc(DATA)
-sum_for3_no_bc(DATA)
+sum3_bc(DATA)
+sum3_no_bc(DATA)
 ```
 
 Success! Both versions are almost the same speed, which means we can leave bounds checking on and still get the safety benefits without a large performance hit.

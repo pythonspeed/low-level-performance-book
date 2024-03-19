@@ -49,7 +49,7 @@ def loop(x):
 
 ## Branches can make it harder to compile efficient code
 
-Code with branches makes it harder for the CPU to generate efficient code:
+Code with branches makes it harder for the compiler to generate efficient code:
 
 * **The compiler may have a harder time optimizing your code in general.**
   If your code has two different branches, it will be difficult or impossible for the compiler to combine that code with previous and later code.

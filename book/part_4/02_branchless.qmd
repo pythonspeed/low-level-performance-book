@@ -18,7 +18,7 @@ Let's see an example of code where branch misprediction slows down your code.
 
 Imagine you're getting 16-bit images from a digital microscope, and you only care about the bright parts of the image.
 Dark areas have no information, and have lots of noise.
-If we want to clean those areas up, a simplistic algorithm is setting all values below a certain threshold to complete black, i.e. 0.
+If we want to clean those areas up, a simplistic algorithm is setting all values below a certain threshold to complete darkness, i.e. 0.
 
 To test our implementations, I generated two simulated images:
 
@@ -26,9 +26,11 @@ To test our implementations, I generated two simulated images:
 rng = np.random.default_rng(12345)
 noise = rng.integers(0, high=1000, size=(4096, 4096), dtype=np.uint16)
 signal = rng.integers(0, high=5000, size=(4096, 4096), dtype=np.uint16)
+
 # A noisy, hard to predict image:
 NOISY_IMAGE = noise | signal
-# An image with same value, 0, for all pixels:
+
+# An image with the same value, 0, for all pixels:
 PREDICTABLE_IMAGE = np.zeros((4096, 4096), dtype=np.uint16)
 ```
 
@@ -37,9 +39,8 @@ Here's a first pass implementation using Numba.
 ```{python}
 @njit
 def remove_noise_naive(arr, noise_threshold):
-    # Ensure noise_threshold has some data type as the values in the arr,
-    # to make it as easy as possible for the compiler to find
-    # optimizations.
+    # Ensure noise_threshold has the same data type as the values in the arr,
+    # to make it as easy as possible for the compiler to find optimizations.
     noise_threshold = arr.dtype.type(noise_threshold)
     result = arr.copy()
     for i in range(result.shape[0]):
@@ -57,13 +58,13 @@ That is certainly the case for our simulated image.
 Here's how long this version takes to run:
 
 ```{python}
+#| echo: false
 %%compare_timing --measure=branches,branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 remove_noise_naive(NOISY_IMAGE, 1000)
 ```
 
-### Switching to branchless programming
-
+Even though the function runs with almost the same number of CPU instructions, it runs much more slowly with the unpredictable, noisy image.
 The key problem in the function above is the following lines:
 
 ```{python}
@@ -73,7 +74,14 @@ if result[i, j] < noise_threshold:
 ```
 
 Depending on the value of `result[i, j]` either a value will be zeroed, or nothing will happen: a branch in the code.
-If the CPU mispredicts which branch is taken, it will end up wasting lots of time undoing work on the wrong branch.
+If the CPU mispredicts which branch is taken, it will using instruction-level parallelism to speculatively execute the _wrong branch_.
+Eventually the branch will finish executing, the CPU will realize it made a bad prediction, and it will have to undo its work and then run the other branch.
+All of this takes time, leading to slower execution.
+
+### Switching to branchless programming
+
+In this particular example, a branch is inherently difficult to predict for certain inputs.
+So one way to run faster, or at least more predictably, is to avoid branches.
 
 In branchless programming, we come up with a way to express the same logic in a way that doesn't involve branches.
 In this case, instead of doing nothing, we can change the code so it _always_ writes a new value.
@@ -162,19 +170,17 @@ assert np.array_equal(
 %%compare_timing --measure=branches,branch_mispredictions
 remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 remove_noise_naive(NOISY_IMAGE, 1000)
-remove_noise_branchless_1(PREDICTABLE_IMAGE, 1000)
-remove_noise_branchless_1(NOISY_IMAGE, 1000)
 remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_3(NOISY_IMAGE, 1000)
 ```
 
 ## Don't assume branchless programming is faster
 
-Branchless programming is a trade-off: in return for getting rid of the cost of branch misprediction, you pay the cost of calculating two or more branches, instead of just one.
+Branchless programming is a trade-off: in return for getting rid of the _possible_ cost of branch misprediction, you pay the _definitive_ cost of calculating two or more branches, instead of just one.
 That means branchless programming may well be slower, depending on how predictable your branch is, and how expensive the different branches are.
 And that can depend on the specifics of your data.
 
 In addition, SIMD auto-vectorization may or may not be happen depending on how the code is written.
-And if the right SIMD instructions are used, you won't have any branches, since the compiler might be able to use "masked" operations where the instruction can be applied to only some of the data.
+If the right SIMD instructions are available and used, the compiler might be able to optimize branches out of existence, using "masked" operations where the SIMD instruction can be applied to only some of the data.
 
 As always, it's critical to benchmark your code with real, or at least realistic, data that will match how the code will run in the real-world.

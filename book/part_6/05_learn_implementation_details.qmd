@@ -52,7 +52,7 @@ The array we're looking at is two dimensional, but memory is best thought of as 
 With the default mapping from 2-D to 1-D, `view1` is using contiguous memory, but `view2` is not.
 Both views look the same externally thanks to the abstraction provided by NumPy, but internally `view2` is skipping to different parts of the underlying array to get the data.
 
-The implmentation mechanism is calling ["striding"](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.strides.html).
+The implementation mechanism is called ["striding"](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.strides.html).
 Each view has strides telling NumPy how many bytes to skip ahead to get to the next entry.
 For contiguous arrays, the stride is the same size as the data type; in our case, that's 2 bytes to jump to the next 16-bit integer.
 For non-contiguous arrays, the stride will be larger:

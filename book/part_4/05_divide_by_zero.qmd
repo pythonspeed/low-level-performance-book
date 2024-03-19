@@ -27,21 +27,20 @@ from numba import njit
 
 In some cases the compiler may be able to optimize the check for zero division so it only happens once, for example if you're repeatedly dividing by the same number.
 In other cases, however, the compiler can't help.
-Let's compare addition to float division, and see how many branches each version of the code has.
-We'll disable bounds checking so that its impact doesn't confuse the impact of division:
+Let's compare addition to float division, and see how many branches each version of the code has:
 
 ```{python}
 FLOAT_DATA = np.arange(0, 1_000_000, dtype=np.float64)
 FLOAT_DATA2 = np.ones(1_000_000, dtype=np.float64)
 
-@njit(boundscheck=False)
+@njit
 def add(arr, arr2):
     out = np.empty(arr.shape, dtype=arr.dtype)
     for i in range(len(arr)):
-        out[i] = arr[i] / arr2[i]
+        out[i] = arr[i] + arr2[i]
     return out
 
-@njit(boundscheck=False)
+@njit
 def float_divide(arr, arr2):
     out = np.empty(arr.shape, dtype=arr.dtype)
     for i in range(len(arr)):

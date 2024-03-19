@@ -2,9 +2,9 @@ project:
   type: book
 
 book:
-  title: "Speed up your Python data processing code with a low-level compiled language"
+  title: "Fast compiled code for Pythonistas"
   author: "Itamar Turner-Trauring"
-  date: "7/26/2023"
+  date: "1/1/2024"
   chapters:
     - index.qmd
     - part: "General performance"

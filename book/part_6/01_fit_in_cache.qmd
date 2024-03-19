@@ -1,7 +1,7 @@
 # Avoid benchmarking with unrealistically small amounts of data
 
 As we've seen in many of the previous chapters, a key to knowing whether you're making your code faster or slower is measurement.
-However, if you use small amounts of data, the result of micro-benchmarks can be misleading.
+However, if you use small amounts of data, the results of micro-benchmarks can be misleading.
 One relevant reason: memory caches.
 
 Because your CPU has memory caches that are faster than RAM, but smaller in size, if you can keep all your data in those caches you will get higher performance.
@@ -54,7 +54,7 @@ What's going on?
 In the case of `SMALL_DATA`, the data fits in the CPU's memory caches, so repeated access is fast.
 `LARGE_DATA` however is too large to fit in the caches, so it needs to be read from RAM, which is slower.
 
-We can see this is if we add measure of memory cache misses to our benchmark (or more accurately, last-level cache misses):
+We can see this numerically if we add a measure of memory cache misses to our benchmark (or more accurately, last-level cache misses):
 
 ```{python}
 #| echo: false

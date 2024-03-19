@@ -49,8 +49,8 @@ And here's what the result looks like:
 ```
 
 Our goal is to make this code faster.
-As a first pass, we can write a implementation using Numba.
-Because we're accumulating a large number of `uint8` to create the same, we need to store it in a larger type, so we'll use a `float64`:
+As a first pass, we can write an implementation using Numba.
+Because we're accumulating a large number of `uint8`s to create the total, we need to store it in a larger type, so we'll use a `float64`:
 
 ```{python}
 from numba import float64
@@ -75,7 +75,7 @@ THRESHOLD_1 = mean_threshold_1(IMAGE)
 assert ((THRESHOLD_NUMPY ^ THRESHOLD_1) > 0).sum() < IMAGE.size / 1000
 ```
 
-On my computer the speed is essentially the same, we haven't gotten any improvement in speed:
+Unfortunately this new version isn't any faster:
 
 ```{python}
 #| echo: false

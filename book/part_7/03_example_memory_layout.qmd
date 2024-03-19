@@ -4,15 +4,15 @@ Let's do some DNA sequencing, or at least a very simplified version; my sincere 
 
 The really short and inaccurate version is that after doing some biological pre-processing, we're shooting four different lasers frequencies at a sample.
 Depending on the base (A, C, G, or T) a different color will fluoresce, corresponding to one color.
-We now have four channels, with different brightness values, one for each base; we pick the channel brightest (highest) value, which tells us which base this is.
-We do this repeatedly for each item in the DNA sequence, until we've sequenced the whole ting.
+We now have four channels, with different brightness values, one for each base; we pick the channel with the brightest (i.e. highest) value, which tells us which base this is.
+We do this repeatedly for each item in the DNA sequence, until we've sequenced the whole thing.
 
 There are two phases to processing the data:
 
 1. **Normalization:** Normalize each of the color channels to brightness values between 0 and 1.
 2. **Choosing the brightest of the four normalized channels.**
 
-We're going to implement the second phase, and optimize it so it's 20× faster than our initial implementation:
+We're going to implement the second phase, and then see how well we can optimize it.
 
 ```{python}
 #| echo: false
@@ -258,6 +258,8 @@ row_choose_brightest(ROW_NORMALIZED)
 
 For the `argmax()` version, the row-based version is faster, as predicted.
 For the faster implementation we've come up with, the row-based version is slightly slower!
+Given the column-based representation is more convenient for previous processing phases (i.e. normalization of the raw data on a per-channel basis), it's nice that we don't have to pay a speed penalty by using it.
+
+As we can see in the example above, performance isn't due to one factor, it's a combination of many factors.
 This is why we measure: sometimes our predictions are wrong.
 
-Given the column-based representation is more convenient for previous processing phases (i.e. normalization of the raw data on a per-channel basis), it's nice that we don't have to pay a speed penalty by using it.

@@ -18,7 +18,7 @@ from numba import njit
 ```
 
 We implement a function that can scan memory both linearly and pseudo-randomly, depending which multiplier we pass in.
-We pass the multiplier in explicitly so the compiler doesn't optimize things away as it would with a constant.
+We pass the multiplier in explicitly so the compiler doesn't optimize some of the work out of existence, as it would with a constant.
 
 ```{python}
 DATA = np.ones((100_000_000,), dtype=np.uint8)
@@ -35,7 +35,7 @@ def scan_memory(arr, multiplier):
 LINEAR = 1
 RANDOM = 22695477
 
-scan_memory(np.ones((10,), dtype=np.uint8), LINEAR)
+_ = scan_memory(np.ones((10,), dtype=np.uint8), LINEAR)
 ```
 
 Depending on the value of the multiplier, the memory will be traversed in different ways:

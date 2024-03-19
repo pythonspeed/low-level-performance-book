@@ -17,7 +17,7 @@ from numba import njit
 
 ## Extract and hoist repetitive calculations out of a loop
 
-Imagine we have the dimensions of a series of boxes sold by our company, stored in array that has triples of width, height.
+Imagine we have the dimensions of a series of boxes sold by our company, stored in an array that has triples of width, height, and depth in inches.
 We want to calculate the volume of these boxes in liters, so we first must convert the inches to centimeters by multiplying by `2.54`.
 
 Here's what a first pass calculation might look like:

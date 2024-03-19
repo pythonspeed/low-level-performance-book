@@ -65,7 +65,6 @@ volume_liters_fm(SIZES_INCHES)
 ```
 
 We can also try benchmarking our manually optimized version and a fast math equivalent.
-In this case, the compiler can't improve on the manual optimizations we've already done, so fast math mode adds no performance:
 
 ```{python}
 @njit
@@ -90,7 +89,7 @@ _ = volume_liters_3(SIZES_INCHES)
 _ = volume_liters_3_fm(SIZES_INCHES)
 ```
 
-In this case the fast math mode doesn't speed things up:
+In this case, the compiler can't improve on the manual optimizations we've already done, so fast math mode adds no performance benefit:
 
 ```{python}
 #| echo: false
