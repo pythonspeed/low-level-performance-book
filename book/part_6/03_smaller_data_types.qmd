@@ -1,3 +1,77 @@
-# Use smaller data types to reduce memory accesses
+# Prevent memory bandwidth from becoming a bottleneck
 
-TODO memory bandwidth. even with prefetching, there's a limit to how fast memory can be copied from RAM into caches, so retrieving less memory will be faster.
+Memory caches can help speed up individual reads and writes, because you're accessing a fast cache instead of slow RAM.
+But if you're reading or writing enough data, sooner or later you'll hit bandwidth limits: there's only so many megabytes per second you can push to or from RAM.
+If you hit there memory's bandwidth bottleneck, you'll need to reduce how much memory you're reading or writing.
+
+## Reduce unnecessary memory accesses
+
+TODO prose
+
+```{python}
+import numpy as np
+from numba import njit
+```
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+DATA64 = (np.random.random(1_000_000) * 1000).astype(np.uint64)
+
+
+@njit
+def max_then_min(arr):
+    current_max = np.iinfo(arr.dtype).min
+    current_min = np.iinfo(arr.dtype).max
+
+    for i in range(len(arr)):
+        current_max = max(arr[i], current_max)
+
+    for i in range(len(arr)):
+        current_min = min(arr[i], current_min)
+    return current_max, current_min
+
+@njit
+def concurrent_max_min(arr):
+    current_max = np.iinfo(arr.dtype).min
+    current_min = np.iinfo(arr.dtype).max
+    for i in range(len(arr)):
+        current_max = max(arr[i], current_max)
+        current_min = min(arr[i], current_min)
+    return current_max, current_min
+
+assert max_then_min(DATA64) == concurrent_max_min(DATA64)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,l1_memory_cache_refs
+max_then_min(DATA64)
+concurrent_max_min(DATA64)
+```
+
+The second version definitely reduces memory reads, and is also faster, though it may be faster for other reasons (increased instruction-level parallelism, for example).
+
+## Use smaller data types
+
+One way to reduce memory reads is to switch your code to use smaller data types: a `uint16` uses a quarter as much memory as a `uint64`, and we know that our data will fit in a 16-bit integer, since it's never higher than 1000.
+As an added bonus, you might also be able to get more work done with SIMD instructions, since you'll be able to fit more values into the 128-, 256- or 512-bit fixed-size registers that SIMD instructions use.
+
+```{python}
+DATA16 = DATA64.astype(np.uint16)
+
+assert max_then_min(DATA64) == concurrent_max_min(DATA16)
+assert max_then_min(DATA16) == concurrent_max_min(DATA16)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,l1_memory_cache_refs
+max_then_min(DATA64)
+max_then_min(DATA16)
+concurrent_max_min(DATA64)
+concurrent_max_min(DATA16)
+```
