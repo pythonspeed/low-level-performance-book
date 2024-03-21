@@ -1,0 +1,158 @@
+# The wrong way to speed up your code with Numba
+
+If your NumPy-based code is too slow, you can sometimes use Numba to speed it up.
+Numba is a compiled language that uses the same syntax as Python, and it compiles at runtime, so it's very easy to write.
+And because it re-implements a large part of the NumPy APIs, it can also easily be used with existing NumPy-based code.
+
+However, Numba's NumPy support can be a trap: it can lead you to missing huge optimization opportunities by sticking to NumPy-style code.
+So in this article we'll show an example of:
+
+* The wrong way to use Numba: writing NumPy-style full array transforms.
+* The right way to use Numba: `for` loops.
+
+<!-- TEASER_END -->
+
+## An example: converting color images to grayscale
+
+Consider a color image encoded with red, green, and blue channels:
+
+```{python}
+#| echo: false
+import sys
+sys.path.append("../src")
+%load_ext book_magics
+```
+
+```{python}
+from skimage import io
+
+RGB_IMAGE = io.imread("dizzymouse.jpg")
+print("RGB_IMAGE shape:", RGB_IMAGE.shape)
+print("IMAGE dtype:", RGB_IMAGE.dtype)
+print("IMAGE memory usage (bytes):", RGB_IMAGE.size)
+```
+
+Here's what the image looks like:
+
+```{python}
+#| echo: false
+%display_image RGB_IMAGE
+```
+
+We want to convert this image to grayscale.
+Instead of three channels, we'll have just one that measures brightness, with 0 being black and 255 being white.
+Here's one simplistic way to do it:
+
+```{python}
+import numpy as np
+
+def to_grayscale_numpy(color_image):
+    result = np.round(
+        0.299 * color_image[:, :, 0] +
+        0.587 * color_image[:, :, 1] +
+        0.114 * color_image[:, :, 2]
+    )
+    return result.astype(np.uint8)
+
+GRAYSCALE = to_grayscale_numpy(RGB_IMAGE)
+```
+
+Here's what the resulting image looks like:
+
+```{python}
+#| echo: false
+%display_image GRAYSCALE
+```
+
+## Using Numba, the wrong way
+
+Numba lets us compile Python code to machine code, simply by adding the `@numba.jit` decorator.
+For NumPy APIs used in this code, the result doesn't actually use the NumPy library.
+Instead, Numba has actually _reimplemented_ these APIs in a (mostly) compatible way using the Numba language.
+
+One way we can use Numba, then, is to take our existing NumPy code, and just add a decorator:
+
+```{python}
+from numba import jit
+
+@jit
+def to_grayscale_numba(color_image):
+    result = np.round(
+        0.299 * color_image[:, :, 0] +
+        0.587 * color_image[:, :, 1] +
+        0.114 * color_image[:, :, 2]
+    )
+    return result.astype(np.uint8)
+
+GRAYSCALE2 = to_grayscale_numba(RGB_IMAGE)
+assert np.array_equal(GRAYSCALE, GRAYSCALE2)
+```
+
+Is this any faster?
+Let's see:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=peak_memory
+to_grayscale_numpy(RGB_IMAGE)
+to_grayscale_numba(RGB_IMAGE)
+```
+
+So it is faster, but only a little.
+This isn't surprising: NumPy internally is also implemented in a compiled language, so individual operations on arrays are already quite optimized.
+
+It's also worth noticing the memory usage.
+Our original image is 1.1MB, and we're allocating around 6MB to transform it to a grayscale image.
+This is because we have up to two temporary floating point arrays at any given time.
+Since `float64` uses 8× as much memory as a `uint8`, this adds up to quite a bit of memory.
+And since we're using the same algorithm as the original NumPy code, complete with temporary arrays, we have the same problem with high memory usage.
+
+## Using Numba, the right way
+
+If we think about how we're converting the image to grayscale, it happens for each pixel individually.
+There really is no reason to have a whole temporary floating point array; that's a result of the limits of how NumPy works.
+It needs to operate on whole arrays (so-called "vectorization") so that it doesn't use slow Python code.
+
+But Numba doesn't have that limit: you can use `for` loops and your code will still run quickly.
+And if we use a `for` loop we can operate pixel by pixel, at the very least reducing the memory allocations in our function.
+Let's try that out:
+
+```{python}
+@jit
+def to_grayscale_numba_for_loop(color_image):
+    result = np.empty(color_image.shape[:2], dtype=np.uint8)
+    for y in range(color_image.shape[0]):
+        for x in range(color_image.shape[1]):
+            r, g, b = color_image[y, x, :]
+            result[y, x] = np.round(
+                0.299 * r + 0.587 * g + 0.114 * b
+            )
+    return result
+
+GRAYSCALE3 = to_grayscale_numba_for_loop(RGB_IMAGE)
+assert np.array_equal(GRAYSCALE, GRAYSCALE3)
+```
+
+And here's the performance and memory usage:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,peak_memory
+to_grayscale_numpy(RGB_IMAGE)
+to_grayscale_numba(RGB_IMAGE)
+to_grayscale_numba_for_loop(RGB_IMAGE)
+```
+
+By using Numba the right way, our code is both faster and more memory efficient.
+
+> Notice that, in this case at least, the number of CPU instructions your program runs is not a good predictor of it speed.
+> To understand why, check out my [upcoming book on speeding up low-level code](/products/lowlevelcode/).
+
+## Software architecture as a performance constraint
+
+You can speed up your code in multiple ways.
+In this particular case, the speed-up comes from switching to a better software architecture.
+
+In particular, NumPy's full-array paradigm puts hard limits on how you can implement your code.
+By switching to a compiled language where `for` loops are fast, you have far more options for how you structure your algorithm.
+As you can see, this lets you reduce memory usage, enables [implementing algorithms that would be impossible with just NumPy](TODO), and often lets you significantly speed up your code.
