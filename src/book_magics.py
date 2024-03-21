@@ -3,6 +3,7 @@ from io import BytesIO
 import locale
 from time import perf_counter_ns, sleep
 import gc
+import tracemalloc
 
 from IPython.core.magic import (
     register_cell_magic,
@@ -107,6 +108,12 @@ MEASUREMENTS = {
         ],
         lambda double, single: double + single
     ),
+    # This is handled specially, doesn't actually use perf counters
+    "peak_memory": (
+        "Peak allocated memory (bytes)",
+        [], # not used
+        lambda: 1 / 0   # shouldn't be used!
+    )
 }
 
 def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,object]) -> list[int]:
@@ -123,9 +130,23 @@ def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,
     result = []
     for m in measurement_keys:
         _, events, post_process = MEASUREMENTS[m]
-        value = post_process(*[event_counts[ev] for ev in events])
+        if m == "peak_memory":
+            # Handled specially:
+            value = measure_peak_memory(line, local_ns)
+        else:
+            value = post_process(*[event_counts[ev] for ev in events])
         result.append(value)
+
     return result
+
+
+def measure_peak_memory(line: str, local_ns: dict[str,object]) -> int:
+    """Measure peak memory (in bytes) using tracemalloc."""
+    tracemalloc.start()
+    exec(line, local_ns)
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    return peak
 
 
 @magic_arguments()
