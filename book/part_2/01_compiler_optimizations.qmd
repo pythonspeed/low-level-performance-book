@@ -1,6 +1,6 @@
 # Rely on the compiler to optimize your code
 
-A compiler translates your code—human text, intended to be read and written by humans—to machine code, the instructions the CPU understands.
+A compiler translates your code—structured text that is intended to be read and written by humans—to machine code, the instructions the CPU understands.
 But the compiler does more than that.
 When your code gets compiled, the compiler also runs it through a series of optimization passes, with each pass transforming the code in the some way.
 The hope is that the cumulative series of transformations will result in code that is more efficient by:
@@ -15,7 +15,7 @@ The hope is that the cumulative series of transformations will result in code th
 import os
 os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
 
-from numba import njit
+from numba import jit
 import numpy as np
 ```
 
@@ -24,67 +24,26 @@ import numpy as np
 %load_ext book_magics
 ```
 
-## The compiler's key constraint: optimized code must have identical behavior to the original code
-
-A key requirement for the compiler's optimization passes is that your code continues to behave the same way, even as it gets faster.
-**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
-
-Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of safer, more conservative behavior.
-
 ## Get a sense of what the compiler can do
 
 In later chapters we'll consider some of the reasons the compiler might fail to optimize your code, and what you can do about it.
 But before seeing the reasons compilations won't work, it's worth understanding some of what the compiler can do.
 
-### Precalculating mathematical expressions
-
-If you have a fixed mathematical expression, the compiler can often just execute it at compilation time and replace the expression with the result.
-For example, notice how the first function is slower, while the latter two take the same amount of time:
-
-```{python}
-@njit
-def calc(a, b, c, d, e, f):
-    return ((a + b + c) ** d / e) + f
-
-@njit
-def calc_fixed():
-    return ((1 + 2 + 3) ** 7 / 6.0) + 5
-
-@njit
-def just_the_result():
-    return 46661.0
-
-# All three functions give the same result:
-assert calc_fixed() == calc(1, 2, 3, 7, 6.0, 5)
-assert calc_fixed() == just_the_result()
-```
-
-Here's how their speed compares:
-
-```{python}
-#| echo: false
-%%compare_timing
-
-calc(1, 2, 3, 7, 6.0, 5)
-calc_fixed()
-just_the_result()
-```
-
 ### Hoisting expressions out of inner loops
 
-The compiler can also hoist repetitive expressions out of loops, so they're called once instead of many times.
-For example, the expression `((n ** 2) * (1.5 / n) + n)` in the `compiler_will_hoist()` is repeated in every iteration, but it also always give the same result.
+The compiler can hoist repetitive expressions out of loops, so they're called once instead of many times.
+For example, the expression `((n ** 2) * (1.5 / n) + n)` in the `compiler_will_hoist()` is repeated in every iteration, but it always give the same result.
 The compiler is therefore able to move it out of the loop and run it only once, as we do manually in `manually_hoisted()`.
 
 ```{python}
-@njit
+@jit
 def compiler_will_hoist(m, n):
     total = 0
     for i in range(m):
         total = m * ((n ** 2) * (1.5 / n) + n)
     return total
 
-@njit
+@jit
 def manually_hoisted(m, n):
     total = 0
     constant = (n ** 2) * (1.5 / n) + n
@@ -111,27 +70,27 @@ While both versions have the same speed, the manually hoisted version is arguabl
 ### Inlining
 
 Calling a function takes some time, even in a low-level language.
-What's, it's difficult for the compiler to optimize across function boundaries.
-Thus, the compiler will sometimes take the contents of a function and put them inside the calling function, so that it can do more optimization passes.
+Plus, it's more difficult for the compiler to optimize across function boundaries.
+Thus, the compiler will sometimes take the contents of a function's code and put them inside the calling function, so that it can do more optimization passes.
 This is known as "function inlining".
 
 ```{python}
-@njit
+@jit
 def in_to_cm(cm):
     return cm * 0.394
 
-@njit
+@jit
 def cm3_to_liters(cm3):
     return cm3 / 1000
 
-@njit
+@jit
 def volume_liters(width_in, height_in, depth_in):
     width_cm = in_to_cm(width_in)
     height_cm = in_to_cm(height_in)
     depth_cm = in_to_cm(depth_in)
     return cm3_to_liters(width_cm * height_cm * depth_cm)
 
-@njit
+@jit
 def volume_liters_manual_inlining(width_in, height_in, depth_in):
     width_cm = width_in * 0.394
     height_cm = height_in * 0.394
@@ -153,8 +112,6 @@ volume_liters(17.0, 23.0, 53.0)
 volume_liters_manual_inlining(17.0, 23.0, 53.0)
 ```
 
-There are many other optimizations the compiler can do, with more added or tweaked with every compiler release.
-
 ### Using faster CPU instructions
 
 For any given piece of code there are different ways the compiler could translate the code into CPU instructions.
@@ -165,24 +122,21 @@ One such useful instruction is bitshifting: a bitshift of 3 to the right will ch
 Put another way, bitshifting N to the right is equivalent to dividing by $2^N$.
 
 ```{python}
-print(97 >> 3)
+assert 97 >> 3 == 12
+assert 97 // (2 ** 3) == 12
 ```
 
-```{python}
-print(97 // (2 ** 3))
-```
-
-If the compiler is asked to do a generic division, it can't really switch to other CPU instructions, so it's stuck with slow division instead of a fast bitshift.
+We can compare the speed up division and bitshifting using the following code:
 
 ```{python}
-@njit
+@jit
 def generic_division(divisor, size):
     arr = np.empty((size,), dtype=np.uint64)
     for i in range(len(arr)):
         arr[i] = i // divisor
     return arr
 
-@njit
+@jit
 def generic_bitshift(bits, size):
     arr = np.empty((size,), dtype=np.uint64)
     for i in range(len(arr)):
@@ -202,11 +156,14 @@ generic_division(8, 100_000)
 generic_bitshift(3, 100_000)
 ```
 
-If the compiler knows you're dividing by a power of 2, it can choose to use faster operations than division to get the same result.
+If the compiler is asked to do a generic division, it can't hardcode a faster implementation that's specific to powers of 2.
+After all, you might call that function with some other number.
+
+But if the compiler knows you're dividing by a power of 2, it can choose to use faster operations than division to get the same result.
 To see whether bitshifts were actually used we'd have to look at the generated CPU instructions, but even without doing that we can see that in this case the compiler was able to generate faster code to get the _equivalent_ of division by 8:
 
 ```{python}
-@njit
+@jit
 def specific_division_by_8(size):
     arr = np.empty((size,), dtype=np.uint64)
     for i in range(len(arr)):
@@ -236,3 +193,12 @@ os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
 
 You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
 :::
+
+## The compiler ensures optimized code has identical behavior to the original code
+
+The compiler can optimize your code, but there are limitations.
+One key requirement for the compiler's optimization passes is that your code continues to have the _exact_ same behavior.
+**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
+
+Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of safer, more conservative changes.
+We'll see one situation that limits the compiler in our next chapter, and discuss some others when we talk about floating point number.
