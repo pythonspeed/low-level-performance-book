@@ -1,8 +1,7 @@
 # Get rid of repetitive and wasteful code
 
-You've picked a good algorithm, your implementation language is now faster, but your code still isn't fast enough.
-The next step is to make your implementation more efficient by removing repetitive, wasteful code.
-Put another way, if your algorithm is $O(n·log(n))$, you can model the performance as being $k·n·log(n)$, and your goal is to try to shrink `k`.
+Once you've picked a good algorithm, you can make your implementation more efficient by removing repetitive, wasteful code.
+Put another way, if your algorithm is $O(N·log(N))$, you can model the performance as being $k·N·log(N)$, and your goal is to try to shrink the constant $k$.
 
 ```{python}
 #| echo: false
@@ -12,14 +11,14 @@ Put another way, if your algorithm is $O(n·log(n))$, you can model the performa
 ```{python}
 # Import the dependencies we'll need:
 import numpy as np
-from numba import njit
+from numba import jit
 ```
 
 ## Focus your efforts on inner loops
 
-If the three most important factors in real estate are location, location, location, the three most important factors in the speed of your data processing code are loops, loops, loops.
-Consider the problem domain this book addresses: processing relatively large amounts of data.
-At the core of the low-level code to process this data you will inevitably either write or call functions with the following structure:
+As far as speed goes, the three most important locations in your data processing code are loops, loops, and loops.
+A basic assumption in this book is that the code you're writing is used to process relatively large amounts of data.
+That means you will almost always end up writing or call functions with the following basic structure:
 
 ```{python}
 #| eval: false
@@ -34,22 +33,22 @@ for item in large_amount_of_data:
 do_some_cleanup()
 ```
 
-Given large amounts of data, and data structures like NumPy arrays or Arrow that are designed for fast access from low-level languages, the bulk of your processing will happen inside the loop.
+Given large amounts of data, and data structures like NumPy `ndarray`s that are designed for fast access from low-level languages, the bulk of your processing will happen inside the loop.
 You can speed up this sort of code by:
 
-1. Looping over less data—perhaps there's data you don't need to process at all?
-2. Reducing the work you repeatedly do inside the loop, the code you will be calling over and over again.
+1. Reducing the number of loop iterations; perhaps there's data you don't need to process at all?
+2. Speeding up the work you repeatedly do inside the loop, the code you will be calling over and over again.
 
 ## Don't process data you don't need to
 
 The fastest code is code you don't run at all.
-If you can avoid processing data when it's unnecessary, that can provide significant speed-ups.
+So if you can avoid processing data altogether,  that can provide significant speed-ups.
 
-As an example, let's implement the Sieve of Eratosthenes.
-We'll find prime numbers by crossing out multiples of 2 (4, 6, 8, ...), and then multiples of 3 (6, 9, 12, ...), multiples of 5 (10, 15, 20, ...), and so on.
+As an example, let's implement the Sieve of Eratosthenes, a classic algorithm for finding prime numbers.
+It works by iterating over all whole numbers in a range, crossing out multiples of 2 (4, 6, 8, ...), then multiples of 3 (6, 9, 12, ...), then multiples of 5 (10, 15, 20, ...), and so on.
 
 ```{python}
-@njit
+@jit
 def find_primes(length):
     is_prime = np.ones((length,), dtype=np.bool_)
     is_prime[0] = False
@@ -66,12 +65,13 @@ PRIMES = find_primes(1_000_000)
 
 Can we make this code any faster?
 One thing we can notice is that we're checking certain numbers twice.
-For example, when we rule out multiples of 5, we're ruling out $5×2$ and $5×3$ and $5×4$ even though we've already ruled them out in previous rounds.
-$2×5$ was ruled out as a multiple of 2.
-So we can tweak our `j` loop to start at a later point (`i * i` instead of `i * 2`) to prevent doing duplicate work:
+When we rule out multiples of 5, we're ruling out `10 = 5 * 2` and `10 = 5 * 3` and ` 10 = 5 * 4` even though we've already ruled them out in previous rounds.
+For example, `10 = 2 * 5` would have been previously ruled out as a multiple of 2.
+
+That means we can tweak our `j` loop to start at a later point (`i * i` instead of `i * 2`) to prevent doing duplicate work:
 
 ```{python}
-@njit
+@jit
 def find_primes_2(length):
     is_prime = np.ones((length,), dtype=np.bool_)
     is_prime[0] = False
@@ -80,8 +80,9 @@ def find_primes_2(length):
     for i in range(2, length):
         if not is_prime[i]:
             continue
-        for j in range(i*i, length, i):
+        for j in range(i * i, length, i):
             is_prime[j] = False
+
     return is_prime
 
 assert np.array_equal(PRIMES, find_primes_2(1_000_000))
@@ -91,33 +92,35 @@ This small tweak makes our algorithm run noticeably faster:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions
 find_primes(1_000_000)
 find_primes_2(1_000_000)
 ```
 
 ## Don't do unnecessary work inside loops
 
-In our loop above we do an `if is_prime[i]: continue` check on all even `i` numbers, even though we know that any even number larger than 2 isn't prime.
-This is something we can avoid by special casing even numbers:
+Continuing the same example, in our loop above we do an `if is_prime[i]: continue` check on all even values of `i`, even though we know that any even number larger than 2 isn't prime.
+Instead of doing this check in every single iteration, including odd numbers, we can split processing into two loops, one for odd numbers and one for even numbers.
+The total number of iterations doesn't change, it's still `length`, but each iteration does less work:
 
 ```{python}
-@njit
+@jit
 def find_primes_3(length):
     is_prime = np.ones((length,), dtype=np.bool_)
     is_prime[0] = False
     is_prime[1] = False
 
-    # Rule out all even numbers unconditionally:
+    # 😎 Unconditionally rule out all even numbers >2:
     for i in range(4, length, 2):
         is_prime[i] = False
 
-    # Now only check odd numbers:
+    # 😎 Now only check odd numbers:
     for i in range(3, length, 2):
         if not is_prime[i]:
             continue
         for j in range(i*i, length, i):
             is_prime[j] = False
+
     return is_prime
 
 assert np.array_equal(PRIMES, find_primes_3(1_000_000))
@@ -127,38 +130,77 @@ This version is even faster:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions
 find_primes(1_000_000)
-find_primes_2(1_000_000)
 find_primes_3(1_000_000)
+```
+
+Now that we're only iterating over odd numbers in the second loop, we apply another optimization in the inner-most `for j` loop.
+Let's say we're ruling out multiples of 3.
+We rule out the sequence `9`, `12`, `15`, `18`, and so on up to `length`.
+Notice that every second number is even, because we're adding up pairs of odd numbers.
+And those even numbers have already been marked as non-prime.
+
+So we can optimize the code even further by doing every second multiple:
+
+```{python}
+@jit
+def find_primes_4(length):
+    is_prime = np.ones((length,), dtype=np.bool_)
+    is_prime[0] = False
+    is_prime[1] = False
+
+    for i in range(4, length, 2):
+        is_prime[i] = False
+
+    for i in range(3, length, 2):
+        if not is_prime[i]:
+            continue
+        # 😎 Only mark multiples that are odd (skipping ahead 2 * i in each
+        # iteration), since even numbers have already been handled:
+        for j in range(i*i, length, 2 * i):
+            is_prime[j] = False
+
+    return is_prime
+
+assert np.array_equal(PRIMES, find_primes_4(1_000_000))
+```
+
+Once again, we've sped up the code:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+find_primes(1_000_000)
+find_primes_4(1_000_000)
 ```
 
 ## Avoid allocations in the hot loop
 
-Another common example of work to avoid inside loops is temporary memory allocation.
-In compiled languages creating an integer or float or other small type doesn't typically require memory allocation, and is quite cheap.
-Larger values that need to persist beyond the lifetime of the function call need to be allocated from the operating system.
+In compiled languages, creating an integer or float or other small type doesn't typically require memory allocation, and in our simplified mental model you can just assume it has no performance cost.
+However, larger values that need to persist beyond the lifetime of the function call need to be allocated from the operating system, which is a more expensive operation.
 Allocating memory can happen explicitly—for example, in C you might call `malloc()`—or implicitly, depending on your language.
 
-Allocating and freeing memory inside a loop can both make it harder for the compiler to optimize your code, and may be just wasted effort.
+Allocating and freeing memory inside a loop can both make it harder for the compiler to optimize your code, and may also be wasted effort.
 Instead, see if you can reuse allocations.
 
-For our purposes, Numba allocates memory based on rules inherited from NumPy:
+For our purposes, we'll focus on Numba, which allocates memory based on rules inherited from NumPy:
 
 * Explicitly creating an array allocates memory, for example `np.ones((1_000,))`.
 * Slicing an array does not allocate memory, it creates a view of the same underlying memory, for example `myarr[1:]`.
-* Mathematical operations on arrays can create new arrays, thus allocating memory, for example `myarr + 1` creates a new array with item `i` equal to `myarr[i] + 1`.
+* Mathematical operations on arrays can create new arrays, thus allocating memory.
+  For example, `myarr + 1` creates a new array with the value at index `i` set to `myarr[i] + 1`.
 
 To see the performance impact of allocating in a loop, consider the following example:
 
 ```{python}
-@njit
+@jit
 def allocate_in_loop(arr):
     total = 0
     for i in range(len(arr) // 4):
         # This is just a view, so it doesn't allocate:
         slice_of_4 = arr[i * 4:(i + 1) * 4]
-        # Doing power of 2 on the array view creates a temporary array! Oops.
+        # 🙁 Doing power of 2 on the array view creates a temporary array! Oops.
         total += (slice_of_4 ** 2).mean()
     return total
 ```
@@ -166,9 +208,10 @@ def allocate_in_loop(arr):
 Instead of allocating in every iteration, we can reuse a single array:
 
 ```{python}
-@njit
+@jit
 def no_allocate_in_loop(arr):
     total = 0
+    # 😎 Create a single, temporary array we can reuse across loop iterations.
     temp = np.zeros((4, ), dtype=arr.dtype)
     for i in range(len(arr) // 4):
         # This is just a view, so it doesn't allocate:

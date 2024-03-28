@@ -54,7 +54,7 @@ def naive_filter_python(arr1, arr2):
     # faster APIs.
     for i in range(len(arr1)):
         item = arr1[i]
-        # Checking if an item is contained in an array may require iterating
+        # 🙁 Checking if an item is contained in an array may require iterating
         # over the whole array, so this if statement takes len(arr2) steps:
         if item in arr2:
             result[found_items] = item
@@ -103,8 +103,8 @@ Subsequent runs will use the pre-compiled version and run extremely quickly.
 ```{python}
 from numba import jit
 
-# This is approximately the same code as naive_filter_python() above,
-# but it will be compiled to machine code the first time it is called
+# 😎 This is approximately the same code as naive_filter_python()
+# above, but it will be compiled to machine code the first time it is called
 # with particular types because of the @jit decorator.
 @jit
 def naive_filter_compiled(arr1, arr2):
@@ -145,7 +145,7 @@ But because it uses the same $O(N^{2})$ it is still going to scale badly as the 
 ## Linear algorithms beat quadratic algorithms
 
 Let's try a different approach: a more scalable algorithm.
-Instead of a run time that scales $O(N^{2})$ with input size $N$, the following algorithm scales $O(N×k)$, where $k$ is a fixed constant.
+Instead of a run time that scales $O(N^{2})$ with input size $N$, the following algorithm scales $O(N·k)$, where $k$ is a fixed constant.
 We will implement this more scalable algorithm in Python, without bothering to use a compiled language:
 
 ```{python}
@@ -160,8 +160,8 @@ def smarter_filter_python(arr1, arr2):
 
     for i in range(len(arr1)):
         item = arr1[i]
-        # Checking if an item is contained in a Python set takes a fixed amount
-        # of time, unlike checking membership in a list or array.
+        # 😎 Checking if an item is contained in a Python set takes a fixed
+        # amount of time, unlike checking membership in a list or array.
         if item in arr2_as_set:
             result[found_items] = item
             found_items += 1
@@ -185,7 +185,7 @@ import benchit
 inputs = {
     size: (np.arange(0, size, dtype=np.uint64),
            np.arange(3, size + 3, dtype=np.uint64))
-    for size in range(100, 2000, 100)
+    for size in range(100, 1500, 200)
 }
 
 timings = benchit.timings(
@@ -204,7 +204,7 @@ timings.plot(logx=False, logy=False, dpi=100, figsize=(8, 4), fontsize=12)
 
 For small inputs, the Python version is slower than the compiled version.
 But once inputs are large enough, the linear algorithm in Python is faster than the compiled (but quadratic) Numba version.
-**This why it's so important to pick a scalable algorithm: once your inputs are large enough, a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language.**
+This is why it's so important to pick a scalable algorithm: once your inputs are large enough, a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language.
 
 Once you've picked a scalable algorithm, what else can you do to speed up your code?
 That's what we'll be covering in the rest of the book.
