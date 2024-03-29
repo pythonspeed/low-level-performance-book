@@ -1,15 +1,15 @@
 # Use SIMD (Single Instruction, Multiple Data) to speed up repetitive computations
 
-Single Instruction Multiple Data, or SIMD, are CPU instructions that can execute the same operation on a sequence primitive values (integers or floats) that are stored next to each other in memory, using a single instruction.
+Single Instruction Multiple Data, or SIMD, are a type of CPU instructions that can execute the same operation on a sequence primitive values (integers or floats) that are stored next to each other in memory, using a single instruction.
 The compiler needs to explicitly generate these instructions, unlike the instruction-level parallelism we previously covered.
 
 For example, if we want to multiply 4 integers by a constant, we can do that with a single SIMD CPU instruction instead of with 4 normal CPU instructions.
-Reducing the number of instructions to run by a factor of 4 can then lead to a significant speedup.
+Reducing the number of instructions the CPU has to run by a factor of 4 can then lead to a significant speedup.
 This is sometimes referred to as "vectorization".
 
 ::: {.callout-note}
 This is a different meaning than typically used in Python programming, where "vectorization" means a batch operation implemented in a low-level language.
-Given we're speeding up Python, the usage can sometimes be ambiguous, so make sure you understand which of the two meaning applies when reading documentation.
+Given we're speeding up Python, what "vectorization" means can be ambiguous, so make sure you understand which of the two meaning applies when reading documentation.
 :::
 
 We'll set up our normal imports:
@@ -17,7 +17,7 @@ We'll set up our normal imports:
 ```{python}
 # Import the dependencies we'll need:
 import numpy as np
-from numba import njit
+from numba import jit
 ```
 
 ```{python}
@@ -92,7 +92,7 @@ In particular, we have two versions of the exact same code, one compiled with SI
 DATA_FLOAT64 = np.ones((1_000_000,), dtype=np.float64)
 DATA_FLOAT32 = np.ones((1_000_000,), dtype=np.float32)
 
-@njit
+@jit
 def simd(x):
     out = np.empty(x.shape, dtype=x.dtype)
     for i in range(len(x)):
@@ -102,10 +102,10 @@ def simd(x):
 assert simd(DATA_FLOAT64)[0] == 2
 assert simd(DATA_FLOAT32)[0] == 2
 
-# This is like doing @njit, with some behind-the-scenes magic to disable
+# This is like doing @jit, with some behind-the-scenes magic to disable
 # usage of SIMD for this function only.
-with disabled_simd() as njit_no_simd:
-    @njit_no_simd
+with disabled_simd() as jit_no_simd:
+    @jit_no_simd
     def no_simd(x):
         out = np.empty(x.shape, dtype=x.dtype)
         for i in range(len(x)):
@@ -116,7 +116,7 @@ with disabled_simd() as njit_no_simd:
     assert no_simd(DATA_FLOAT32)[0] == 2
 ```
 
-Here's how long each variation takes to run:
+Here's how long each variation takes to run; using SIMD makes the code run a little faster:
 
 ```{python}
 #| echo: false
@@ -134,33 +134,32 @@ And those instructions are 256-bit SIMD instructions.
 
 256-bit SIMD means the instruction operates on 256 bits at once: the code packs as many numbers as will fit into 256 bits, and then the SIMD operation runs on that.
 
-* For 64-bit floats, $256 / 64 = 4$, so we can process 4 `float64` with each SIMD instruction.
-  And $1000000 / 4 = 250000$.
-* For 32-bit floats, $256 / 32 = 8$, so we can process 8 `float32` with each SIMD instruction.
-  And $1000000 / 8 = 125000$.
+* For 64-bit floats, $256 / 64 = 4$, so we can process 4 `float64` with each 256-bit SIMD instruction.
+  $1000000 / 4 = 250000$ instructions.
+* For 32-bit floats, $256 / 32 = 8$, so we can process 8 `float32` with each 256-bit SIMD instruction.
+  $1000000 / 8 = 125000$ instructions.
 
-Needing to use half as many instructions is likely part of the reason that processing 1,000,000 `float32`s was faster than processing the equivalent number of `float64`.
-We'll talk about an additional reason, memory caches and bandwidth, in a later chapter.
+Using half as many instructions is likely part of the reason that processing `float32`s was faster than processing the equivalent number of `float64`.
+We'll talk about an additional reason, memory caches and bandwidth, in later chapters.
 
 ## Avoid code patterns that prevent auto-vectorization
 
 Auto-vectorization doesn't always happen: sometimes the compiler can't figure out how generate equivalent SIMD code.
-In fact, many of the same problems that work against instruction-level parallelism also can prevent auto-vectorization:
 
 * **The potential for aliasing.** If you are dealing with overlapping memory, doing an operation one array item at a time might give different results than doing it in batches in parallel.
   As a result, if there is a potential for aliasing the compiler might choose not to use SIMD instructions in order to ensure the code matches your (presumed) intentions.
 * **Complex functions that didn't get inlined.**
-  The compiler likely won't pass 256-bit data batches across function call boundaries, so the function call will limit the ability to use SIMD.
+  The compiler likely won't pass 128/256/512-bit data batches across function call boundaries, so a function call can limit the ability to use SIMD.
 * **Branches.** SIMD instructions do the same thing to multiple pieces of data, which means branching for each item may be difficult.
-  Depending on the SIMD instructions your CPU has available, the compiler might have some tricks up its sleeve, but the more branching your code has the less likely it is that auto-vectorization will work.
-* **Floating point numbers.** We'll talk about this in a later chapter.
+  Depending on the SIMD instructions your CPU has available, the compiler might have some tricks up its sleeve using "masked" operations, but the more branching your code has the less likely it is that auto-vectorization will work.
+* **Floating point numbers.** Changing the order of floating point operations can give different calculation results, which may limit the compiler's ability to parallelize.
 * **The potential for memory being non-contiguous.**
   This is particularly an issue with NumPy views, that can skip every N bytes for a variety of reasons, for example a slice across a dimension that doesn't match the data order in memory.
   Code that is given memory that may or may not be contiguous will get optimized differently than code that can assume the data is contiguous.
 
-Since these issues can affect performance in other ways as well, preventing compiler optimizations and instruction-level parallelism, we'll cover generic solutions in later chapters.
+These issues can affect performance in additional ways, like preventing compiler optimizations and instruction-level parallelism, so we cover them in more detail in other chapters.
 
-::: {.callout-info}
+:::: {.callout-note}
 You can usually get your compiler to give you some hints about why it failed to auto-vectorize your code.
 For example, with Numba you can run the following _before_ you import `numba` for the first time:
 
@@ -169,36 +168,33 @@ For example, with Numba you can run the following _before_ you import `numba` fo
 import llvmlite.binding as llvm
 llvm.set_option('', '--debug-only=loop-vectorize')
 ```
-:::
+::::
 
 ## Don't assume auto-vectorized code is always faster
 
 Unfortunately, not all code runs faster when auto-vectorized; in some cases it will be slower, depending on the inputs, the compiler version, and your specific CPU model.
 So run code with and without auto-vectorization and see which version is faster.
 
-::: {.callout-info}
+::: {.callout-note}
 On Numba you can disable auto-vectorization by setting the [environment variables](https://numba.readthedocs.io/en/stable/reference/envvars.html) `NUMBA_LOOP_VECTORIZE` to `0` and `NUMBA_SLP_VECTORIZE` to `0`.
 Other compilers have their own specific options.
 :::
 
 ## What gets auto-vectorized?
 
-Which code gets auto-vectorized depends very much on which compiler you're using, and it can also change across releases of a single compiler.
-But it can be instructive to look at one particular compiler can do, in particular the [documentation for the clang compiler](https://llvm.org/docs/Vectorizers.html) for C and C++.
-Clang is based on LLVM, so these kinds of optimizations are available to other LLVM-based compilers, notably Numba and Rust.
+Which code gets auto-vectorized depends very much on the compiler you're using, and it can also change across different versions of that compiler.
+But it can be instructive to look at one particular compiler can do, in particular the [documentation for the LLVM compiler](https://llvm.org/docs/Vectorizers.html).
+Numba, the Clang C and C++ compiler, and Rust are all based on LLVM, so while the examples on this page are all Clang-specific, the basic functionality should apply elsewhere.
 
 Clang supports vectorizing loops, like the ones we saw in the previous example.
-It has lots of code for supporting complex expressions inside the loop (including conditionals), reverse iteration, more exotic forms of iteration that can be harder to spot, and so on.
-
+It has heuristics supporting complex expressions inside the loop (including conditionals), reverse iteration, more exotic forms of iteration that can be harder to spot, and so on.
 The loop vectorizer is top-down: it notices a larger code structure, the loop, and then tries to see if the loop's contents can be replaced with SIMD instruction.
+
 Clang also supports a different form of vectorization called superword-level parallelism (SLP) which notices similar expressions that can be combined into a single expression or expressions.
 Where the loop vector is top-down, the SLP vectorizer is bottom-up: it notices individual expressions that are structurally similar.
 
-```{python}
-import numpy as np
-from numba import njit
-
-@njit
+```python
+@jit
 def add(a, b):
     out = np.zeros((4,), dtype=a.dtype)
     out[0] = a[0] + b[0]
@@ -209,7 +205,7 @@ def add(a, b):
 ```
 
 
-::: {.callout-info}
+::: {.callout-note}
 While SLP is on by default in Clang, some versions of Numba have disabled SLP due to issues with bad code generation (see the [release notes](https://numba.pydata.org/numba-doc/dev/release-notes.html)).
 This is one of the problems with auto-vectorization: it can stop working unexpectedly due to changes in the compiler, both intentional and unintentional.
 :::
