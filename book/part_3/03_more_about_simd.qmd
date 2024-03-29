@@ -8,9 +8,9 @@ Since this is a more advanced topic, I suggest skipping this chapter on first re
 If you want to use SIMD, there are different ways you can get the compiler to generate these specialized CPU instructions:
 
 1. **Auto-vectorization:** Compilers can sometimes generate SIMD instructions automatically, especially if you structure your code appropriately.
-   Because this relies on compiler heuristics you have less control, and different compiler versions might give different results.
+   Because this relies on compiler heuristics you have less control over the results, and different compiler versions might give different results.
    This is what we focused on in the previous chapter.
-2. **Intrinsics:** You directly tell the compiler to use specific CPU instructions, using special compiler features called "intrinsics".
+2. **Intrinsics:** You can directly tell the compiler to use specific CPU instructions, using special compiler features called "intrinsics".
    This doesn't work in all languages, for example it's not easily supported by Numba, and the resulting code is not portable: x86-64 CPU instructions are different than ARM CPU instructions.
    Worse, different x86-64 CPU models support different instructions, as we'll discuss next.
 3. **SIMD abstraction libraries:** Many languages have libraries available providing datastructures that will use SIMD for their mathematical operations.
@@ -19,7 +19,7 @@ If you want to use SIMD, there are different ways you can get the compiler to ge
 ## When auto-vectorizing, make sure you're actually using SIMD
 
 Keep in mind that some compilers in some configurations don't auto-vectorize at all.
-Notably, if you're compiled C/C++/Cython extensions for Python by default no auto-vectorization happens at all.
+Notably, if you're compiing C/C++/Cython extensions for Python, by default no auto-vectorization happens at all.
 See [this article for more details](https://pythonspeed.com/articles/faster-cython-simd/).
 
 ## Make sure you're taking advantage of modern SIMD features
@@ -31,7 +31,8 @@ For example, AVX-512 is a family of useful SIMD instructions, including 512-bit 
 But my computer's CPU, an Intel i7-12700K released in 2021, doesn't support these instructions.
 If I were to run a program that tried to execute an AVX-512 instruction, the process would crash (or worse) due to using an illegal instruction.
 
-This raises a problem: on the one hand, you want your code to use the specific SIMD instructions available on the production machine's CPU, in order to maximize your code's speed.
+The inconsistent availability of SIMD instructions causes a dilemma.
+On the one hand, you want your code to use the specific SIMD instructions available on the production machine's CPU, in order to maximize your code's speed.
 On the other hand, the machine where you develop your code may not be the same as the production machine where you run the code.
 And sometimes your code will need to run on many different CPUs, so you can't even predict in advance exactly which SIMD instructions will be available!
 
@@ -51,7 +52,7 @@ There are three basic solutions to this problem:
   You compile to a target set of CPU capabilities that are available everywhere you care about.
   For example, in the cloud you can check your vendor's documentation to see what SIMD instruction families are supported by the compute instances you're using.
   If they all support AVX2 SIMD instructions, but not all support AVX-512, you enable AVX2 but not AVX-512.
-  If you're distributing code to the general public, you'll be very limited in what instructions your code can use.
+  If you're distributing code to the general public that you want to work on all computers, you'll be very limited in what instructions your code can use.
   This is the default for most ahead-of-time compilers that use auto-vectorization.
 
 Comparing the three hardware utilization methods:
@@ -69,15 +70,6 @@ These interact with the hardware utilization methods:
   As such, compilation always gives the same results, so even if you have separate development and production machines, there is no point in compiling on production machines.
 * SIMD-specific libraries will sometimes provide the infrastructure to implement runtime dispatch, so you don't have to implement it yourself.
   For example, the [Highway C++ library](https://github.com/google/highway) supports both fixing the instruction set at compile time and runtime dispatch.
-
-To summarize these interactions:
-
-| Does this support—      | —compiling in production? | —runtime dispatch?                        | —lowest common denominator? |
-|-------------------------|---------------------------|-------------------------------------------|-----------------------------|
-| Intrinisics             | No point                  | Yes, manually written dispatch code       | Yes                         |
-| Auto-vectorization      | Yes                       | Yes, manually written dispatch code       | Yes                         |
-| SIMD-specific libraries | Yes                       | Yes, some libraries have built-in support | Yes                         |
-
 
 ## Choose a better lowest-common-denominator
 
@@ -99,5 +91,5 @@ The additional targets are:
 * `x86-64-v4`: Adds support for a subset of the AVX-512 SIMD instruction family that is well supported across many CPU models.
 
 `x86-64-v2` is probably a reasonable choice for anything running in production that doesn't need to support ancient computers.
-If you have some control over your hardware `x86-64-v3` or `x86-64-v4` may work.
+If you have some control over your hardware, `x86-64-v3` or `x86-64-v4` are likely to work.
 For example, if you're running on AWS, the [Vantage AWS EC2 instance type page](https://instances.vantage.sh/) lets you filter by instance types that support AVX, AVX2, and AVX-512.
