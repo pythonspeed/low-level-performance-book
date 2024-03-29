@@ -3,69 +3,139 @@
 This book is aimed at Python developers, with the assumption you're probably going to use Python code to interact with any low-level code you write.
 This means you need to get data back and forth from Python to the compiled code, and you want to do that efficiently.
 
-There's a problem, though: CPython represents objects rather differently than compiled languages do.
-For example, let's say you have a 64-bit integer, and you want to turn it into a Python integer.
-Here's the CPython interpreter does it; you don't have to understand the code, the important thing is to notice it's doing quite a bit of work:
+Unfortunately, Python's built-in types are not at all efficient.
+Let's see an example.
+
+## An example of the problem
+
+We can represent a set of integers as a Python list, or as a NumPy array:
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import jit
+
+PYTHON_LIST = list(range(10_000))
+NUMPY_ARRAY = np.array(PYTHON_LIST, dtype=np.int64)
+
+
+@jit
+def mysum(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+
+assert mysum(NUMPY_ARRAY) == mysum(PYTHON_LIST)
+```
+
+At first glance, summing the values of a Python list isn't very different than summing the values of a NumPy array.
+In fact, the former is vastly slower:
+
+```{python}
+#| echo: false
+%%compare_timing
+mysum(PYTHON_LIST)
+mysum(NUMPY_ARRAY)
+```
+
+## Avoid accessing standard Python objects from compiled code
+
+Here's the problem: CPython represents objects rather differently than compiled languages do.
+For example, to convert a Python `int` into a 64-bit integer that Numba or C++ can use, you call (directly or indirectly) a function provided by CPython called `PyLong_AsLongAndOverflow`.
+You don't have to understand the code, the important thing is to notice it's doing quite a bit of work:
 
 ```c
 // This code snippet is copyright © 2001-2023 Python Software Foundation;
 // All Rights Reserved.
 //
 // See https://docs.python.org/3/license.html for the full license.
-PyObject *
-PyLong_FromLong(long ival)
+long
+PyLong_AsLongAndOverflow(PyObject *vv, int *overflow)
 {
+    /* This version by Tim Peters */
     PyLongObject *v;
-    unsigned long abs_ival, t;
-    int ndigits;
+    unsigned long x, prev;
+    long res;
+    Py_ssize_t i;
+    int sign;
+    int do_decref = 0; /* if PyNumber_Index was called */
 
-    /* Handle small and medium cases. */
-    if (IS_SMALL_INT(ival)) {
-        return get_small_int((sdigit)ival);
-    }
-    if (-(long)PyLong_MASK <= ival && ival <= (long)PyLong_MASK) {
-        return _PyLong_FromMedium((sdigit)ival);
-    }
-
-    /* Count digits (at least two - smaller cases were handled above). */
-    abs_ival = ival < 0 ? 0U-(unsigned long)ival : (unsigned long)ival;
-    /* Do shift in two steps to avoid possible undefined behavior. */
-    t = abs_ival >> PyLong_SHIFT >> PyLong_SHIFT;
-    ndigits = 2;
-    while (t) {
-        ++ndigits;
-        t >>= PyLong_SHIFT;
+    *overflow = 0;
+    if (vv == NULL) {
+        PyErr_BadInternalCall();
+        return -1;
     }
 
-    /* Construct output value. */
-    v = _PyLong_New(ndigits);
-    if (v != NULL) {
-        digit *p = v->long_value.ob_digit;
-        _PyLong_SetSignAndDigitCount(v, ival < 0 ? -1 : 1, ndigits);
-        t = abs_ival;
-        while (t) {
-            *p++ = (digit)(t & PyLong_MASK);
-            t >>= PyLong_SHIFT;
+    if (PyLong_Check(vv)) {
+        v = (PyLongObject *)vv;
+    }
+    else {
+        v = (PyLongObject *)_PyNumber_Index(vv);
+        if (v == NULL)
+            return -1;
+        do_decref = 1;
+    }
+    if (_PyLong_IsCompact(v)) {
+#if SIZEOF_LONG < SIZEOF_VOID_P
+        intptr_t tmp = _PyLong_CompactValue(v);
+        res = (long)tmp;
+        if (res != tmp) {
+            *overflow = tmp < 0 ? -1 : 1;
+        }
+#else
+        res = _PyLong_CompactValue(v);
+#endif
+    }
+    else {
+        res = -1;
+        i = _PyLong_DigitCount(v);
+        sign = _PyLong_NonCompactSign(v);
+        x = 0;
+        while (--i >= 0) {
+            prev = x;
+            x = (x << PyLong_SHIFT) | v->long_value.ob_digit[i];
+            if ((x >> PyLong_SHIFT) != prev) {
+                *overflow = sign;
+                goto exit;
+            }
+        }
+        /* Haven't lost any bits, but casting to long requires extra
+        * care (see comment above).
+        */
+        if (x <= (unsigned long)LONG_MAX) {
+            res = (long)x * sign;
+        }
+        else if (sign < 0 && x == PY_ABS_LONG_MIN) {
+            res = LONG_MIN;
+        }
+        else {
+            *overflow = sign;
+            /* res is already set to -1 */
         }
     }
-    return (PyObject *)v;
+  exit:
+    if (do_decref) {
+        Py_DECREF(v);
+    }
+    return res;
 }
 ```
 
-If you're passing an integer or two, this overhead probably doesn't matter.
+If you're passing in an integer or two, the overhead from calling `PyLong_AsLongAndOverflow()` probably doesn't matter.
 But for large amounts of data, this overhead adds up.
-Imagine you want to pass an array of 64-bit integers to CPython, so normal Python code can interact with it.
-This would involve creating a Python list, and then running the above conversion code for every integer.
-This is quite a bit of effort just to pass some data around, not to mention all the extra memory you will need to allocate.
+In our example, we need to call this function for every single integer in the Python list... after we've made sure it's an integer, of course, which also takes work!
 
-And this is just one direction, from compiled code to Python.
-The other direction, converting a Python list of integers into an array of 64-bit integers so you an easily access the low-level code, is equally time-consuming and expensive.
-Plus, you'll need to check that every value actually is an integer, and that it fits in 64-bit.
-All of this will slow down your code, reducing the performance benefit of using a compiled language.
-
-The way to avoid this expense: using container objects specifically designed for fast access from low-level compiled languages.
+And this is just one direction, from Python to compiled code; conversion in the other direction can be equally expensive.
+Converting data back and forth will slow down your code, reducing the performance benefit of using a compiled language.
 
 ## Choose appropriate data structures
+
+The way to avoid the expense of converting back and forth between low-level and Python representation of data is to use container objects specifically designed for fast access from low-level compiled languages.
 
 Different data structures are available in common Python libraries, specifically designed to allow efficient access from low-level languages.
 Some examples:
