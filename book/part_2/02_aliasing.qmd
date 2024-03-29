@@ -36,69 +36,95 @@ That's because seemingly identically-behaved functions will actually behave diff
 
 ## An example of the problem
 
-Here's an example of two functions that seem identical, but behave differently when the inputs are aliased[^example]:
-
-[^example]: This example was inspired by one in _Computer Systems: A Programmer's Perspective_, by Bryant and O'Hallaron.
+Consider the following function:
 
 ```{python}
 @njit
-def add_twice(first_arr, second_arr):
-    for i in range(len(first_arr)):
-        first_arr[i] += second_arr[i]
-        first_arr[i] += second_arr[i]
-    return first_arr
+def minmax(mins_out, maxs_out, a, b):
+    for i in range(len(a)):
+        mins_out[i] = min(np.sin(a[i]), np.sin(b[i]))
+        maxs_out[i] = max(np.sin(a[i]), np.sin(b[i]))
+    return mins_out, maxs_out
+```
 
+`minmax()` has an obvious optimization: calculate `np.sin(a[i])` and `np.sin(b[i])` only once.
+An optimized version looks like this:
+
+```{python}
 @njit
-def add_twice_cached(first_arr, second_arr):
-    for i in range(len(first_arr)):
-        value = second_arr[i]
-        first_arr[i] += value
-        first_arr[i] += value
-    return first_arr
+def minmax_optimized(mins_out, maxs_out, a, b):
+    for i in range(len(a)):
+        val_a, val_b = a[i], b[i]
+        mins_out[i] = min(np.sin(val_a), np.sin(val_b))
+        maxs_out[i] = max(np.sin(val_a), np.sin(val_b))
+    return mins_out, maxs_out
 
-def ones():
-    return np.ones((1_000_000, ), dtype=np.uint64)
+def empty():
+    return np.empty((1_000_000, ), dtype=np.float64)
 
-DATA = ones()
-DATA2 = np.linspace(1_000_000, 0, 1_000_000, dtype=np.uint64)
+DATA1 = np.random.random(1_000_000)
+DATA2 = np.random.random(1_000_000)
 
 # Both functions give the same result (in this case at least):
 assert np.array_equal(
-    add_twice(ones(), DATA2),
-    add_twice_cached(ones(), DATA2)
+    minmax(empty(), empty(), DATA1, DATA2),
+    minmax_optimized(empty(), empty(), DATA1, DATA2),
 )
 ```
 
-The first implementation is slower, because it does more work and the compiler doesn't optimize that work away:
+Despite this optimization being obvious to a human reader, the original `minmax()` is much slower than the optimized version.
 
 ```{python}
 #| echo: false
 %%compare_timing
 
-add_twice(DATA, DATA2)
-add_twice_cached(DATA, DATA2)
+minmax(empty(), empty(), DATA1, DATA2)
+minmax_optimized(empty(), empty(), DATA1, DATA2)
 ```
 
-On the face of it, the two implementations are semantically the same, and so it's surprising that the compiler won't transform the first implementation into the second, slightly faster form.
+## Aliasing can result in unexpected behavior
 
-The likely issue is that the compiler can't know at compile time if the two arrays are actually the same array: it needs to take aliasing into account.
-This matters because the two functions behave differently for inputs that involve aliasing, which means the compiler can't swap the two implementations out.
+Why doesn't `minmax()` get automatically optimized to match `minmax_optimized()`?
+Because the two functions are not truly identical: they behave differently for inputs that involve aliasing.
 For example, if we pass the same array to both arguments of the functions, we get different results:
 
 ```{python}
-arr = np.ones((3, ), dtype=np.uint64)
-print("add_twice() gives:", add_twice(arr, arr))
+arr = np.ones((3, ), dtype=np.float64)
+arr2 = np.zeros((3, ), dtype=np.float64)
+print("minmax()[1] gives:", minmax(arr, arr2, arr, arr2)[1])
 
-arr = np.ones((3, ), dtype=np.uint64)
-print("add_twice_cached() gives:", add_twice_cached(arr, arr))
+arr = np.ones((3, ), dtype=np.float64)
+arr2 = np.zeros((3, ), dtype=np.float64)
+print(
+    "minmax_optimized()[1] gives:",
+    minmax_optimized(arr, arr2, arr, arr2)[1]
+)
 ```
 
-So how do we deal with the fact that the _potential_ for aliasing can prevent optimization?
+Here's what happens when we run the code in `minmax(arr, arr2, arr, arr2)`:
+
+```python
+# This code...
+mins_out[i] = min(np.sin(a[i]), np.sin(b[i]))
+maxs_out[i] = max(np.sin(a[i]), np.sin(b[i]))
+
+# .. becomes this code:
+arr[i] = min(np.sin(arr[i]), np.sin(arr2[i]))
+# At this point arr[i] has been modified, so np.sin(arr[i]) is different than
+# the previous np.sin(arr[i]):
+arr2[i] = max(np.sin(arr[i]), np.sin(arr2[i]))
+```
+
+Because `minmax()` and `minmax_optimized()` behave differently, the compiler cannot optimize one into the other.
+And that means slower code.
+
+The obstacle to optimization in this particular case is the potential for aliasing.
+How can we avoid that?
 
 ## Solution #1: Manual optimization
 
 Rather than relying on the compiler, you can implement the optimizations yourself.
-In our example, you could write the verison of the code in `add_twice_cached()` instead of `add_twice()`, assuming that matches the semantics you want in the case when the data is aliased.
+In our example, you could write the verison of the code in `minmax_optimized()` instead of `minmax()`, assuming that matches the semantics you want in the case when the data is aliased.
 
 Unfortunately, there may be less obvious optimizations that you miss.
 And some optimizations are much more difficult for you to implement yourself, in particular those that involve generating particular machine code.
@@ -106,42 +132,34 @@ And some optimizations are much more difficult for you to implement yourself, in
 ## Solution #2: Ensure aliasing doesn't impact the result
 
 Just because two pointers point at the same memory doesn't necessarily prevent the compiler from applying optimizations.
-In particular, the issue in the examples above was due to _writing_ to the passed-in array, which meant writes could impact future reads.
-If instead we write the data to a _new_ array, aliasing becomes irrelevant and the compiler should be able to apply more optimizations.
+In this case, the issue is that writing to `mins_out[i]` had a chance of affecting the `a[i]` or `b[i]`.
+If we prevent that, and only that, the compiler can optimize more on its own:
 
 ```{python}
 @njit
-def add_twice_new_array(first_arr, second_arr):
-    result = np.empty(first_arr.shape, dtype=first_arr.dtype)
-    for i in range(len(result)):
-        result[i] = first_arr[i] + second_arr[i]
-        result[i] += second_arr[i]
-    return result
+def minmax_alias_safe(mins_out, maxs_out, a, b):
+    for i in range(len(a)):
+        val_a, val_b = a[i], b[i]
+        # We're still calculating the same sin() twice, but this time the
+        # compiler can optimize the duplicate calculation away, since it knows
+        # that writing to mins_out[i] won't impact the calculation:
+        mins_out[i] = min(np.sin(val_a), np.sin(val_b))
+        maxs_out[i] = max(np.sin(val_a), np.sin(val_b))
+    return mins_out, maxs_out
 
-@njit
-def add_twice_cached_new_array(first_arr, second_arr):
-    result = np.empty(first_arr.shape, dtype=first_arr.dtype)
-    for i in range(len(result)):
-        value = second_arr[i]
-        result[i] = first_arr[i] + value
-        result[i] += value
-    return result
-
-# Both functions give the same result:
-ONES = ones()
 assert np.array_equal(
-    add_twice_new_array(ONES, DATA2),
-    add_twice_cached_new_array(ONES, DATA2)
+    minmax_optimized(empty(), empty(), DATA1, DATA2),
+    minmax_alias_safe(empty(), empty(), DATA1, DATA2)
 )
 ```
 
-In this case the compiler is able to optimize `add_twice_new_array()`:
+The compiler is now able to optimize away that duplicate `np.sin()` calculations:
 
 ```{python}
 #| echo: false
 %%compare_timing
-add_twice_new_array(ONES, DATA2)
-add_twice_cached_new_array(ONES, DATA2)
+minmax_optimized(empty(), empty(), DATA1, DATA2)
+minmax_alias_safe(empty(), empty(), DATA1, DATA2)
 ```
 
 ## Solution #3: Take advantage of language features
