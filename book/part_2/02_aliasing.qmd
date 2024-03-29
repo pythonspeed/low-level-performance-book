@@ -17,7 +17,7 @@ Now you have two pointers to the same memory address: one from the original arra
 
 ```{python}
 import numpy as np
-from numba import njit
+from numba import jit
 
 arr = np.array([1, 2, 3], dtype=np.int64)
 print("Original array", arr)
@@ -39,7 +39,7 @@ That's because seemingly identically-behaved functions will actually behave diff
 Consider the following function:
 
 ```{python}
-@njit
+@jit
 def minmax(mins_out, maxs_out, a, b):
     for i in range(len(a)):
         mins_out[i] = min(np.sin(a[i]), np.sin(b[i]))
@@ -51,7 +51,7 @@ def minmax(mins_out, maxs_out, a, b):
 An optimized version looks like this:
 
 ```{python}
-@njit
+@jit
 def minmax_optimized(mins_out, maxs_out, a, b):
     for i in range(len(a)):
         val_a, val_b = a[i], b[i]
@@ -136,7 +136,7 @@ In this case, the issue is that writing to `mins_out[i]` had a chance of affecti
 If we prevent that, and only that, the compiler can optimize more on its own:
 
 ```{python}
-@njit
+@jit
 def minmax_alias_safe(mins_out, maxs_out, a, b):
     for i in range(len(a)):
         val_a, val_b = a[i], b[i]
