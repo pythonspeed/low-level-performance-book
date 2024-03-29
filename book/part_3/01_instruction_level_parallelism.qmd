@@ -1,6 +1,6 @@
 # Remove data dependencies to enable instruction-level parallelism
 
-Your CPU is capable of running multiple instructions at the same time on the same core, transparently, making your code run that much faster... but only if your code allows it.
+Your CPU is capable of transparently running multiple instructions at the same time on the same core, making your code run that much faster... but only if your code structure enables it.
 In order to better demonstrate the effects of this CPU feature, we will disable SIMD code generation in the code examples in this chapter; we'll talk about what SIMD means and what it does in the next chapter.
 
 ```{python}
@@ -43,15 +43,15 @@ First a multiply, then another multiply, then an addition, then whatever instruc
 flowchart TD
  A("x_squared = x_length ** 2") --> B("y_squared = y_length ** 2")
  B --> C("__temp = x_squared + y_squared")
- C --> D("result = sqrt(__temp)")
+ C --> D("... result = sqrt(__temp) ...")
 ```
 
 Modern CPUs, like those used in laptops, desktops, and servers, can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
 Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes.
 This is parallelism within a _single_ CPU core.
-If you later switch to a parallel implementation running on multiple cores, each individual core will still be able to do instruction-level parallelism internally.
+If you later switch to a parallel implementation running with multiple threads or processes on multiple cores, each individual core will still be able to do instruction-level parallelism internally.
 
-In this case, calculating `x_squared` and `y_squared` is completely independent, so your CPU is likely to run both at once if it can.
+In this case, calculating `x_squared` and `y_squared` is completely independent, so your CPU is likely to run both at once.
 This happens transparently: the compiler doesn't have to do anything special, the CPU will do this all on its own.
 
 ```{mermaid}
@@ -64,7 +64,7 @@ flowchart TD
 Not all code can be transparently run in parallel.
 For one thing, a calculation can't be run if its inputs aren't yet available:
 
-* The CPU _cannot_ run the instructions for `x_squared + y_squared` until both inputs have been calculated.
+* The CPU cannot run the instructions for `x_squared + y_squared` until both inputs have been calculated.
 * Similarly, the `sqrt()` can't be run until `x_squared + y_squared` finishes.
 
 We can say that these are "data dependencies" that prevent instruction-level parallelism, and therefore reduce the code's potential runtime speed.
@@ -94,7 +94,7 @@ def generate_random_numbers(n):
 ```
 
 To get a sense of the randomness, we can visualize the result as an image.
-If we see any patterns, the data definitely isn't random (though lack of patterns isn't conclusive, of course).
+While a lack of patterns doesn't necessarily mean the data is random, if we do see patterns then it definitely is not random.
 
 ```{python}
 def to_image(f):
@@ -103,7 +103,7 @@ def to_image(f):
 RAND1 = to_image(generate_random_numbers)
 ```
 
-Our first result looks pretty good:
+Our first result looks like noise, which is what we want in a random number generator:
 
 ```{python}
 #| echo: false
@@ -121,13 +121,14 @@ In short, each value in the array has a data dependency on the previous value in
 
 ### Removing a calculation data dependency
 
-Let's try a different variant, where we calculate the random number based just on `i`:
+Let's try a different variant, where we calculate `result[i]` purely based on `i`:
 
 ```{python}
 @njit
 def generate_not_so_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
     for i in range(1, n):
+        # 😎 This calculation no longer has a data dependency preventing ILP:
         result[i] = lcg(i)
     return result
 
@@ -140,7 +141,7 @@ These calculations are completely unrelated and can be calculated in parallel:
 * `result[3] = lcg(3)`
 * `result[2] = lcg(2)`
 
-Unfortunately, when visualized we can see the results have an obvious pattern, so this isn't a good random number generator:
+Unfortunately, when visualized we can see the results have a repeating pattern, so this is a bad random number generator:
 
 ```{python}
 #| echo: false
@@ -158,8 +159,7 @@ generate_not_so_random_numbers(1_000_000)
 
 ### Interleaving to avoid a data dependency
 
-We can preserve the pseudo-randomness, while breaking the data dependency.
-Specifically, we can interleave multiple streams that don't share a data dependency.
+We can preserve the pseudo-randomness, while breaking the data dependency, by interleaving multiple independent calculations that don't share a data dependency.
 This should allow us to do a bunch of the calculation in parallel, while still getting better results:
 
 ```{python}
@@ -173,8 +173,8 @@ def generate_random_numbers_3(n):
     result[2] = lcg(lcg(result[1]) + 1)
     result[3] = lcg(lcg(result[2]) + 1)
 
-    # Do 4 unrelated calculations that don't share data dependencies with each
-    # other, allowing the CPU to run them in parallel:
+    # 😎 Do 4 unrelated calculations that don't share data dependencies with
+    # each other, allowing the CPU to run them in parallel:
     for i in range(1, n // 4):
         result[i * 4    ] = lcg(result[(i - 1) * 4    ])
         result[i * 4 + 1] = lcg(result[(i - 1) * 4 + 1])
@@ -190,7 +190,7 @@ def generate_random_numbers_3(n):
 RAND3 = to_image(generate_random_numbers_3)
 ```
 
-This is how it looks:
+Our image is random-looking again:
 
 ```{python}
 #| echo: false
@@ -212,12 +212,13 @@ So why is our latest version slower than our second attempt?
 The fact that the number of instructions is so much higher seems like a problem.
 
 To try to reduce the number of instructions, instead of reading and writing intermediate values from the array, we can store them in temporary variables.
-In addition to doing less math, variables with numeric variables are easier for the compiler to optimize away compared to memory reads and writes:
+Variables with numeric values are easier for the compiler to optimize away compared to reads and writes from an array, where it has to prove the value hasn't changed:
 
 ```{python}
 @njit
 def generate_random_numbers_4(n):
     result = np.empty((n,), dtype=np.uint32)
+    # 😎 Use simple variables to make it faster to access the previous value:
     random_number1 = uint32(1)
     random_number2 = lcg(lcg(random_number1) + 1)
     random_number3 = lcg(lcg(random_number2) + 1)
@@ -282,10 +283,11 @@ At the end of the function we add the two accumulators to get the final sum:
 ```{python}
 @njit
 def sum2(arr):
+    # 😎 Two accumulators instead of one:
     total1, total2 = 0, 0
     for i in range(len(arr)):
         total1 += arr[i]
-        # Swap the accumulators so the next iteration adds to the other one:
+        # 😎 Swap the accumulators so the next iteration adds to the other one:
         total2, total1 = total1, total2
     return total1 + total2
 
@@ -311,5 +313,5 @@ sum2(DATA)
 If you were to run the above code with SIMD enabled, the `sum1()` function would actually be faster than `sum2()` when run on `uint64`s.
 That's because the compiler would figure out it can use SIMD in the first case, but not the second, and using SIMD is apparently faster than instruction-level parallelism.
 
-This technique is still worth trying, though, as we'll see in an example in a later chapter.
+This technique is still worth trying even if SIMD is enabled, as we'll see in an example in a later chapter.
 :::
