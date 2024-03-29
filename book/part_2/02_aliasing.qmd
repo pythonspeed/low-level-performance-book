@@ -2,8 +2,8 @@
 
 To understand the problem we'll cover in this chapter, we first need to cover a couple of definitions:
 
-* A pointer is a piece of data that points at another memory address.
-  For example, in Numba every NumPy array or view has a pointer that points at the location in memory of the underlying data.
+* A "pointer" is a piece of data that points at a memory address.
+  For example, in Numba every NumPy array or view has a pointer that points at the location in memory where the array's underlying data is kept.
 * Aliasing means having multiple pointers referencing the same memory address at the same time.
 
 When you slice a NumPy array, for example, by default the data doesn't get copied.
@@ -20,17 +20,19 @@ import numpy as np
 from numba import njit
 
 arr = np.array([1, 2, 3], dtype=np.int64)
+print("Original array", arr)
 # This is a view to the original array:
 arr_view = arr[:2]
 print("Original view", arr_view)
 # If we mutate the original array...
-arr[0] = 100
+arr[0] = 5
+print("Updated array", arr)
 # ...the view sees the same information:
 print("Updated view", arr_view)
 ```
 
-Here's the problem: the _possibility_ of aliasing can limit what the compiler is able to do to speed up your code.
-That's because seemingly identically behaved functions can actually behave differently when inputs are aliased.
+Here's the problem with aliasing: the _possibility_ that aliasing might occur can limit what the compiler is able to do to speed up your code.
+That's because seemingly identically-behaved functions will actually behave differently when inputs are aliased.
 
 ## An example of the problem
 
@@ -87,6 +89,8 @@ print("add_twice() gives:", add_twice(arr, arr))
 arr = np.ones((3, ), dtype=np.uint64)
 print("add_doubled() gives:", add_doubled(arr, arr))
 ```
+
+So how do we deal with the fact that the _potential_ for aliasing can prevent optimization?
 
 ## Solution #1: Manual optimization
 
