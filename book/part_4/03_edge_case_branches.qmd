@@ -1,13 +1,13 @@
 # Get rid of edge case branches
 
 Some branches are there to handle a rare edge case.
-Given most data won't be an edge choice, the branch should be easy to predict.
-Even so, calling the same code over and over in an inner loop is a waste of resources; ideally you'd just handle edge cases separately.
+Given most data won't be an edge case, this branch should be easy to predict.
+Even so, calling the same code over and over in an inner loop is a waste of resources; ideally you can handle edge cases separately.
 
 ```{python}
 # Import the dependencies we'll need:
 import numpy as np
-from numba import njit
+from numba import jit
 ```
 
 ```{python}
@@ -25,7 +25,7 @@ There are various strategies to deal with this missing data, and in this case we
 ```{python}
 DATA = np.random.random((1_000_000,))
 
-@njit
+@jit
 def moving_average(timeseries):
     result = np.empty(timeseries.shape, dtype=np.float64)
     first_day = timeseries[0]
@@ -48,19 +48,22 @@ In the previous chapter we saw how we can replace branches with branchless code,
 We can do that here too:
 
 ```{python}
-@njit
+@jit
 def moving_average_branchless(timeseries):
     result = np.empty(timeseries.shape, dtype=np.float64)
     first_day = timeseries[0]
     for i in range(len(timeseries)):
-        # Fill in missing values for first few days:
+        # 🥱 Fill in missing values for first few days with branchles code:
         total = first_day * max(6 - i, 0)
         for j in range(max(i - 6, 0), i + 1):
             total += timeseries[j]
         result[i] = total / 7
     return result
 
-assert np.array_equal(moving_average(DATA), moving_average_branchless(DATA))
+assert np.array_equal(
+    moving_average(DATA),
+    moving_average_branchless(DATA)
+)
 ```
 
 This won't speed up our code, because the branch we just replaced is very predictable.
@@ -76,15 +79,15 @@ moving_average_branchless(DATA)
 
 ## Move edge-case handling into a separate code path
 
-A better solution is to handle the first 6 days separately, with their own code path.
+A better optimization is to handle the first 6 days separately, with their own code path.
 That means the rest of the calculations can safely assume that 7 days of data are always available:
 
 ```{python}
-@njit
+@jit
 def moving_average_3(timeseries):
     result = np.empty(timeseries.shape, dtype=np.float64)
 
-    # Handle the first 6 days specially:
+    # 😎 Handle the first 6 days on their own:
     first_day = timeseries[0]
     for i in range(6):
         total = first_day * (6 - i)
@@ -93,7 +96,8 @@ def moving_average_3(timeseries):
             total += timeseries[j]
         result[i] = total / 7
 
-    # Then handle the bulk of the data:
+    # 😎 Then handle the bulk of the data, without the extra branch we
+    # previously had:
     for i in range(6, len(timeseries)):
         total = 0
         for j in range(i - 6, i + 1):
@@ -101,7 +105,10 @@ def moving_average_3(timeseries):
         result[i] = total / 7
     return result
 
-assert np.array_equal(moving_average(DATA), moving_average_3(DATA))
+assert np.array_equal(
+    moving_average(DATA),
+    moving_average_3(DATA)
+)
 ```
 
 This version is faster, by removing work from the main loop:
