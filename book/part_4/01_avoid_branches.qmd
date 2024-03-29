@@ -1,6 +1,7 @@
 # Avoid unnecessary branches, especially hard-to-predict ones
 
-Branches in your code can cause performance problems for a number of reasons.
+`if` statements, `for` loops, `while` loop, and other less obvious code structures can result in branches in your code.
+These branches can cause performance problems, for a number of reasons.
 
 ## Understand what constitutes a branch
 
@@ -23,7 +24,7 @@ def abs(x):
     return x
 ```
 
-Merely having a conditional statement doesn't mean the code is a branch; the key is executing different CPU instructions depending on the conditional.
+Merely having a conditional expresion doesn't mean the code is a branch; the key is executing different CPU instructions depending on the conditional.
 For example, the following function does not have a branch:
 
 ```python
@@ -70,7 +71,7 @@ Based on this prediction, the CPU speculatively keeps executing code in parallel
 * If the guess turns out to be wrong—a branch misprediction—then the work done so far has to be undone.
   And that can slow down your code significantly.
 
-In practice, many conditionals have very consistent answers for long stretches of time, case branch prediction will end up being very accurate, and your code will run faster.
+In practice, many conditionals have very consistent answers for long stretches of time, in which case branch prediction will end up being very accurate, and your code will run faster.
 The main performance issue, then, is when branches are unpredictable.
 
 We'll see an example in the next chapter.
