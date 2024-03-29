@@ -49,31 +49,34 @@ def add_twice(first_arr, second_arr):
     return first_arr
 
 @njit
-def add_doubled(first_arr, second_arr):
+def add_twice_cached(first_arr, second_arr):
     for i in range(len(first_arr)):
-        first_arr[i] += 2 * second_arr[i]
+        value = second_arr[i]
+        first_arr[i] += value
+        first_arr[i] += value
     return first_arr
 
-def zeros():
-    return np.zeros((1_000_000, ), dtype=np.uint64)
+def ones():
+    return np.ones((1_000_000, ), dtype=np.uint64)
 
+DATA = ones()
 DATA2 = np.linspace(1_000_000, 0, 1_000_000, dtype=np.uint64)
 
 # Both functions give the same result (in this case at least):
 assert np.array_equal(
-    add_twice(zeros(), DATA2),
-    add_doubled(zeros(), DATA2)
+    add_twice(ones(), DATA2),
+    add_twice_cached(ones(), DATA2)
 )
 ```
 
-The second implementation is faster, because it does less work and the compiler doesn't optimize that work away:
+The first implementation is slower, because it does more work and the compiler doesn't optimize that work away:
 
 ```{python}
 #| echo: false
 %%compare_timing
 
-add_twice(zeros(), DATA2)
-add_doubled(zeros(), DATA2)
+add_twice(DATA, DATA2)
+add_twice_cached(DATA, DATA2)
 ```
 
 On the face of it, the two implementations are semantically the same, and so it's surprising that the compiler won't transform the first implementation into the second, slightly faster form.
@@ -87,7 +90,7 @@ arr = np.ones((3, ), dtype=np.uint64)
 print("add_twice() gives:", add_twice(arr, arr))
 
 arr = np.ones((3, ), dtype=np.uint64)
-print("add_doubled() gives:", add_doubled(arr, arr))
+print("add_twice_cached() gives:", add_twice_cached(arr, arr))
 ```
 
 So how do we deal with the fact that the _potential_ for aliasing can prevent optimization?
@@ -95,7 +98,7 @@ So how do we deal with the fact that the _potential_ for aliasing can prevent op
 ## Solution #1: Manual optimization
 
 Rather than relying on the compiler, you can implement the optimizations yourself.
-In our example, you could write the verison of the code in `add_doubled()` instead of `add_twice()`, assuming that matches the semantics you want in the case when the data is aliased.
+In our example, you could write the verison of the code in `add_twice_cached()` instead of `add_twice()`, assuming that matches the semantics you want in the case when the data is aliased.
 
 Unfortunately, there may be less obvious optimizations that you miss.
 And some optimizations are much more difficult for you to implement yourself, in particular those that involve generating particular machine code.
@@ -103,7 +106,7 @@ And some optimizations are much more difficult for you to implement yourself, in
 ## Solution #2: Ensure aliasing doesn't impact the result
 
 Just because two pointers point at the same memory doesn't necessarily prevent the compiler from applying optimizations.
-In particular, the issue in the examples above was due to _writing_ to the passed-in array.
+In particular, the issue in the examples above was due to _writing_ to the passed-in array, which meant writes could impact future reads.
 If instead we write the data to a _new_ array, aliasing becomes irrelevant and the compiler should be able to apply more optimizations.
 
 ```{python}
@@ -116,17 +119,19 @@ def add_twice_new_array(first_arr, second_arr):
     return result
 
 @njit
-def add_doubled_new_array(first_arr, second_arr):
+def add_twice_cached_new_array(first_arr, second_arr):
     result = np.empty(first_arr.shape, dtype=first_arr.dtype)
     for i in range(len(result)):
-        result[i] = first_arr[i] + 2 * second_arr[i]
+        value = second_arr[i]
+        result[i] = first_arr[i] + value
+        result[i] += value
     return result
 
 # Both functions give the same result:
-ZEROS = zeros()
+ONES = ones()
 assert np.array_equal(
-    add_twice_new_array(ZEROS, DATA2),
-    add_doubled_new_array(ZEROS, DATA2)
+    add_twice_new_array(ONES, DATA2),
+    add_twice_cached_new_array(ONES, DATA2)
 )
 ```
 
@@ -135,8 +140,8 @@ In this case the compiler is able to optimize `add_twice_new_array()`:
 ```{python}
 #| echo: false
 %%compare_timing
-add_twice_new_array(ZEROS, DATA2)
-add_doubled_new_array(ZEROS, DATA2)
+add_twice_new_array(ONES, DATA2)
+add_twice_cached_new_array(ONES, DATA2)
 ```
 
 ## Solution #3: Take advantage of language features
