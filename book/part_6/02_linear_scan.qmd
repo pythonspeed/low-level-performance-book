@@ -1,29 +1,24 @@
 # Use linear memory reads to get faster memory access
 
-Even if your data is too large to fit in to a memory cache, there are still ways to speed up access.
+Even if your data is too large to fit in a memory cache, there are still ways to speed up access.
 One way to do so is to access memory linearly, in the order it's stored in memory.
 Compared to linear reads, reading memory in random order can be much slower—let's see why.
-
-We'll set up our normal imports:
-
-```{python}
-# Import the dependencies we'll need:
-import numpy as np
-from numba import njit
-```
 
 ```{python}
 #| echo: false
 %load_ext book_magics
 ```
 
-We implement a function that can scan memory both linearly and pseudo-randomly, depending which multiplier we pass in.
+We'll implement a function that can scan memory both linearly and pseudo-randomly, depending which multiplier we pass in.
 We pass the multiplier in explicitly so the compiler doesn't optimize some of the work out of existence, as it would with a constant.
 
 ```{python}
+import numpy as np
+from numba import jit
+
 DATA = np.ones((100_000_000,), dtype=np.uint8)
 
-@njit
+@jit
 def scan_memory(arr, multiplier):
     index = 0
     size = len(arr)
