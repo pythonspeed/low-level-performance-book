@@ -45,9 +45,9 @@ book:
         - part_6/00.qmd
         - part_6/01_fit_in_cache.qmd
         - part_6/02_linear_scan.qmd
-        - part_6/03_smaller_data_types.qmd
-        - part_6/04_n_dimensional.qmd
-        - part_6/05_learn_implementation_details.qmd
+        # - part_6/03_smaller_data_types.qmd
+        - part_6/04_learn_implementation_details.qmd
+        - part_6/05_n_dimensional.qmd
     - part: "More examples"
       chapters:
         - part_7/01_example_rescale_contrast.qmd

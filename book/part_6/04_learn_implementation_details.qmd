@@ -2,7 +2,7 @@
 
 In the previous chapter we saw how the order of iteration over an N-dimensional array can have a performance impact.
 This is an example of a broader point: you need to understand how data structures structure their memory, in order to get the most performance.
-Point another way, while abstractions are critical to writing software, for the best performance you will need to peer behind the curtain and see how the code really works.
+Put another way, while abstractions are critical to writing software, for the best performance you will need to peer behind the curtain and see how the code really works.
 
 Partially this is because you want to make sure the ways you access data are efficient.
 But it's also because you want to make sure the compiler has all the information it needs to generate efficient code.
@@ -65,7 +65,7 @@ print("view2 stride:", view2.strides)
 ## Tell the compiler when an array is contiguous
 
 For the most part this is an implementation detail you don't have to think about... until performance becomes an issue.
-The compiler can do a lot more optimization if it knows that data is laid out in a contiguous manner.
+In particular, the compiler can do a lot more optimization if it knows that data is laid out in a contiguous manner.
 
 The way Numba deals with this is by automatically compiling different versions of the function for contiguous and non-contiguous arrays.
 Since this happens by default, all our examples in the rest of the book benefited from this automatically.
@@ -127,6 +127,8 @@ multiply_auto_specialized(DATA)
 
 While `multiply_contiguous()` is faster, it won't accept non-contiguous views, so it's less general purpose.
 This is why by default Numba will compile different versions of the function, as is the case for `multiply_auto_specialized()`: one for contiguous views and arrays and one for non-contiguous views.
+We saw related performance differences in the previous chapter as well.
+Specifically, when you're iterating over an N-dimensional array in a way that matches memory layout, Numba is able to generate a version of the code that relies on the fact the data is contiguous.
 
 Your particular programming language will have its own ways of dealing with this difference.
 For example, here's an article I wrote that shows one way to [handle this in Cython](https://pythonspeed.com/articles/faster-cython-simd/) without code duplication.
