@@ -25,7 +25,10 @@ def add_in_order(start, middle, end):
 LARGE = np.float32(100_000_000_000)
 SMALL = np.float32(0.1)
 
-assert add_in_order(0, SMALL, LARGE) != add_in_order(LARGE, SMALL, 0)
+assert (
+    add_in_order(0, SMALL, LARGE) !=
+    add_in_order(LARGE, SMALL, 0)
+)
 ```
 
 When we start from a large number, adding a small number gives you the large number again.
@@ -36,9 +39,10 @@ assert LARGE + SMALL == LARGE
 assert add_in_order(LARGE, SMALL, 0) == LARGE
 ```
 
-But when we start from zero, the accumulation of small numbers eventually becomes a big enough number that adding to the large number succeeds.
+But when we start from zero, the accumulation of small numbers eventually becomes a big enough number that adding it to the large number gives us a different value.
 
 ```{python}
+assert SMALL + SMALL > SMALL
 assert add_in_order(0, SMALL, LARGE) > LARGE
 ```
 
