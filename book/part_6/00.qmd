@@ -1,12 +1,49 @@
 # Make memory access more efficient
 
-So far we've been mostly ignoring memory reads and writes, essentially assuming that they're fairly fast and take a consistent amount of time to run.
-Neither assumption is always true, so a more accurate mental model can help you speed up our code.
+So far we've been mostly ignoring memory reads and writes, implicitly assuming that they're fast operations, and take a consistent amount of time to run.
+Neither assumption is completely true, so a more accurate mental model can help you speed up our code.
 
 As it turns out, from a CPU's perspective, reading from RAM—the active memory of the computer—is actually quite slow.
 To speed things up, CPU designers provide a series of caches to reduce the need to access RAM.
-Recently used data is stored in those caches, and that speeds up memory access... for data that is already in the cache.
+Recently used data is stored in those caches, and that speeds up memory access—for data that is already in the cache.
 If the data you need isn't in a fast cache, you might end up with a slow memory read from RAM.
 
 That means memory access is sometimes fast, and sometimes slow.
-Fast code will keep these caches in mind in order to achieve consistently fast access.
+You can make your code run faster, or at least more consistently, by keeping these caches in mind when you design your data structures and data access patterns.
+
+## How large are the CPU's memory caches?
+
+Given data size can impact performance results, it's useful to know how memory caches are organized, and their general sizes.
+To simplify somewhat, here's how the CPU talks to RAM:
+
+```{dot}
+digraph G {
+  rankdir = "TD"
+  node [shape = "box"]
+  l1i [label="L1 cache (instructions)"]
+  l1d [label="L1 cache (data)"]
+  l2 [label="L2 cache"]
+  l3 [label="L3 cache"]
+  CPU -> l1i
+  CPU -> l1d
+  l1i -> l2
+  l1d -> l2
+  l2 -> l3
+  l3 -> RAM
+}
+```
+
+RAM is the slowest, L3 is a bit faster, L2 more so, and L1 is the fastest.
+Typically L1 is per CPU core, L2 may or may not be per core, and L3 is shared across cores.
+There are actually two L1 caches, one for instructions, i.e. the code you're running, and one for the data your program is using.
+
+To give a sense of scale, the i7-12700 has 12 physical CPU cores; 8 "performance" (faster) and 4 "efficiency" (slower) cores.
+The 8 performance CPU cores in my i7-12700K have:
+
+1. 48KiB L1 data cache and 32KiB L1 instruction cache.
+2. 1280KiB L2 cache for each core; this includes both data and instructions.
+3. 25MiB L3 cache shared by all the cores, including both the performance cores and the 4 efficiency cores.
+
+::: {.callout-note}
+The `lstopo` command included in the [`hwloc`](https://www.open-mpi.org/projects/hwloc/) package can draw nice diagrams of your CPU's memory cache configuration.
+:::

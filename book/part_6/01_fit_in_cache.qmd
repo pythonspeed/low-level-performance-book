@@ -1,6 +1,6 @@
 # Avoid benchmarking with unrealistically small amounts of data
 
-As we've seen in many of the previous chapters, a key to knowing whether you're making your code faster or slower is measurement.
+As we've seen in previous chapters, a key to knowing whether you're making your code faster or slower is measurement.
 However, if you use small amounts of data, the results of micro-benchmarks can be misleading.
 One relevant reason: memory caches.
 
@@ -53,50 +53,4 @@ What's going on?
 
 In the case of `SMALL_DATA`, the data fits in the CPU's memory caches, so repeated access is fast.
 `LARGE_DATA` however is too large to fit in the caches, so it needs to be read from RAM, which is slower.
-
-We can see this numerically if we add a measure of memory cache misses to our benchmark (or more accurately, last-level cache misses):
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions,memory_cache_miss
-random_sample(GENERATOR, SMALL_DATA)
-random_sample(GENERATOR, LARGE_DATA)
-```
-
 If our real-world data is closer to `LARGE_DATA`, benchmarking using `SMALL_DATA` is going to be misleading.
-
-## How large are the CPU's memory caches?
-
-Given data size can impact performance results, it's useful to know how memory caches are organized, and their general sizes.
-To simplify somewhat, here's how the CPU talks to RAM:
-
-```{dot}
-digraph G {
-  rankdir = "LR"
-  node [shape = "box"]
-  l1i [label="L1 cache (instructions)"]
-  l1d [label="L1 cache (data)"]
-  l2 [label="L2 cache"]
-  l3 [label="L3 cache"]
-  CPU -> l1i
-  CPU -> l1d
-  l1i -> l2
-  l1d -> l2
-  l2 -> l3
-  l3 -> RAM
-}
-```
-
-To give a sense of scale, the 8 physical performance (higher-speed) CPU cores in my i7-12700K have:
-
-1. 48KiB L1 data cache and 32KiB L1 instruction cache for each core.
-2. 1280KiB L2 cache for each core.
-3. 25MiB L3 cache shared by all the cores, including both the performance cores plus the 4 lower-speed efficiency cores.
-
-RAM is the slowest, L3 is a bit faster, L2 more so, and L1 is the fastest.
-Typically L1 is per CPU core, L2 may or may not be per core, and L3 is shared across cores.
-There are actually two L1 caches, one for instructions, i.e. the code you're running, and one for the data your program is using.
-
-::: {.callout-note}
-The `lstopo` command included in the [`hwloc`](https://www.open-mpi.org/projects/hwloc/) package can draw nice diagrams of your CPU's memory cache configuration.
-:::
