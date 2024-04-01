@@ -49,6 +49,7 @@ With a little tweaking, we can move part of the calculation out of the inner loo
 @njit
 def volume_liters_2(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
+    # 😎 Hoist some of the calculations into a constant:
     in3_to_cm3 = 2.54 * 2.54 * 2.54
     for i in range(sizes.shape[0]):
         width_in, height_in, depth_in = sizes[i]
@@ -83,6 +84,8 @@ Again, the compiler won't apply this optimization by default because it may chan
 @njit
 def volume_liters_3(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
+    # 😎 Hoist the division into a constant, so we do even less in the inner
+    # loop:
     in3_to_liter = (2.54 * 2.54 * 2.54) / 1000
     for i in range(sizes.shape[0]):
         width_in, height_in, depth_in = sizes[i]
@@ -105,4 +108,3 @@ And the new version is indeed faster:
 volume_liters(SIZES_INCHES)
 volume_liters_3(SIZES_INCHES)
 ```
-
