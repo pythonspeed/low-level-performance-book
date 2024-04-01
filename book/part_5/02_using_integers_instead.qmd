@@ -1,11 +1,11 @@
 # Replace floats with higher-precision integer operations
 
-Another approach to the compiler's difficulty with optimizing floating-point is to avoid floating-point altogether.
+Another approach to the compiler's difficulty with optimizing floating-point is to avoid floating-point numbers altogether.
 If your input data has a relatively small range, for example `uint8` or `int16`, you can use a larger range integer like `uint32` or `int64` to do the calculations.
 In some cases the resulting code will be easier for the compiler to optimize.
-The calculation may give slightly different results, but quite often the difference won't be meaningful, or will be worth it given the speedup.
+The calculation may give slightly different results than if you'd used floats, but quite often the difference won't be meaningful, or will be worth it given the speedup.
 
-Let's look at an example; we have an image of a cell:
+Let's look at an example; we have a microscope image of a cell:
 
 ```{python}
 #| echo: false
@@ -27,7 +27,7 @@ assert IMAGE.dtype == np.uint8
 ```
 
 We want to threshold the image, separating the image into two parts, the bright part and the dark part.
-This is a useful operation to find the shapes of objects, in this the case the cell.
+This is a useful operation to find the shapes of objects.
 A naive algorithm for thresholding is comparing each pixel to the mean of the image.
 Here's how we'd do it with NumPy:
 
@@ -50,22 +50,26 @@ And here's what the result looks like:
 
 Our goal is to make this code faster.
 As a first pass, we can write an implementation using Numba.
-Because we're accumulating a large number of `uint8`s to create the total, we need to store it in a larger type, so we'll use a `float64`:
+Because we're accumulating a large number of `uint8`s to create the total used to calculate the mean, we need to store it in a larger type, so we'll use a `float64`:
 
 ```{python}
 from numba import float64
 
 @njit
 def mean_threshold_1(image):
-    # Image is uint8, so we need an accumulator that can hold larger values:
+    # We'll be accumulating many uint8 values to calculate the mean, so we need
+    # an accumulator that can hold larger values:
     total = float64(0.0)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
             total += image[y, x]
+    # The mean is the threshold:
     threshold = total / image.size
+    # Store whether or not each value is larger than the threshold:
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
+            # The >= expression becomes either 0 or 1:
             result[y, x] = (image[y, x] >= threshold) * 255
     return result
 
@@ -75,7 +79,7 @@ THRESHOLD_1 = mean_threshold_1(IMAGE)
 assert ((THRESHOLD_NUMPY ^ THRESHOLD_1) > 0).sum() < IMAGE.size / 1000
 ```
 
-Unfortunately this new version isn't any faster:
+Unfortunately this new version isn't particularly faster:
 
 ```{python}
 #| echo: false
@@ -91,6 +95,7 @@ from numba import uint64, uint8
 
 @njit
 def mean_threshold_2(image):
+    # 😎 Accumulate in a uint64 instead of float64:
     total = uint64(0)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
@@ -117,7 +122,7 @@ mean_threshold_numpy(IMAGE)
 mean_threshold_2(IMAGE)
 ```
 
-But we can do better.
+We can do better.
 Notice above we're comparing a `float64` to the pixels, which are `uint8`.
 Somewhere in there, then, the compiler is likely converting both values to the same type, but it's unclear how efficient that conversion is.
 So let's do it ourselves:
@@ -129,9 +134,9 @@ def mean_threshold_3(image):
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
             total += image[y, x]
-
-    # Convert mean to uint8 before we do the comparison:
+    # 😎 Convert the mean to an uint8 before we do the comparison:
     threshold = uint8(np.round(total / image.size))
+
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
