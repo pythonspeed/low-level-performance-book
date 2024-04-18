@@ -77,14 +77,14 @@ COL_NORMALIZED = create_simulated_data(1_000_000)
 Here's what the simulated data looks like:
 
 ```{python}
-COL_NORMALIZED[:5]
+COL_NORMALIZED[:,:3]
 ```
 
 NumPy has a built-in function that does actually what we want: `argmax()`.
 Let's try it out:
 
 ```{python}
-COL_NORMALIZED[:5].argmax(0)
+COL_NORMALIZED[:,:3].argmax(0)
 ```
 
 How fast is it?
