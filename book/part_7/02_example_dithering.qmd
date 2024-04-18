@@ -1,14 +1,20 @@
 # Example: Code that has to be written as low-level code
 
-While NumPy and similar libraries' "vectorized" batch operations can often allow you to implement your algorithm, sometimes they won't help.
-In particular, some algorithms effectively require iterating over individual values, and don't fit well into the "vectorization" paradigm.
-What's more, these sort of algorithms also won't be amenable to parallelization, so using multiple cores can be difficult.
+While NumPy and similar libraries' have low-level batch operations that can allow you to implement your higher-level algorithm, sometimes they won't help.
+In particular, some algorithms effectively require iterating over individual values, and so can't be modeled as operating on whole arrays.
+These sort of algorithms also won't be amenable to parallelization, so using multiple cores can be difficult.
 
-So how do you implement a fast version given these problems?
+So how do you implement a fast version of these sort of algorithms?
 First, by using low-level code.
 Second, by optimizing that code as much as possible.
 
-## Dithering an image from grayscale to black and white
+To help us identify hotspots we're going to use the Profila profiler:
+
+```{python}
+%load_ext profila
+```
+
+## Example: Dithering an image from grayscale to black and white
 
 As an example, in this chapter we'll be optimizing Floyd-Steinberg dithering.
 We'll use this algorithm to convert a grayscale image with values of 0 to 255 into an image with just two colors, black and white.
@@ -54,9 +60,8 @@ Here's what the original image looks like:
 If this was more than an example, we'd want to benchmark the code with a variety of images and sizes, matching the variety of inputs we expect to encounter.
 For simplicity's sake, however, we'll stick to this single image.
 
-In the following section you'll follow along as I start with a naive implementation, make it faster, reduce memory usage, and then optimize it some more.
-Some intermediate steps and failed experiments were omitted for clarity.
-Nonetheless, this is a real optimization exercise: these are all optimization ideas I came up with as I went along, as I had never optimized this algorithm before.
+Note that this is a real optimization exercise: these are all optimization ideas I came up with as I went along, as I had never optimized this algorithm before.
+That being said, Some intermediate steps and failed experiments were omitted for clarity.
 
 ## A naive implementation
 
@@ -70,16 +75,19 @@ At the end I turn the result into an 8-bit image, which is what the function is 
 ```{python}
 @njit
 def dither(img):
-    # int16 to allow negative values and a wider range than a
-    # uint8 has. This will start as copy of the input but will
-    # get modified with diffused errors:
+    # Create an int16 array to allow negative values, as well as a wider range
+    # than a uint8. This will start as copy of the input but will get modified
+    # with diffused errors:
     staging = img.astype(np.int16)
     y_size = img.shape[0]
     x_size = img.shape[1]
     last_y = y_size - 1
     last_x = x_size - 1
+
+    # For every pixel:
     for y in range(y_size):
         for x in range(x_size):
+            # Convert the value to either black or white:
             old_value = staging[y, x]
             if old_value < 0:
                 new_value = 0
@@ -88,8 +96,11 @@ def dither(img):
             else:
                 new_value = np.uint8(np.round(old_value / 255.0)) * 255
             staging[y, x] = new_value
-            # We might get a negative value for the error:
+            # Calculate the error from the rounding to black or white; we might
+            # get a negative value for the error:
             error = np.int16(old_value) - new_value
+            # Propogate the error to neighboring pixels, with conditional logic
+            # to handle the edges of the image:
             if x < last_x:
                 staging[y, x + 1] += error * 7 // 16
             if y < last_y and x > 0:
@@ -99,6 +110,7 @@ def dither(img):
             if y < last_y and x < last_x:
                 staging[y + 1, x + 1] += error // 16
 
+    # Convert the result into a uin8:
     return staging.astype(np.uint8)
 
 baseline_result = dither(image)
@@ -119,7 +131,7 @@ And here's how long it takes to run `dither(image)`:
 dither(image)
 ```
 
-## Considering what to optimize
+## Use your mental model to consider optimization targets
 
 In general, we want to make the inner part of the loop as fast as possible.
 Looking at the error diffusion part of the part of the code, instruction-level parallelism ought to help speed up running the code, given that each calculation is independent:
@@ -170,6 +182,31 @@ else:
 First, the branches depend on the values of the pixels, so they may be hard for the CPU to predict, and it's not clear whether the compiler will generate branchless code.
 Second, there's some relatively complex math going on: rounding a float seems like it would be slow.
 
+## Use measurement to consider optimization targets
+
+We can use profiling to try to get hints of what code is worth optimizing, for example using the [Profila profiler for Numba](https://github.com/pythonspeed/profila).
+Here's what the output looks like, giving an estimate of what percentage of time was spent on each line of code:
+
+```{python}
+%%profila
+# Make sure we run enough to get a decent number of samples:
+for _ in range(100):
+    dither(image)
+```
+
+As we can see, the profiler matches our guesses above about bottlenecks; and yes, I did only run the profiler _after_ writing the above.
+What the profiler cannot do is tell us instruction-level parallelism might be helpful.
+
+We can also measure general metrics to get a sense of bottlenecks:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=branches,branch_mispredictions
+dither(image)
+```
+
+As we expected, branch prediction is operating successfully, with very few mispredictions.
+
 ## Optimizing rounding
 
 The naive rounding implementation addresses three possible cases for intermediate pixel values:
@@ -210,16 +247,16 @@ def dither2(img):
 assert np.array_equal(dither2(image), baseline_result)
 ```
 
-Here's how long it takes to run:
+Here's how long it takes to run compared to our original version:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,peak_memory
+dither(image)
 dither2(image)
 ```
 
 That's a lot better!
-Remember, 1000 microseconds is 1 millisecond.
 
 ## Optimizing memory usage
 
@@ -269,7 +306,8 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,peak_memory
+dither(image)
 dither3(image)
 ```
 
@@ -324,7 +362,8 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,peak_memory
+dither(image)
 dither4(image)
 ```
 
@@ -384,7 +423,8 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,peak_memory
+dither(image)
 dither5(image)
 ```
 
@@ -446,7 +486,8 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,peak_memory
+dither(image)
 dither6(image)
 ```
 
@@ -501,10 +542,10 @@ Here's the results compared to previous versions:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,peak_memory
 dither(image)
 dither2(image)
-dither3(image) # Bit slower, but reduces memory usage by 2/3rds
+dither3(image)
 dither4(image)
 dither5(image)
 dither6(image)
