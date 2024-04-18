@@ -131,17 +131,18 @@ col_choose_brightest(COL_NORMALIZED)
 
 It's a little faster!
 
-### Getting rid of branch mispredictions
+### Get rid of branches
 
 Our first attempt has some issues, however:
 
 1. We have a branch in the code that exits the loop... and it's an _unpredictable_ branch.
    That's bad!
    It means we'll pay a performance cost for mispredictions, and we won't be able to use instruction-level parallelism.
+   The percentage misprediction isn't as high as one might think, but that's perhaps because there are so many branches; `max()` may well be using a branch too.
 2. We're going over the channel values twice, once to do the `max()`, and once to find the index.
    This may or may not be a performance issue.
 
-The first problem seems more problematic, so let's fix it:
+The first problem seems worse, so let's fix it:
 
 ```{python}
 @njit
@@ -212,6 +213,7 @@ col_choose_brightest_3(COL_NORMALIZED)
 ```
 
 That's even faster!
+And given how much lower the number of CPU instructions are for v3, these changes have apparently enabled better usage of SIMD by the compiler.
 
 ## What about a row-based memory layout?
 

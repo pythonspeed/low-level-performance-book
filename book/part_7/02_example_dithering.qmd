@@ -381,12 +381,13 @@ dither4(image)
 
 That's slightly better.
 
-## Getting rid of conditionals
+## Get rid of branches
 
 We still have all those annoying `if` statements in the main loop, which are used to handle edge pixels.
 For example, if you're in the first column, it's not possible to diffuse the errors to the previous column.
+And even predictable branches add performance overhead, and given they're predictable we ought to be able to figure out a way to remove them.
 
-We can get rid of those conditionals, though.
+Here's how we can do it.
 The code currently has temporary staging arrays for accumulating errors, and there's no reason they have to be the same size as the input or the result.
 We can just add an extra item at the start and end.
 As a result edge pixels can behave the same way as non-edge pixels, and we can get rid of the conditionals.
