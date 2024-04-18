@@ -166,6 +166,20 @@ def measure_peak_memory(line: str, local_ns: dict[str, object]) -> int:
     return peak
 
 
+def display_table(markdown_table: str):
+    """Display a Markdown table in Jupyter."""
+    if HELP_THIS_BOOK:
+        display(
+            HTML(
+                "<pre>"
+                + markdown_table
+                + "\n</pre><p><small>↑ helpthisbook.com doesn't support tables, this will be rendered correctly in the real book ↑</small></p>"
+            )
+        )
+    else:
+        display(Markdown(markdown_table))
+
+
 @magic_arguments()
 @argument("--measure", default="")
 @needs_local_scope
@@ -205,17 +219,7 @@ def compare_timing(line, cell, local_ns):
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
     for i in range(1, len(headers)):
         table.set_style(i, Style(thousand_separator=","))
-    markdown_table = table.dumps()
-    if HELP_THIS_BOOK:
-        display(
-            HTML(
-                "<pre>"
-                + markdown_table
-                + "\n</pre><p><small>(helpthisbook.com doesn't support tables, this will be rendered correctly in the real book)</small></p>"
-            )
-        )
-    else:
-        display(Markdown(markdown_table))
+    display_table(table.dumps())
     numba_config.DISABLE_JIT = False
 
 
@@ -227,6 +231,11 @@ def display_image(line, local_ns):
     f = BytesIO()
     PIL.Image.fromarray(array).save(f, "png")
     display(Image(data=f.getvalue()))
+
+
+@register_cell_magic
+def maybe_table(line, cell):
+    display_table(cell)
 
 
 def load_ipython_extension(ipython):

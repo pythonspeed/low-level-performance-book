@@ -3,6 +3,11 @@
 While Numba makes using SIMD automatic and transparent, using SIMD in other programming languages can take some configuration and thought.
 Since this is a more advanced topic, I suggest skipping this chapter on first reading the book and returning to it later if relevant.
 
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
 ## Three ways to use SIMD
 
 If you want to use SIMD, there are different ways you can get the compiler to generate these specialized CPU instructions:
@@ -31,10 +36,12 @@ For example, AVX-512 is a family of useful SIMD instructions, including 512-bit 
 But my computer's CPU, an Intel i7-12700K released in 2021, doesn't support these instructions.
 If I were to run a program that tried to execute an AVX-512 instruction, the process would crash (or worse) due to using an illegal instruction.
 
-The inconsistent availability of SIMD instructions causes a dilemma.
-On the one hand, you want your code to use the specific SIMD instructions available on the production machine's CPU, in order to maximize your code's speed.
-On the other hand, the machine where you develop your code may not be the same as the production machine where you run the code.
-And sometimes your code will need to run on many different CPUs, so you can't even predict in advance exactly which SIMD instructions will be available!
+The inconsistent availability of SIMD instructions leaves you with a dilemma:
+
+* On the one hand, you want your code to use the specific SIMD instructions available on the production machine's CPU, in order to maximize your code's speed.
+* On the other hand, the machine where you develop your code may not be the same as the production machine where you run the code.
+
+Even worse, sometimes your code will need to run on many different CPUs, so you can't even predict in advance exactly which SIMD instructions will be available!
 
 There are three basic solutions to this problem:
 
@@ -57,11 +64,15 @@ There are three basic solutions to this problem:
 
 Comparing the three hardware utilization methods:
 
+```{python}
+#| echo: false
+%%maybe_table
 | Method                        | CPU performance | Special code? | Cons                                                                                                        |
 |-------------------------------|-----------------|---------------|-------------------------------------------------------------------------------------------------------------|
 | Compile on production machine | Full            | No            | Need to distribute compiler, slower startup since you need to compile the code on every new runtime machine |
 | Runtime dispatch              | Full            | Yes           | Need to write special runtime dispatch code, can sometimes be difficult to optimize everything              |
-| Lowest common denominator     | Partial         | No            | Won't take advantage of newer hardware                                                                      |
+| Lowest common denominator     | Partial         | No            | Can't take advantage of newer hardware                                                                      |
+```
 
 Earlier in the chapter we discussed three options for writing SIMD code: using intrinsics, auto-vectorization, and SIMD-specific libraries.
 These interact with the hardware utilization methods:
