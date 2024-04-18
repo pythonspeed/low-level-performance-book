@@ -124,7 +124,7 @@ We can measure the speed:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,branch_mispredictions
 COL_NORMALIZED.argmax(0)
 col_choose_brightest(COL_NORMALIZED)
 ```
@@ -168,8 +168,8 @@ We can measure the speed:
 
 ```{python}
 #| echo: false
-%%compare_timing
-COL_NORMALIZED.argmax(0)
+%%compare_timing --measure=instructions,branches,branch_mispredictions
+col_choose_brightest(COL_NORMALIZED)
 col_choose_brightest_2(COL_NORMALIZED)
 ```
 
@@ -206,8 +206,8 @@ We can measure the speed:
 
 ```{python}
 #| echo: false
-%%compare_timing
-COL_NORMALIZED.argmax(0)
+%%compare_timing --measure=instructions,branches,branch_mispredictions
+col_choose_brightest_2(COL_NORMALIZED)
 col_choose_brightest_3(COL_NORMALIZED)
 ```
 
@@ -249,7 +249,7 @@ Next, we can measure the speed of row-based variants compared to column-based va
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions,branches,branch_mispredictions
 COL_NORMALIZED.argmax(0)
 ROW_NORMALIZED.argmax(1)
 col_choose_brightest_3(COL_NORMALIZED)
