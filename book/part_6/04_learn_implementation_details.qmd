@@ -127,10 +127,9 @@ multiply_auto_specialized(DATA)
 
 While `multiply_contiguous()` is faster, it won't accept non-contiguous views, so it's less general purpose.
 This is why by default Numba will compile different versions of the function, as is the case for `multiply_auto_specialized()`: one for contiguous views and arrays and one for non-contiguous views.
-We saw related performance differences in the previous chapter as well.
-Specifically, when you're iterating over an N-dimensional array in a way that matches memory layout, Numba is able to generate a version of the code that relies on the fact the data is contiguous.
 
-Your particular programming language will have its own ways of dealing with this difference.
+Different programming languages and libraries will have their own ways of dealing with optimizations of code that accepts contiguous arrays.
 For example, here's an article I wrote that shows one way to [handle this in Cython](https://pythonspeed.com/articles/faster-cython-simd/) without code duplication.
+
 More broadly, abstractions like NumPy views are useful, but they can also get in the way of performance.
 So make sure to dig in to the details of your data is actually laid out, and see if there are ways to expose relevant information to the compiler.
