@@ -1,3 +1,4 @@
+import os
 from timeit import timeit
 from io import BytesIO
 import locale
@@ -11,7 +12,7 @@ from IPython.core.magic import (
     needs_local_scope,
 )
 from IPython.core.magic_arguments import argument, magic_arguments, parse_argstring
-from IPython.display import display, Markdown, Image
+from IPython.display import display, Markdown, Image, HTML
 from pytablewriter import MarkdownTableWriter
 from pytablewriter.style import Style
 import numpy as np
@@ -22,20 +23,29 @@ from numba import config as numba_config
 
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
+HELP_THIS_BOOK = os.getenv("HELP_THIS_BOOK") == "1"
+
 
 def ns_per_iteration(line, globals):
     gc.disable()
-    estimated_ns = int(timeit(line, globals=globals, number=10, timer=perf_counter_ns) / 10)
+    estimated_ns = int(
+        timeit(line, globals=globals, number=10, timer=perf_counter_ns) / 10
+    )
     iterations = max(10_000_000 // estimated_ns, 100)
-    result = timeit(line, globals=globals, number=iterations, timer=perf_counter_ns) // iterations
+    result = (
+        timeit(line, globals=globals, number=iterations, timer=perf_counter_ns)
+        // iterations
+    )
     gc.enable()
     return result
+
 
 def _validate_ns_per_iteration():
     elapsed_ns = ns_per_iteration("sleep(0.001)", globals())
     assert 900_000 < elapsed_ns < 1_100_000, elapsed_ns
     elapsed_ns = ns_per_iteration("(lambda: None)()", globals())
     assert elapsed_ns < 1000, elapsed_ns
+
 
 _validate_ns_per_iteration()
 del _validate_ns_per_iteration
@@ -58,8 +68,10 @@ MEASUREMENTS = {
     ),
     "l1_memory_cache_miss": (
         "L1 memory cache miss %",
-        [Cache(CacheId.L1D, CacheOp.READ, CacheResult.ACCESS),
-         Cache(CacheId.L1D, CacheOp.READ, CacheResult.MISS)],
+        [
+            Cache(CacheId.L1D, CacheOp.READ, CacheResult.ACCESS),
+            Cache(CacheId.L1D, CacheOp.READ, CacheResult.MISS),
+        ],
         lambda refs, misses: round((misses / refs) * 100, 1),
     ),
     "l1_memory_cache_refs": (
@@ -69,8 +81,10 @@ MEASUREMENTS = {
     ),
     "ll_memory_cache_miss": (
         "LL memory cache miss %",
-        [Cache(CacheId.LL, CacheOp.READ, CacheResult.ACCESS),
-         Cache(CacheId.LL, CacheOp.READ, CacheResult.MISS)],
+        [
+            Cache(CacheId.LL, CacheOp.READ, CacheResult.ACCESS),
+            Cache(CacheId.LL, CacheOp.READ, CacheResult.MISS),
+        ],
         lambda refs, misses: round((misses / refs) * 100, 1),
     ),
     "ll_memory_cache_refs": (
@@ -92,31 +106,34 @@ MEASUREMENTS = {
         "256-bit SIMD instructions",
         [
             # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_double
-            Raw(0x10c7),
+            Raw(0x10C7),
             # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_single
-            Raw(0x20c7)
+            Raw(0x20C7),
         ],
-        lambda double, single: double + single
+        lambda double, single: double + single,
     ),
     "simd_128bit": (
         "128-bit SIMD instructions",
         [
             # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_double
-            Raw(0x4c7),
+            Raw(0x4C7),
             # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_single
-            Raw(0x8c7),
+            Raw(0x8C7),
         ],
-        lambda double, single: double + single
+        lambda double, single: double + single,
     ),
     # This is handled specially, doesn't actually use perf counters
     "peak_memory": (
         "Peak allocated memory (bytes)",
-        [], # not used
-        lambda: 1 / 0   # shouldn't be used!
-    )
+        [],  # not used
+        lambda: 1 / 0,  # shouldn't be used!
+    ),
 }
 
-def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,object]) -> list[int]:
+
+def get_measurements(
+    measurement_keys: list[str], line: str, local_ns: dict[str, object]
+) -> list[int]:
     event_set = set()
     event_counts = {}  # map event name to count
     for m in measurement_keys:
@@ -140,7 +157,7 @@ def get_measurements(measurement_keys: list[str], line: str, local_ns: dict[str,
     return result
 
 
-def measure_peak_memory(line: str, local_ns: dict[str,object]) -> int:
+def measure_peak_memory(line: str, local_ns: dict[str, object]) -> int:
     """Measure peak memory (in bytes) using tracemalloc."""
     tracemalloc.start()
     exec(line, local_ns)
@@ -188,7 +205,17 @@ def compare_timing(line, cell, local_ns):
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
     for i in range(1, len(headers)):
         table.set_style(i, Style(thousand_separator=","))
-    display(Markdown(table.dumps()))
+    markdown_table = table.dumps()
+    if HELP_THIS_BOOK:
+        display(
+            HTML(
+                "<pre>"
+                + markdown_table
+                + "\n</pre><p><small>(helpthisbook.com doesn't support tables, this will be rendered correctly in the real book)</small></p>"
+            )
+        )
+    else:
+        display(Markdown(markdown_table))
     numba_config.DISABLE_JIT = False
 
 
