@@ -1,22 +1,23 @@
-# Example: Low-level code can help you save memory
+# Example: Save memory with low-level code
 
-Because Python is slow, libraries like NumPy rely on "vectorized" operations, implemented in a fast low-level language and operating on the whole array.
+Because Python is slow, libraries like NumPy rely on batch operations that are implemented in a fast low-level language, and operating on the whole array[^vectorized].
 Unfortunately, operating on full arrays means temporary values also have to be full arrays, which can lead to high memory usage.
-The memory usage can be solved by switching to a Python `for` loop, but iterating over individual array items in Python is slow.
-Very slow.
+The memory usage can be solved by switching to a Python `for` loop, but iterating over individual array items in Python is very slow.
 
-So if memory usage due to temporary arrays is a problem, rewriting your code in a low-level programming language is the solution.
-You will be able _quickly_ iterate over individual array items, running quickly and saving memory.
+[^vectorized]: These are sometimes known to Python programmers as "vectorized" operations. C/C++/Rust programmers have a different meaning for the word, using "vectorized" to mean SIMD.
+
+If memory usage due to temporary arrays is a problem, rewriting your code in a low-level programming language is the solution.
+Your code will be able to iterate over individual array items, saving memory, while still running quickly.
 
 To see how this works in practice, it's best to consider an example.
 
-## Rescaling intensity of images
+## Example: Rescaling the intensity of images
 
 Imagine we have an 8-bit greyscale image.
 Oftentimes, low values and high values aren't used much, resulting in an image whose contrast is too low:
 
 ```{python}
-from numba import njit
+from numba import jit
 import numpy as np
 from skimage import io
 
@@ -67,12 +68,12 @@ Each pixel in the image is calculated independently, so if we did the calculatio
 But do that without slowing down our implementation, we need to switch to fast, low-level code.
 Let's try that!
 
-## A lower-memory implementation with low-level code
+## Avoid temporary arrays by switching to a `for` loop
 
 Here's a first pass implementation of the same algorithm, done with Numba:
 
 ```{python}
-@njit
+@jit
 def lowlevel_rescale_intensity(img, min_value, max_value):
     shifted_max = max_value - min_value
     result = np.empty(img.shape, dtype=np.uint8)
@@ -91,17 +92,18 @@ assert np.array_equal(
 )
 ```
 
-Notice that instead of having a whole temporary `float64` array, we just have temporary `float64` values, massively reducing our memory usage.
-As it turns out, this also runs faster:
+Notice that instead of having a whole temporary `float64` array the size of the original image, we just have temporary `float64` values for one pixel at a time, massively reducing our memory usage.
+
+As it turns out, not only do we save memory, but our code also runs faster:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=peak_memory
 numpy_rescale_intensity(image, 30, 190)
 lowlevel_rescale_intensity(image, 30, 190)
 ```
 
-## Making it run even faster by precalculating results
+## Replace repetitive calculations with a lookup table
 
 Can we speed up this code?
 There's a number of steps used to calculate the new value, perhaps we could optimize that calculation?
@@ -120,11 +122,12 @@ And because we're accessing it in a tight loop, it will stay in the CPU's L1 cac
 Here's what this looks like:
 
 ```{python}
-@njit
+@jit
 def lut_rescale_intensity(img, min_value, max_value):
     shifted_max = max_value - min_value
 
-    # Create a lookup table mapping from original value to rescaled value:
+    # 😎 Create a lookup table mapping from original value to rescaled value.
+    # We only need to do 256 calculations:
     rescaled = np.empty((256,), dtype=np.uint8)
     for i in range(256):
         shifted = 0 if i < min_value else i - min_value
@@ -132,8 +135,8 @@ def lut_rescale_intensity(img, min_value, max_value):
         scaled = (shifted / shifted_max) * 255
         rescaled[i] = np.uint8(np.round(scaled))
 
-    # For each pixel in the image, update it using the corresponding value in
-    # the lookup table:
+    # 😎 For each pixel in the image, update it using the corresponding value
+    # in the lookup table, a very cheap operation:
     result = np.empty(img.shape, dtype=np.uint8)
     for y in range(img.shape[0]):
         for x in range(img.shape[1]):
@@ -150,11 +153,10 @@ Here's the speed of our new version:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=peak_memory
 numpy_rescale_intensity(image, 30, 190)
-lowlevel_rescale_intensity(image, 30, 190)
 lut_rescale_intensity(image, 30, 190)
 ```
 
-Our new version is 10× faster and uses a tenth of the memory usage of the original version.
+Our new version is 8× faster and uses a tenth of the memory usage of the original version.
 Not bad!
