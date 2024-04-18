@@ -56,7 +56,7 @@ Real data may be messier; one can imagine one channel having a normalized bright
 import numpy as np
 from numpy.random import random_integers
 np.random.seed(0)
-from numba import njit
+from numba import jit
 
 def create_simulated_data(size):
     result = np.empty((4, size), dtype=np.float64)
@@ -87,27 +87,21 @@ Let's try it out:
 COL_NORMALIZED[:,:3].argmax(0)
 ```
 
-How fast is it?
-
-```{python}
-#| echo: false
-%%compare_timing
-COL_NORMALIZED.argmax(0)
-```
-
-Let's see if we can do better.
+Let's see if we can write a faster version.
 
 ## Switching to Numba
 
 Here's a first pass implementation with a low-level language:
 
 ```{python}
-@njit
+@jit
 def col_choose_brightest(normalized_data):
     result = np.empty((normalized_data.shape[1],), dtype=np.uint8)
     for i in range(normalized_data.shape[1]):
+        # Figure out the highest value:
         max_value = max(normalized_data[:,i])
         for channel in range(4):
+            # Find the channel with the highest value:
             if normalized_data[channel, i] == max_value:
                 result[i] = channel
                 break
@@ -145,13 +139,14 @@ Our first attempt has some issues, however:
 The first problem seems worse, so let's fix it:
 
 ```{python}
-@njit
+@jit
 def col_choose_brightest_2(normalized_data):
     result = np.empty((normalized_data.shape[1],), dtype=np.uint8)
     for i in range(normalized_data.shape[1]):
         max_value = max(normalized_data[:,i])
         chosen_channel = 0
         for channel in range(4):
+            # 😎 Use a branchless implementation:
             chosen_channel = (
                 channel if normalized_data[channel, i] == max_value
                 else chosen_channel
@@ -181,13 +176,14 @@ That's a lot faster!
 Next, we'll fix the second problem we identified: we're doing two loops over each set of channels.
 
 ```{python}
-@njit
+@jit
 def col_choose_brightest_3(normalized_data):
     assert normalized_data.shape[0] == 4
     result = np.empty((normalized_data.shape[1],), dtype=np.uint8)
     for i in range(normalized_data.shape[1]):
         max_channel = 0
         max_value = 0
+        # 😎 Use a single loop, instead of both max() and a comparison loop:
         for channel in range(4):
             value = normalized_data[channel, i]
             max_channel, max_value = (
@@ -225,7 +221,8 @@ ROW_NORMALIZED = np.ascontiguousarray(
     np.swapaxes(COL_NORMALIZED, 0, 1)
 )
 
-@njit
+# Like col_choose_brightest_3, but takes a row-oriented memory representation.
+@jit
 def row_choose_brightest(normalized_data):
     assert normalized_data.shape[1] == 4
     result = np.empty((normalized_data.shape[0],), dtype=np.uint8)
