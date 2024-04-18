@@ -206,14 +206,16 @@ dither(image)
 ```
 
 As we expected, branch prediction is operating successfully, with very few mispredictions.
+This may be because images tend to stay bright or dark for a while, allowing for more predictable branching.
 
-## Optimizing rounding
+## Use fewer instructions by simplifying your logic
 
 The naive rounding implementation addresses three possible cases for intermediate pixel values:
 
 1. Negative numbers should be rounded to 0 (black).
 2. Numbers larger than 255 should be rounded 255 (white).
 3. Numbers in between should be rounded to the closest of 0 to 255.
+   Profiling (and guessing) suggested that step 3 is a lot of work: something like 65% of the time spent in our function!
 
 All of this can be simplified into a single simple check: measuring whether the pixel value is smaller or bigger than the middle point.
 In Python: `new_value = 0 if old_value < 128 else 255`.
@@ -251,12 +253,12 @@ Here's how long it takes to run compared to our original version:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions,branches,peak_memory
+%%compare_timing --measure=instructions,branches,branch_mispredictions
 dither(image)
 dither2(image)
 ```
 
-That's a lot better!
+We've reduced the number of branches and the number of CPU instructions, and our code is now much faster.
 
 ## Optimizing memory usage
 
@@ -307,7 +309,7 @@ Here's how long it takes to run:
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branches,peak_memory
-dither(image)
+dither2(image)
 dither3(image)
 ```
 
@@ -315,10 +317,20 @@ That's a little slower than `dither2()`, but still a lot faster than the origina
 And now new memory used is approximately N bytes, since the staging array doesn't use much memory.
 Put another way, this version cuts memory usage by two-thirds.
 
-## Reducing memory copying
+## Reduce unnecessary memory copying
 
 The new version is probably slower because it does a bunch of copying.
 Once processing the current row is done, the contents of the next row (`staging[1]`) has to be copied into the current row (`staging[0]`), in order to preserve the errors diffused to the next row.
+We can validate this guess using profiling:
+
+```{python}
+%%profila
+# Make sure we run enough to get a decent number of samples:
+for _ in range(100):
+    dither3(image)
+```
+
+So how can we get rid of memory copying?
 If we split our staging array into two, one for the current row and one for the next row, we can just swap those two arrays instead of copying the data.
 
 ```{python}
@@ -363,7 +375,7 @@ Here's how long it takes to run:
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branches,peak_memory
-dither(image)
+dither3(image)
 dither4(image)
 ```
 
@@ -424,7 +436,7 @@ Here's how long it takes to run:
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branches,peak_memory
-dither(image)
+dither4(image)
 dither5(image)
 ```
 
@@ -487,7 +499,7 @@ Here's how long it takes to run:
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions,branches,peak_memory
-dither(image)
+dither5(image)
 dither6(image)
 ```
 
@@ -538,7 +550,7 @@ def dither7(img):
 assert np.array_equal(dither7(image), baseline_result)
 ```
 
-Here's the results compared to previous versions:
+Here's the results compared to all previous versions:
 
 ```{python}
 #| echo: false
