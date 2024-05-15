@@ -1,7 +1,7 @@
 # Understand how abstractions lay out their memory
 
-In the previous chapter we saw how the order of iteration over an N-dimensional array can have a performance impact.
-This is an example of a broader point: you need to understand how data structures structure their memory, in order to get the most performance.
+In the previous chapter we saw how linearly traversing memory is faster.
+This suggests a broader point: you need to understand how data structures structure their memory, in order to get the most performance.
 Put another way, while abstractions are critical to writing software, for the best performance you will need to peer behind the curtain and see how the code really works.
 
 Partially this is because you want to make sure the ways you access data are efficient.
@@ -64,7 +64,7 @@ print("view2 stride:", view2.strides)
 
 ## Tell the compiler when an array is contiguous
 
-For the most part this is an implementation detail you don't have to think about... until performance becomes an issue.
+For the most part striding is an implementation detail you don't have to think about... until performance becomes an issue.
 In particular, the compiler can do a lot more optimization if it knows that data is laid out in a contiguous manner.
 
 The way Numba deals with this is by automatically compiling different versions of the function for contiguous and non-contiguous arrays.
@@ -72,14 +72,14 @@ Since this happens by default, all our examples in the rest of the book benefite
 But we can explicitly tell Numba to either accept all arrays, or only accept contiguous arrays or views:
 
 ```{python}
-from numba import njit, int16
+from numba import jit, int16
 
 DATA = np.arange(0, 1_000_000, dtype=np.int16)
 
 # The int16[:] syntax means the function must be able to accept both contiguous
 # and non-contiguous 1-D arrays and views. As such, the compiler won't be able to
 # optimize as much.
-@njit([(int16[:],)])
+@jit([(int16[:],)])
 def multiply_any(arr):
     result = np.empty(arr.shape, dtype=arr.dtype)
     for i in range(len(arr)):
@@ -89,7 +89,7 @@ def multiply_any(arr):
 # This int16[::1] syntax means the function only accepts 1-D contiguous arrays,
 # which allows the compiler to do more optimization. Notice the actual code is
 # identical!
-@njit([(int16[::1],)])
+@jit([(int16[::1],)])
 def multiply_contiguous(arr):
     result = np.empty(arr.shape, dtype=arr.dtype)
     for i in range(len(arr)):
@@ -98,7 +98,7 @@ def multiply_contiguous(arr):
 
 # Lacking type information, Numba compiles different version for contiguous and
 # non-contiguous inputs.
-@njit
+@jit
 def multiply_auto_specialized(arr):
     result = np.empty(arr.shape, dtype=arr.dtype)
     for i in range(len(arr)):
@@ -115,11 +115,11 @@ assert np.array_equal(
 )
 ```
 
-The versions that can assume the array is contiguous are much faster, because the compiler can optimize better:
+The versions that can assume the array is contiguous are much faster when a congituous array is passed in, because the compiler can optimize better:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions
 multiply_any(DATA)
 multiply_contiguous(DATA)
 multiply_auto_specialized(DATA)

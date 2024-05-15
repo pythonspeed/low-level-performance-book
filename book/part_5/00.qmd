@@ -31,7 +31,7 @@ assert (
 )
 ```
 
-When we start from a large number, adding a small number gives you the large number again.
+When you start with a sufficiently large floating point number, adding a sufficiently small number is equivalent to adding zero!
 So if we do that in a loop we are still left with the original number:
 
 ```{python}

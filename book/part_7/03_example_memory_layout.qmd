@@ -80,7 +80,7 @@ Here's what the simulated data looks like:
 COL_NORMALIZED[:,:3]
 ```
 
-NumPy has a built-in function that does actually what we want: `argmax()`.
+NumPy has a built-in function that does what we want: `argmax()`.
 Let's try it out:
 
 ```{python}

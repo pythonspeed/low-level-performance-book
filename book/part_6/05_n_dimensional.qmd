@@ -71,12 +71,11 @@ scan_x_first(two_d)
 ## Avoid memory reads that aren't linear
 
 The number of CPU instructions is much lower in the linear scan.
-Why is the number of CPU instructions much lower when we scan linearly?
+Why is that?
 Given an array that is known to be contiguous, and that is being scanned in a way that is known to match how it's laid out in memory, the compiler can use SIMD instructions.
 The compiler isn't going to use SIMD instructions if the multiple data items being operated on aren't contiguous in memory.
 
-So is this the reason why the linear scan is faster?
-It is part of the reason, but not all: memory reads are also in play.
+So CPU usage is likely part of the reason for the performance difference we saw aabove, but it's not the only reason: memory reads are also in play.
 We can see this if we force Numba to compile a version of the code that can't take advantage of the knowledge than array is contiguous.
 Keep in mind we're only doing this for educational purposes in the context of this chapter, since the resulting functions will be slower:
 

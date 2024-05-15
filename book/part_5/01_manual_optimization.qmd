@@ -67,7 +67,7 @@ And our new version is faster:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_timing --measure=instructions
 volume_liters(SIZES_INCHES)
 volume_liters_2(SIZES_INCHES)
 ```
@@ -103,7 +103,7 @@ And the new version is indeed faster:
 
 ```{python}
 #| echo: false
-%%compare_timing
-volume_liters(SIZES_INCHES)
+%%compare_timing --measure=instructions
+volume_liters_2(SIZES_INCHES)
 volume_liters_3(SIZES_INCHES)
 ```

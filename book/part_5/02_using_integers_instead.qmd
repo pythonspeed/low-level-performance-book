@@ -118,7 +118,7 @@ This version is faster!
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
-mean_threshold_numpy(IMAGE)
+mean_threshold_1(IMAGE)
 mean_threshold_2(IMAGE)
 ```
 
@@ -154,7 +154,7 @@ This new version is significantly faster:
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
-mean_threshold_numpy(IMAGE)
+mean_threshold_2(IMAGE)
 mean_threshold_3(IMAGE)
 ```
 

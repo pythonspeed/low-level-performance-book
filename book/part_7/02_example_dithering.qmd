@@ -1,7 +1,7 @@
 # Example: Code that has to be written as low-level code
 
-While NumPy and similar libraries' have low-level batch operations that can allow you to implement your higher-level algorithm, sometimes they won't help.
-In particular, some algorithms effectively require iterating over individual values, and so can't be modeled as operating on whole arrays.
+NumPy and similar libraries have low-level operations you can use to implement your higher-level algorithm, but sometimes they won't help.
+In particular, some algorithms require iterating over individual values, and so can't be modeled as operating on whole arrays.
 These sort of algorithms also won't be amenable to parallelization, so using multiple cores can be difficult.
 
 So how do you implement a fast version of these sort of algorithms?
@@ -17,7 +17,7 @@ To help us identify hotspots we're going to use the Profila profiler:
 ## Example: Dithering an image from grayscale to black and white
 
 As an example, in this chapter we'll be optimizing Floyd-Steinberg dithering.
-We'll use this algorithm to convert a grayscale image with values of 0 to 255 into an image with just two colors, black and white.
+We'll be using this algorithm to convert a grayscale image with values of 0 to 255 into an image with just two colors, black and white.
 
 As explained in the [Wikipedia article](https://en.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering), this algorithm rounds a pixel's value to the nearest of the two extremes (0 for black or 255 for white).
 The difference between the original value and the rounded value, known as the error, is added to neighboring pixels, with the following distribution:
@@ -30,7 +30,7 @@ The difference between the original value and the rounded value, known as the er
 So the next pixel on the row gets 7/16th of the error, and the pixel one row down gets 5/16th of the error, and so on.
 Once the current pixel is processed, the algorithm moves on to the next pixel, which now includes some of the error from the previous pixel.
 
-One key issue with optimizing this algorithm is that because each pixel's final value is impacted by the calculations done on previous pixels:
+One key issue with optimizing this algorithm is that each pixel's final value is impacted by the calculations done on previous pixels:
 
 * It's unclear how to implement this with NumPy or SciPy full-array operations.
 * It's likely impossible to process pixels in parallel, which suggests that use of SIMD might be difficult.
@@ -205,7 +205,7 @@ We can also measure general metrics to get a sense of bottlenecks:
 dither(image)
 ```
 
-As we expected, branch prediction is operating successfully, with very few mispredictions.
+It appears that branch prediction is operating successfully, with very few mispredictions.
 This may be because images tend to stay bright or dark for a while, allowing for more predictable branching.
 
 ## Use fewer instructions by simplifying your logic
@@ -219,7 +219,6 @@ The naive rounding implementation addresses three possible cases for intermediat
 
 All of this can be simplified into a single simple check: measuring whether the pixel value is smaller or bigger than the middle point.
 In Python: `new_value = 0 if old_value < 128 else 255`.
-Since `new_value` gets a value set in either case, the hope is that the compiler will turn this into branchless code, so we don't have to worry about the cost of branch misprediction.
 
 ```{python}
 @njit
@@ -232,7 +231,7 @@ def dither2(img):
     for y in range(y_size):
         for x in range(x_size):
             old_value = staging[y, x]
-            # Branchless, simple rounding:
+            # 😎 Branchless, simple rounding:
             new_value = 0 if old_value < 128 else 255
             staging[y, x] = new_value
             error = old_value - new_value
@@ -274,7 +273,7 @@ So we really only need to keep 2 rows worth of memory as `int16`, and we can reu
 @njit
 def dither3(img):
     result = np.empty(img.shape, dtype=np.uint8)
-    # Temporary storage of current and next row's intermediate values:
+    # 😎 Temporary storage of current and next row's intermediate values:
     staging = img[0:2].astype(np.int16)
     y_size = img.shape[0]
     x_size = img.shape[1]
@@ -314,8 +313,7 @@ dither3(image)
 ```
 
 That's a little slower than `dither2()`, but still a lot faster than the original naive implementation.
-And now new memory used is approximately N bytes, since the staging array doesn't use much memory.
-Put another way, this version cuts memory usage by two-thirds.
+And now memory usage is much lower.
 
 ## Reduce unnecessary memory copying
 
@@ -359,8 +357,8 @@ def dither4(img):
 
         # Copy current row of staging into result:
         result[y,:] = staging_current[:]
-        # Switch the next row to be the current one, and copy in the next row's
-        # initial data from the original image:
+        # 😎 Switch the next row to be the current one, and copy in the next
+        # row's initial data from the original image:
         staging_current, staging_next = staging_next, staging_current
         if y < y_size - 2:
             staging_next[:] = img[y + 2,:]
@@ -401,7 +399,7 @@ def dither5(img):
     result = np.empty(img.shape, dtype=np.uint8)
     y_size = img.shape[0]
     x_size = img.shape[1]
-    # The staging arrays have an extra entry at the start and at the end, so
+    # 😎 The staging arrays have an extra entry at the start and at the end, so
     # that we don't need conditionals to handle edge pixels.
     staging_current = np.zeros(x_size + 2, np.int16)
     staging_current[1:-1] = img[0]
@@ -415,7 +413,7 @@ def dither5(img):
         for x in range(x_size):
             old_value = staging_current[x + 1]
             new_value = 0 if old_value < 128 else 255
-            # This is the final result, so we can store it directly in the
+            # 😎 This is the final result, so we can store it directly in the
             # result:
             result[y, x] = new_value
             error = old_value - new_value
@@ -424,7 +422,7 @@ def dither5(img):
             staging_next[x + 1] += error * 5 // 16
             staging_next[x + 2] += error // 16
 
-        # Switch the next row to be the current one:
+        # 😎 Switch the next row to be the current one:
         staging_current, staging_next = staging_next, staging_current
 
     return result
@@ -468,16 +466,16 @@ def dither6(img):
             result[y, x] = new_value
             error = old_value - new_value
             right_pixel_error = error * 7 // 16
-            # Now that we have all three sets of errors accumulated, store
+            # 😎 Now that we have all three sets of errors accumulated, store
             # them:
             staging_next[x] = (
                 img[y + 1, x - 1] + downleft_prev_error + error * 3 // 16
             )
-            # Accumulate errors for the next iteration:
+            # 😎 Accumulate errors for the next iteration:
             downleft_prev_error = downleft_prevprev_error + error * 5 // 16
             downleft_prevprev_error = error // 16
 
-        # Update the final pixel in the next row; it only gets two diffused
+        # 😎 Update the final pixel in the next row; it only gets two diffused
         # errors, not three, so it doesn't get updated in the inner loop.
         staging_next[x_size] = img[y + 1, x_size - 1] + downleft_prev_error
 
@@ -531,15 +529,15 @@ def dither7(img):
             new_value = 0 if old_value < 128 else 255
             result[y, x] = new_value
             error = old_value - new_value
-            # Replace division with bitshift:
+            # 😎 Replace division with bitshift:
             right_pixel_error = (error * 7) >> 4
             staging_next[x] = (
-                # Replace division with bitshift:
+                # 😎 Replace division with bitshift:
                 img[y + 1, x - 1] + downleft_prev_error + ((error * 3) >> 4)
             )
-            # Replace division with bitshift:
+            # 😎 Replace division with bitshift:
             downleft_prev_error = downleft_prevprev_error + ((error * 5) >> 4)
-            # Replace division with bitshift:
+            # 😎 Replace division with bitshift:
             downleft_prevprev_error = error >> 4
 
         staging_next[x_size] = img[y + 1, x_size - 1] + downleft_prev_error

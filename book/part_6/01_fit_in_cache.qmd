@@ -19,11 +19,11 @@ Let's consider an example: we're going to pick 100,000 samples from an array, wi
 
 ```{python}
 import numpy as np
-from numba import njit
+from numba import jit
 
 GENERATOR = np.random.default_rng(0)
 
-@njit
+@jit
 def random_sample(random_gen, arr):
     result = np.empty((100_000,), dtype=arr.dtype)
     for i in range(100_000):

@@ -1,7 +1,7 @@
 # Example: Save memory with low-level code
 
 Because Python is slow, libraries like NumPy rely on batch operations that are implemented in a fast low-level language, and operating on the whole array[^vectorized].
-Unfortunately, operating on full arrays means temporary values also have to be full arrays, which can lead to high memory usage.
+Unfortunately, that means temporary values also have to be whole arrays, which can lead to high memory usage.
 The memory usage can be solved by switching to a Python `for` loop, but iterating over individual array items in Python is very slow.
 
 [^vectorized]: These are sometimes known to Python programmers as "vectorized" operations. C/C++/Rust programmers have a different meaning for the word, using "vectorized" to mean SIMD.
@@ -155,6 +155,7 @@ Here's the speed of our new version:
 #| echo: false
 %%compare_timing --measure=peak_memory
 numpy_rescale_intensity(image, 30, 190)
+lowlevel_rescale_intensity(image, 30, 190)
 lut_rescale_intensity(image, 30, 190)
 ```
 
