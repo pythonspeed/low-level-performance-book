@@ -20,23 +20,22 @@ The choice of algorithm is crucial because, as we'll see, if you pick the wrong 
 How long your program runs depends on the size of the input.
 For example, processing a 1,000,000-base DNA sequence will almost certainly take longer than processing a 1,000-base sequence.
 So when we discuss the choice of algorithm, we need to think in terms of scalability: how will speed change as the input size grows?
-An algorithm that scales badly will be so slow that your implementation speed won't matter.
-In particular, in this book I'm assuming you're dealing with sufficiently-large amounts of data that you're likely to hit algorithm-related scaling issues.
+In this book I'm assuming you're dealing with sufficiently large amounts of data, such that scalability is relevant.
 
-Let's consider an example: quadratic algorithms, which are very easy to write accidentally, to the point that there is [a blog devoted purely to showcasing examples](https://accidentallyquadratic.tumblr.com/).
-A common source of accidentally quadratic algorithms involves a loop, and then call a function that doesn't look like a loop but actually causes another loop over the same data.
+An algorithm that scales badly will be so slow that your implementation speed won't matter.
+Let's consider a specific example of bad scaling: quadratic algorithms, which are very easy to write accidentally, to the point that there is [a blog devoted purely to showcasing examples](https://accidentallyquadratic.tumblr.com/).
 
 Before we can show the example, we need to briefly discuss the technology stack we'll be using for examples in this book, starting with the NumPy library.
 NumPy's core data structure is the `ndarray`, which are N-dimensional arrays.
-An `ndarray` is a bit like a standard Python list, except that `ndarray`s:
+An `ndarray` is a bit like a standard Python list, except that an `ndarray` is:
 
-1. Are fixed in size: you can't append entries.
-2. Only contain items of a single data type or "dtype", e.g. a 32-bit unsigned integer.
-   This allows them to be accessed efficiently from compiled languages, unlike Python lists.
-3. Can be multi-dimensional.
+1. Fixed in size: you can't append entries.
+2. Only contains items of a single data type or "dtype", e.g. 32-bit unsigned integers.
+   This allows `ndarray`s to be accessed efficiently from compiled languages, unlike Python lists.
+3. Potentially N-dimensional, e.g. it might describe a 3D volume.
 
 Let's implement an algorithm that operates on a pair on `ndarray`s.
-Specifically, we'll implement a quadratic algorithm that filters an array down to only those items that are present in the second array.
+Specifically, we'll implement a quadratic algorithm that filters one array down to only those items that are present in a second array.
 We'll assume both arrays have approximately the same length.
 
 ```{python}
@@ -74,18 +73,18 @@ How long does this take to run for different input sizes?
 # Create an array with values from 0 to 999:
 SMALL_DATA = np.arange(0, 1_000, dtype=np.uint64)
 SMALL_DATA2 = np.arange(3, 1_003, dtype=np.uint64)
-LARGER_DATA = np.arange(0, 10_000, dtype=np.uint64)
-LARGER_DATA2 = np.arange(0, 10_003, dtype=np.uint64)
+LARGER_DATA = np.arange(0, 30_000, dtype=np.uint64)
+LARGER_DATA2 = np.arange(0, 30_003, dtype=np.uint64)
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 naive_filter_python(SMALL_DATA, SMALL_DATA2)
 naive_filter_python(LARGER_DATA, LARGER_DATA2)
 ```
 
-When the data is 10× larger, the run time is rather more than 10× slower.
+When the data is 30× larger, the run time is rather more than 30× slower!
 That's because the algorithm takes `len(arr1) × len(arr2)` steps.
 If we assume both arrays have approximately the same length $N$, we can say the algorithm is $O(N^{2})$: it scales with the square of the length of the inputs.
 
@@ -134,7 +133,7 @@ How does this version scale?
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 naive_filter_compiled(SMALL_DATA, SMALL_DATA2)
 naive_filter_compiled(LARGER_DATA, LARGER_DATA2)
 ```

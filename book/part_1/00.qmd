@@ -3,23 +3,22 @@
 When it comes to writing correct software, the only thing that matters are the results of your calculations.
 `2 + 3` should equal `5`, and how that is implemented isn't something you need to think about.
 But if you care about speed, implementation details do matter: running `2 + 3` in C++ is going to be a lot faster than doing so in Python.
-And that includes the implementation details of the CPU which is where you code ultimately gets run.
+There's the implementation details of your programming language toolchian, and there's also the implementation details of the CPU where you code ultimately gets run.
 
-Modern CPUs are extremely complex, with billions of transistors.
-No human being, even the chips' designers, can truly comprehend exactly how they work.
-But luckily, to write fast software you don't need to understand everything about how the CPU works, you just need a reasonable mental model.
+Modern CPUs have billions of transistors.
+No human being, not even the chips' designers, can truly comprehend exactly how they work.
+But to write fast software you don't need to understand everything about how the CPU works, you just need a sufficiently accurate mental model.
 
-Over the course of this book we'll build a performance-oriented mental model of how a CPU core works, and how compilers interact with the CPU, that can help you write much faster software.
-But for now we'll start with a much simplistic and inaccurate model:
+We'll switch to a more useful model in later chapters, but for now we'll start off with the following simplistic model:
 
 1. A CPU core sequentially executes a series of machine code instructions.
    An instruction might add two numbers, or read a value from RAM.
 2. Only one instruction is executed at a time.
 3. Each instruction takes approximately the same amount of time to execute.
-4. Reading and writing from memory is fast: no different than doing an arithmetic operation.
+4. Reading and writing from memory is fast, no different than doing an arithmetic operation.
 
-While this mental model is wrong, a simplified model of a CPU as a sequential executor of instructions is still useful.
-It tells us that if we want our software to run faster, one way to do so is to use fewer CPU instructions.
+While this mental model is wrong in many ways, it is still useful.
+It tells us that we can make our software run faster by using fewer CPU instructions.
 We can do this in one of two ways:
 
 1. Figuring out a more efficient way to get the same results.
