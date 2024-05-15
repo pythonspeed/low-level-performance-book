@@ -27,6 +27,36 @@ Keep in mind that some compilers in some configurations don't auto-vectorize at 
 Notably, if you're compiing C/C++/Cython extensions for Python, by default no auto-vectorization happens at all.
 See [this article for more details](https://pythonspeed.com/articles/faster-cython-simd/).
 
+## What gets auto-vectorized?
+
+Which code gets auto-vectorized depends very much on the compiler you're using, and it can also change across different versions of that compiler.
+But it can be instructive to look at one particular compiler can do, in particular the [documentation for the LLVM compiler](https://llvm.org/docs/Vectorizers.html).
+Numba, the Clang C and C++ compiler, and Rust are all based on LLVM, so while the examples on this page are all Clang-specific, the basic functionality should apply elsewhere.
+
+Clang supports vectorizing loops, like the ones we saw in the previous example.
+It has heuristics supporting complex expressions inside the loop (including conditionals), reverse iteration, more exotic forms of iteration that can be harder to spot, and so on.
+The loop vectorizer is top-down: it notices a larger code structure, the loop, and then tries to see if the loop's contents can be replaced with SIMD instruction.
+
+Clang also supports a different form of vectorization called superword-level parallelism (SLP) which notices similar expressions that can be combined into a single expression or expressions.
+Where the loop vector is top-down, the SLP vectorizer is bottom-up: it notices individual expressions that are structurally similar.
+
+```python
+@jit
+def add(a, b):
+    out = np.zeros((4,), dtype=a.dtype)
+    out[0] = a[0] + b[0]
+    out[1] = a[1] + b[1]
+    out[2] = a[2] + b[2]
+    out[3] = a[3] + b[3]
+    return out
+```
+
+
+::: {.callout-note}
+While SLP is on by default in Clang, some versions of Numba have disabled SLP due to issues with bad code generation (see the [release notes](https://numba.pydata.org/numba-doc/dev/release-notes.html)).
+This is one of the problems with auto-vectorization: it can stop working unexpectedly due to changes in the compiler, both intentional and unintentional.
+:::
+
 ## Make sure you're taking advantage of modern SIMD features
 
 Even if you are using SIMD, you might be ignoring most of the available functionality of modern CPUs.

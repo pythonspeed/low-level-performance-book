@@ -1,13 +1,13 @@
 # Take advantage of modern CPUs' in-core parallelism
 
-So far we've been working with a simple mental model of CPUs where we assumed each core only executes one instruction at a time.
+So far we've been working with a simple mental model of CPUs, where we assumed each core only executes a single instruction at a time.
 In fact, modern CPUs can run multiple insrutctions in parallel within a single core, in two different ways:
 
 * **Implicit, automatic parallelism:** Instruction-level parallelism (ILP) allows the CPU to take pre-existing code and run parts of it in parallel.
   However, from the outside the CPU core will still appear _as if_ it were executing one instruction at a time.
 * **Explicit, opt-in parallelism:** Single Instruction Multiple Data (SIMD) instructions are specialized CPU instructions the compiler emits that tells the CPU to run the same operation on a multiple pieces of data.
-  For example, instead of adding four pairs of 64-bit integers one by one, you can add together all four of them with a single SIMD instruction.
+  For example, instead of adding four pairs of 64-bit integers one by one, you can add all four pairs at the same time with a single SIMD instruction.
 
 Both instruction-level parallelism and SIMD are different from the parallelism you get from multiple cores.
 Multiple cores only benefit you if you can use multiple threads or processes.
-In constrast, ILP and SIMD can speed up your code within a single thread, running on a single CPU core.
+On the other hand, ILP and SIMD can speed up your code within a single thread, running on a single CPU core.
