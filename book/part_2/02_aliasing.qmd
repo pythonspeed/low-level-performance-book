@@ -23,18 +23,23 @@ arr = np.array([1, 2, 3], dtype=np.int64)
 print("Original array", arr)
 # This is a view to the original array:
 arr_view = arr[:2]
-print("Original view", arr_view)
+print("Original view ", arr_view)
+```
+
+Since both objects point at the same memory, mutating one affects the other:
+
+```{python}
 # If we mutate the original array...
-arr[0] = 5
+arr[0] = 678
 print("Updated array", arr)
 # ...the view sees the same information:
-print("Updated view", arr_view)
+print("Updated view ", arr_view)
 ```
+
+## An example of the problem
 
 Here's the problem with aliasing: the _possibility_ that aliasing might occur can limit what the compiler is able to do to speed up your code.
 That's because seemingly identically-behaved functions will actually behave differently when inputs are aliased.
-
-## An example of the problem
 
 Consider the following function:
 
@@ -47,16 +52,16 @@ def minmax(mins_out, maxs_out, a, b):
     return mins_out, maxs_out
 ```
 
-`minmax()` has an obvious optimization: calculate `np.sin(a[i])` and `np.sin(b[i])` only once.
+Notice that the expressions `np.sin(a[i])` and `np.sin(b[i])` are both called twice.
 An optimized version looks like this:
 
 ```{python}
 @jit
 def minmax_optimized(mins_out, maxs_out, a, b):
     for i in range(len(a)):
-        val_a, val_b = a[i], b[i]
-        mins_out[i] = min(np.sin(val_a), np.sin(val_b))
-        maxs_out[i] = max(np.sin(val_a), np.sin(val_b))
+        val_a, val_b = np.sin(a[i]), np.sin(b[i])
+        mins_out[i] = min(val_a, val_b)
+        maxs_out[i] = max(val_a, val_b)
     return mins_out, maxs_out
 
 def empty():
@@ -124,7 +129,7 @@ How can we avoid that?
 ## Solution #1: Manual optimization
 
 Rather than relying on the compiler, you can implement the optimizations yourself.
-In our example, you could write the verison of the code in `minmax_optimized()` instead of `minmax()`, assuming that matches the semantics you want in the case when the data is aliased.
+In our example, you could write the version of the code in `minmax_optimized()` instead of `minmax()`, assuming that matches the semantics you want in the case when the data is aliased.
 
 Unfortunately, there may be less obvious optimizations that you miss.
 And some optimizations are much more difficult for you to implement yourself, in particular those that involve generating particular machine code.
@@ -132,13 +137,15 @@ And some optimizations are much more difficult for you to implement yourself, in
 ## Solution #2: Ensure aliasing doesn't impact the result
 
 Just because two pointers point at the same memory doesn't necessarily prevent the compiler from applying optimizations.
-In this case, the issue is that writing to `mins_out[i]` had a chance of affecting the `a[i]` or `b[i]`.
+In this case, the issue is that writing to `mins_out[i]` had a chance of affecting `a[i]` or `b[i]` when there is aliasing.
 If we prevent that, and only that, the compiler can optimize more on its own:
 
 ```{python}
 @jit
 def minmax_alias_safe(mins_out, maxs_out, a, b):
     for i in range(len(a)):
+        # 😎 Ensure the inputs to np.sin() are consistent regardless of memory
+        # writes:
         val_a, val_b = a[i], b[i]
         # We're still calculating the same sin() twice, but this time the
         # compiler can optimize the duplicate calculation away, since it knows

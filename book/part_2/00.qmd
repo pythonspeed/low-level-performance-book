@@ -13,6 +13,6 @@ For all of these:
    It might be a 64-bit integer, it might be something more complex, but this information is available to the compiler.
    Some languages providing higher-level features that loosen this restriction, but the most common case (templates in C++, generics in Rust) just mean temporarily delaying this knowledge to a later stage in the compilation process.
 
-Cython is another compiled language you can use, with an extra stage of initial compilation: first is compiled into C or C++, and then the C/C++ code is compiled to machine code.
+Cython is another compiled language you can use, with an extra stage of initial compilation: first it is compiled into C or C++, and then the C/C++ code is compiled to machine code.
 
-Over the next few chapters, we'll see how compilation, coupled with knowledge of data types, generates code that can run quickly.
+Over the next few chapters, we'll see how compilation generates code that can run quickly, and how that impacts the way you write your code.

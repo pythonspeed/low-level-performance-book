@@ -1,4 +1,4 @@
-# Fine tune algorithms to your particular data
+# Fine-tune algorithms to your particular data
 
 Libraries like NumPy and SciPy are general purpose: they need to run correctly for many different users, with a variety of different requirements.
 When you are writing a custom application, for a specific kind of data, your problem is more constrained.
@@ -43,7 +43,7 @@ print("Size:", len(BUS_HEADWAYS))
 print("dtype:", BUS_HEADWAYS.dtype)
 ```
 
-NumPy has a built-in implementation of medians, so we could just that:
+NumPy has built-in support for calculating the median, so we could just use that:
 
 ```{python}
 print("Median (seconds):", np.median(BUS_HEADWAYS))
@@ -56,9 +56,12 @@ We want to see if we can build a custom algorithm that is faster because it is c
 Let's look at the data:
 
 ```{python}
-print("Min value (seconds):", BUS_HEADWAYS.min())
-print("Max value (seconds):", BUS_HEADWAYS.max())
-print("99.9th percentile (seconds):", np.quantile(BUS_HEADWAYS, 0.999))
+print("Min value (seconds):", int(BUS_HEADWAYS.min()))
+print("Max value (seconds):", int(BUS_HEADWAYS.max()))
+print(
+    "99.9th percentile (seconds):",
+    int(np.quantile(BUS_HEADWAYS, 0.999))
+)
 ```
 
 Based on these results, we can build a custom median algorithm using two reasonable assumptions:
@@ -76,8 +79,8 @@ Using these two constraints, we can write a much faster median algorithm, by usi
 ```{python}
 @jit
 def histogram_median(bus_headways):
-    # Histogram by number of half-minutes, with a maximum of 500 × 15 = 7,500
-    # seconds.
+    # Histogram by number of quarter-minutes (15 seconds), with a maximum of
+    # 500 × 15 = 7,500 seconds.
     by_quarter_minutes = np.zeros((500,), dtype=np.uint32)
     for headway in bus_headways:
         number_quarter_minutes = np.uint16(headway / 15)
@@ -86,7 +89,7 @@ def histogram_median(bus_headways):
         # than 0.1% of the data.
         by_quarter_minutes[min(number_quarter_minutes, 499)] += 1
 
-    # Now that we know how many samples there are for every quarter minutes
+    # Now that we know how many samples there are for every quarter minute
     # index, add up the cumulative counts until we hit 50% of values:
     median_location = len(bus_headways) / 2
     cumulative_samples = 0

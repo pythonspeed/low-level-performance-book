@@ -31,9 +31,8 @@ But before seeing the reasons compilations won't work, it's worth understanding 
 
 ### Hoisting expressions out of inner loops
 
-The compiler can hoist repetitive expressions out of loops, so they're called once instead of many times.
-For example, the expression `((n ** 2) * (1.5 / n) + n)` in the `compiler_will_hoist()` is repeated in every iteration, but it always give the same result.
-The compiler is therefore able to move it out of the loop and run it only once, as we do manually in `manually_hoisted()`.
+The compiler can move or "hoist" repetitive expressions out of loops, so they're called once instead of many times.
+Consider these two functions, that do the same calculation in different ways:
 
 ```{python}
 @jit
@@ -55,7 +54,9 @@ def manually_hoisted(m, n):
 assert compiler_will_hoist(100, 17) == manually_hoisted(100, 17)
 ```
 
-Notice they run at the same speed, because the compiler automatically optimizes the first version by hoisting the constant expression:
+The expression `((n ** 2) * (1.5 / n) + n)` in the `compiler_will_hoist()` function is repeated in every iteration, but it always give the same result.
+The compiler is therefore able to move it out of the loop and run it only once, as we do manually in `manually_hoisted()`.
+Both functions therefore run at the same speed:
 
 ```{python}
 #| echo: false
@@ -65,7 +66,7 @@ compiler_will_hoist(1_000_000, 3)
 manually_hoisted(1_000_000, 3)
 ```
 
-While both versions have the same speed, the manually hoisted version is arguably clearer about what is going on in the calculation, and the compiler won't always be able to hoist expressions, so doing it manually might still be worth it.
+While both versions have the same speed, the manually hoisted version is arguably clearer about what is going on in the calculation, and the compiler won't always be able to hoist expressions, so doing it manually might still be worth your time.
 
 ### Inlining
 

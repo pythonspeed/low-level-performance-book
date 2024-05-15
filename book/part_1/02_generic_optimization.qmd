@@ -18,7 +18,7 @@ from numba import jit
 
 As far as speed goes, the three most important locations in your data processing code are loops, loops, and loops.
 A basic assumption in this book is that the code you're writing is used to process relatively large amounts of data.
-That means you will almost always end up writing or call functions with the following basic structure:
+That means you will almost always end up writing or calling functions with the following basic structure:
 
 ```{python}
 #| eval: false
@@ -34,10 +34,13 @@ do_some_cleanup()
 ```
 
 Given large amounts of data, and data structures like NumPy `ndarray`s that are designed for fast access from low-level languages, the bulk of your processing will happen inside the loop.
-You can speed up this sort of code by:
+Code that runs a lot is sometimes called "hot" code.
+You can speed up code running in a loop by:
 
-1. Reducing the number of loop iterations; perhaps there's data you don't need to process at all?
+1. Reducing the number of loop iterations. Perhaps there's data you don't need to process at all?
 2. Speeding up the work you repeatedly do inside the loop, the code you will be calling over and over again.
+
+If you have nested loops, the innermost loop will have the most iterations, and therefore is the most impactful place to fix inefficient code.
 
 ## Don't process data you don't need to
 
@@ -48,25 +51,33 @@ As an example, let's implement the Sieve of Eratosthenes, a classic algorithm fo
 It works by iterating over all whole numbers in a range, crossing out multiples of 2 (4, 6, 8, ...), then multiples of 3 (6, 9, 12, ...), then multiples of 5 (10, 15, 20, ...), and so on.
 
 ```{python}
+# 😎 Remember that by using the @jit decorator, our Python code gets compiled
+# to fast machine code.
 @jit
 def find_primes(length):
     is_prime = np.ones((length,), dtype=np.bool_)
     is_prime[0] = False
     is_prime[1] = False
+
+    # For every number starting with 2:
     for i in range(2, length):
+        # If we're already checked this number, we're done:
         if not is_prime[i]:
             continue
+        # Otherwise, mark all multiples of i as not prime, since they're
+        # multiples.
         for j in range(i*2, length, i):
             is_prime[j] = False
+
     return is_prime
 
 PRIMES = find_primes(1_000_000)
 ```
 
 Can we make this code any faster?
-One thing we can notice is that we're checking certain numbers twice.
-When we rule out multiples of 5, we're ruling out `10 = 5 * 2` and `10 = 5 * 3` and ` 10 = 5 * 4` even though we've already ruled them out in previous rounds.
-For example, `10 = 2 * 5` would have been previously ruled out as a multiple of 2.
+One thing to notice is that we're checking certain numbers twice.
+When we rule out multiples of 5, we're ruling out `5 * 2 = 10` and `5 * 3 = 15` and `5 * 4 = 20` even though we've already ruled them out in previous rounds.
+For example, `2 * 5 = 10` would have been previously ruled out as a multiple of 2.
 
 That means we can tweak our `j` loop to start at a later point (`i * i` instead of `i * 2`) to prevent doing duplicate work:
 
@@ -80,6 +91,8 @@ def find_primes_2(length):
     for i in range(2, length):
         if not is_prime[i]:
             continue
+        # 😎 Anything smaller than i*i was already processed in an earlier
+        # iteration, so no need to redo it.
         for j in range(i * i, length, i):
             is_prime[j] = False
 
@@ -99,8 +112,9 @@ find_primes_2(1_000_000)
 
 ## Don't do unnecessary work inside loops
 
-Continuing the same example, in our loop above we do an `if is_prime[i]: continue` check on all even values of `i`, even though we know that any even number larger than 2 isn't prime.
-Instead of doing this check in every single iteration, including odd numbers, we can split processing into two loops, one for odd numbers and one for even numbers.
+Continuing the same example, in our loop above we do an `if is_prime[i]: continue` check on all even values of `i`.
+That includes even numbers like 8 or 212, even though we know that any even number larger than 2 isn't prime.
+Instead of doing this check in every single iteration, we can split processing into two loops, one for odd numbers and one for even numbers.
 The total number of iterations doesn't change, it's still `length`, but each iteration does less work:
 
 ```{python}
@@ -110,7 +124,7 @@ def find_primes_3(length):
     is_prime[0] = False
     is_prime[1] = False
 
-    # 😎 Unconditionally rule out all even numbers >2:
+    # 😎 Unconditionally rule out all even numbers larger than 2:
     for i in range(4, length, 2):
         is_prime[i] = False
 
@@ -131,7 +145,7 @@ This version is even faster:
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
-find_primes(1_000_000)
+find_primes_2(1_000_000)
 find_primes_3(1_000_000)
 ```
 
@@ -141,7 +155,7 @@ We rule out the sequence `9`, `12`, `15`, `18`, and so on up to `length`.
 Notice that every second number is even, because we're adding up pairs of odd numbers.
 And those even numbers have already been marked as non-prime.
 
-So we can optimize the code even further by doing every second multiple:
+So we can optimize the code even further by only checking every second multiple:
 
 ```{python}
 @jit
@@ -171,14 +185,14 @@ Once again, we've sped up the code:
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
-find_primes(1_000_000)
+find_primes_3(1_000_000)
 find_primes_4(1_000_000)
 ```
 
 ## Avoid allocations in the hot loop
 
 In compiled languages, creating an integer or float or other small type doesn't typically require memory allocation, and in our simplified mental model you can just assume it has no performance cost.
-However, larger values that need to persist beyond the lifetime of the function call need to be allocated from the operating system, which is a more expensive operation.
+However, larger values that need to persist beyond the lifetime of the function call need to be allocated from the operating system (they're allocated on the "heap"), which is a more expensive operation.
 Allocating memory can happen explicitly—for example, in C you might call `malloc()`—or implicitly, depending on your language.
 
 Allocating and freeing memory inside a loop can both make it harder for the compiler to optimize your code, and may also be wasted effort.
@@ -189,7 +203,7 @@ For our purposes, we'll focus on Numba, which allocates memory based on rules in
 * Explicitly creating an array allocates memory, for example `np.ones((1_000,))`.
 * Slicing an array does not allocate memory, it creates a view of the same underlying memory, for example `myarr[1:]`.
 * Mathematical operations on arrays can create new arrays, thus allocating memory.
-  For example, `myarr + 1` creates a new array with the value at index `i` set to `myarr[i] + 1`.
+  For example, `myarr + 1` creates a new array where for every index `i`, the new array's value is `myarr[i] + 1`.
 
 To see the performance impact of allocating in a loop, consider the following example:
 
@@ -214,11 +228,11 @@ def no_allocate_in_loop(arr):
     # 😎 Create a single, temporary array we can reuse across loop iterations.
     temp = np.zeros((4, ), dtype=arr.dtype)
     for i in range(len(arr) // 4):
-        # This is just a view, so it doesn't allocate:
         slice_of_4 = arr[i * 4:(i + 1) * 4]
-        # Replace the contents of temp with the values in slice_of_4:
+        # 😎 Replace the contents of temp with the values in slice_of_4. This
+        # is an in-place operation, so no allocation happens.
         temp[:] = slice_of_4
-        # These operations are in-place, so they don't allocate:
+        # 😎 Again, these operations are in-place, so they don't allocate:
         temp *= slice_of_4
         total += temp.mean()
     return total

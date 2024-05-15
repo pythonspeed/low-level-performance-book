@@ -69,7 +69,7 @@ What's happening is that the compiler notices we're reading from `external_array
 The compiler considers out-of-bounds reads to be impossible, so we have introduced undefined behavior.
 
 Given out-of-bounds reads _do not exist_ as far as the C compiler is concerned, It can therefore assume that the 5th iteration of the loop will never reached.
-That means the loop "must" exist beforehand... so the code can be optimized into just returning `True`.
+That means the loop "must" exit before that point... so the code can be optimized into just returning `True`.
 
 Oops.
 
@@ -83,6 +83,6 @@ To completely avoid undefined behavior, your options are:
 
 1. Memorize all the edge cases that produce undefined behavior in your language of choice, and then avoid writing buggy code.
 2. Use a programming language that isn't fundamentally broken.
-   In particular, Rust guarantees no undefined behavior so long as you don't use the `unsafe` feature, which isn't necessary for standard data processing.
+   For example, Rust guarantees no undefined behavior so long as you avoid the `unsafe` feature.
 
 For more on the topic, ["Falsehoods programmers believe about undefined behavior"](https://predr.ag/blog/falsehoods-programmers-believe-about-undefined-behavior/) is a good start.
