@@ -88,7 +88,7 @@ If your code doesn't have bugs, disabling bounds checking in production isn't a 
 
 That being said, decades of experience suggests that it is _very_ difficult to catch all such bugs once your software is complex enough.
 
-## Strategy #2: Leave bounds checking on, live with slower code
+## Strategy #2: Enable bounds checking everywhere, live with slower code
 
 Quickly calculating the wrong answer is not very helpful.
 As such, there's a strong argument to be made for always leaving bounds-checking enabled, even if this means a performance hit.
@@ -100,9 +100,8 @@ This gives you the best of both worlds: the safety guarantees of bounds checking
 I first learned about this strategy from [this excellent article about applying it to Rust](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e).
 
 The general approach is to figure out idioms that are transparent enough to the compiler that it can prove to itself that the bounds will never be violated, or alternatively you can use asserts that give it more information.
-The specific approach is language-specific, and often compiler-specific.
+The actual mechanism will be language-specific, and often compiler-specific.
 
-Let's start with a trivial example.
 To reduce duplication of code, we'll write a little utility to generate two `@jit` versions of the same function, with and without bounds checking:
 
 ```{python}
@@ -113,7 +112,8 @@ def with_and_without_boundscheck(f):
     return (with_bc, without_bc)
 ```
 
-First, we'll use the standard technique we've been using for iteration, a `for` loop over a `range(len(arr))`, and compare runtime with and without bounds checking:
+Next, let's consider a trivial example: summing an array.
+We'll use the standard technique we've been using for iteration, a `for` loop over a `range(len(arr))`, and compare runtime with and without bounds checking:
 
 ```{python}
 DATA = np.arange(0, 1_000_000, dtype=np.uint64)
@@ -228,6 +228,6 @@ moving_average_2_no_bc(DATA)
 
 As you can see, you can write code that leaves bounds checking on, without paying a performance cost.
 You do suffer from a bit of a readability cost, and this technique is very dependent on your compiler version.
-A new, sufficiently different version of Numba might make this idiom or slower, or perhaps allow the same benefit with less funny-looking loops.
+A new, sufficiently different version of Numba might make this idiom slower, or more positively might enable the same benefit with normal loops.
 
 If you're writing Rust, which always has bounds checking on, using the [Rust-specific version of this technique](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e) is a great way to speed up your code.

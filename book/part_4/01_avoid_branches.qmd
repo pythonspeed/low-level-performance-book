@@ -24,7 +24,7 @@ def abs(x):
     return x
 ```
 
-Merely having a conditional expresion doesn't mean the code is a branch; the key is executing different CPU instructions depending on the conditional.
+Merely having a conditional expression doesn't mean the code is a branch; the key is executing different CPU instructions depending on the conditional.
 For example, the following function does not have a branch:
 
 ```python
@@ -54,7 +54,7 @@ Code with branches makes it harder for the compiler to generate efficient code:
 
 * **The compiler may have a harder time optimizing your code in general.**
   If your code has two different branches, it will be difficult or impossible for the compiler to combine that code with previous and later code.
-* **The compiler may have harder time using auto-vectorization to generate SIMD code.**
+* **The compiler may have a harder time using auto-vectorization to generate SIMD code.**
   SIMD instructions do the same thing to multiple data values, and a branch might make it impossible to do the same thing.
   Modern CPUs have "masked" SIMD operations that allow running operations on only a subset of values, and compilers will take advantage of this, but there's a limit to how much these instructions can do.
 
@@ -72,6 +72,7 @@ Based on this prediction, the CPU speculatively keeps executing code in parallel
   And that can slow down your code significantly.
 
 In practice, many conditionals have very consistent answers for long stretches of time, in which case branch prediction will end up being very accurate, and your code will run faster.
-The main performance issue, then, is when branches are unpredictable.
+The main performance issue, then, is when branches are unpredictable, as we'll see in an example the next chapter.
 
-We'll see an example in the next chapter.
+So how can we avoid branches?
+We'll cover different strategies in the following chapters.

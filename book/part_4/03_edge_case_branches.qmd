@@ -1,8 +1,9 @@
-# Get rid of edge case branches
+# Get rid of edge-case branches
 
 Some branches are there to handle a rare edge case.
 Given most data won't be an edge case, this branch should be easy to predict.
-Even so, calling the same code over and over in an inner loop is a waste of resources; ideally you can handle edge cases separately.
+Even so, calling the same code over and over in an inner loop is a waste of resources.
+If you can, handling edge cases separately can speed up your code.
 
 ```{python}
 # Import the dependencies we'll need:
@@ -40,7 +41,7 @@ def moving_average(timeseries):
     return result
 ```
 
-One performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
+A likely performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
 
 ## Don't use branchless code when the branch is predictable
 

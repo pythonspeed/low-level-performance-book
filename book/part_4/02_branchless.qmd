@@ -45,6 +45,8 @@ def remove_noise_naive(arr, noise_threshold):
     result = arr.copy()
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
+            # 🙁 Depending on the input data, this branch may be difficult to
+            # predict.
             if result[i, j] < noise_threshold:
                 result[i, j] = 0
     return result
@@ -64,7 +66,8 @@ remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 remove_noise_naive(NOISY_IMAGE, 1000)
 ```
 
-The function runs with almost the same number of CPU instructions regardless of the image, it runs much more slowly with the unpredictable `NOISY_IMAGE`.
+The function runs with almost the same number of CPU instructions regardless of the image.
+However, it runs much more slowly with the unpredictable `NOISY_IMAGE`.
 The key problem in the function above is the following lines:
 
 ```{python}
@@ -97,8 +100,8 @@ def remove_noise_branchless_1(arr, noise_threshold):
             # False/True becomes 0 or 1 respectively when converted to a
             # number:
             above_threshold = np.uint16(result[i, j] >= noise_threshold)
-            # If we're above the threshold, we keep the value, otherwise
-            # the expression evaluates to 0. 😎 Either way we're writing to
+            # 😎 If we're above the threshold, we keep the value, otherwise
+            # the expression evaluates to 0. Either way we're writing to
             # result[i, j], so there's no branch.
             result[i, j] = above_threshold * result[i, j]
     return result
