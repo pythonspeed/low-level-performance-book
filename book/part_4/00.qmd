@@ -1,4 +1,0 @@
-# Branches and their performance impact
-
-`if` statements, `for` loops, `while` loop, and other less obvious code structures can result in branches in your code.
-These branches can cause performance problems, as we'll discuss in the next chapter.

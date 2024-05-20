@@ -60,7 +60,7 @@ book:
     - appendices/03_microbenchmarking.qmd
 #    - references.qmd
 
-bibliography: references.bib
+#bibliography: references.bib
 
 format:
   html:
@@ -70,5 +70,3 @@ format:
 
 execute:
   cache: true
-
-
