@@ -14,8 +14,9 @@ helpthisbook:
     set -euxo pipefail
     . venv/bin/activate
     export PYTHONPATH=$PWD/src
-    export HELPTHISBOOK=1
-    quarto render book/ --profile helpthisbook --to gfm --output-dir $PWD/_helpthisbook/
+    export HELP_THIS_BOOK=1  # Tell book_magics.py to adjust rendering
+    # Remove --no-cache for faster rendering:
+    quarto render book/ --no-cache --profile helpthisbook --to gfm --output-dir $PWD/_helpthisbook/
     rm _helpthisbook/index.html
     INPUT_CHAPTERS=$(cat book/_quarto.yml | grep .qmd | grep -v '#' | wc -l)
     OUTPUT_CHAPTERS=$(find _helpthisbook -iname '*.md' | wc -l)
@@ -24,4 +25,11 @@ helpthisbook:
        echo "WRONG NUMBER OF CHAPTERS: IN $INPUT_CHAPTERS OUT $OUTPUT_CHAPTERS"
        exit 1
     fi
-    zip _helpthisbook/book.zip -r _helpthisbook/*
+    rm -f _helpthisbook/book.zip
+    cd _helpthisbook
+    # We want lexical order to match semantic order:
+    mv -f index.md part_00.md
+    rm -f part_99/*
+    rmdir part_99/ || true
+    mv appendices/ part_99/
+    zip book.zip $(find part_* | sort )
