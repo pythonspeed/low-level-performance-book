@@ -170,10 +170,11 @@ def display_table(markdown_table: str):
     """Display a Markdown table in Jupyter."""
     if HELP_THIS_BOOK:
         display(
-            HTML(
-                "<pre>"
+            Markdown(
+                "```\n"
                 + markdown_table
-                + "\n</pre><p><small>↑ helpthisbook.com doesn't support tables, this will be rendered correctly in the real book ↑</small></p>"
+                + "```\n"
+                + "(↑ helpthisbook.com doesn't support tables, this will be rendered correctly in the real book ↑)\n\n"
             )
         )
     else:
