@@ -24,3 +24,4 @@ helpthisbook:
        echo "WRONG NUMBER OF CHAPTERS: IN $INPUT_CHAPTERS OUT $OUTPUT_CHAPTERS"
        exit 1
     fi
+    zip _helpthisbook/book.zip -r _helpthisbook/*
