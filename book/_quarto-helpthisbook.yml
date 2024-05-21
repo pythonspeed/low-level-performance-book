@@ -1,2 +1,6 @@
 project:
   type: website
+
+#format:
+#  gfm:
+#    html-math-method: webtex
