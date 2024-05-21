@@ -53,11 +53,16 @@ book:
         - part_7/01_example_rescale_contrast.qmd
         - part_7/02_example_dithering.qmd
         - part_7/03_example_memory_layout.qmd
-    # conclusion.qmd: more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
+    - part: "Performance in practice"
+      chapters:
+        - part_8/01_when.qmd
+        - part_8/02_choosing_a_programming_language.qmd
+        - part_8/03_microbenchmarking.qmd
+        # - part_8/04_dont_break_your_code.qmd
+        # - part_8/05_keep_code_from_getting_slower.qmd
+        # - part_8/06_keep_learning.qmd # more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
   appendices:
-    - appendices/01_when.qmd
-    - appendices/02_prerequisites.qmd
-    - appendices/03_microbenchmarking.qmd
+    - appendices/01_prerequisites.qmd
 #    - references.qmd
 
 #bibliography: references.bib

@@ -1,6 +1,9 @@
 # When is a low-level compiled language useful?
 
-Just because your code is slow to run doesn't mean rewriting in a low-level compiled language is the way to speed it up.
+So far we've been focusing on how building a mental model of how to write faster compiled code.
+Starting with this chapter we'll focus on applying this knowledge in practice, for real code that needs to be optimized.
+
+To begin with, just because your code is slow to run doesn't mean rewriting in a low-level compiled language is the way to speed it up.
 In many cases that rewrite will be a waste of your time, with little or no benefit.
 So before going down that route—the topic of the rest of this book—it's important to understand that other bottlenecks exist, and some hints on how to identify when rewriting your code is actually necessary.
 
@@ -101,21 +104,6 @@ Sometimes none of the situations above apply, and you really do need to abandon 
 Vectorized APIs operate on complete arrays.
 That means when you create temporary intermediate values, they will also have to be arrays.
 The result is that you often have gigantic temporary arrays using massive amounts of memory.
-
-Here's an example we'll revisit later in a later chapter, where rescaling an array of `uint8`s involves creating a temporary `float64` array, resulting in 8× the memory usage:
-
-```{python}
-def rescale_intensity(img, min_value, max_value):
-    """Stretch (min_value, max_value) to (0, 255)."""
-    shifted = img.clip(min_value, max_value)
-    shifted -= min_value
-    # This creates a temporary float64 array:
-    scaled = shifted / (max_value - min_value)
-    scaled *= 255
-    np.round(scaled, out=scaled)
-    shifted[:] = scaled
-    return shifted
-```
 
 You can reduce this massive memory usage overhead by doing the operation in chunks or batches, so the temporary arrays are smaller.
 Or, you can switch to a lower-level language and then use a `for` loop to iterate over individual values is fast enough.

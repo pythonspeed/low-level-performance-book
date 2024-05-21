@@ -6,7 +6,7 @@ This book is written with a series of assumptions to limit its scope:
 * You care about throughput, not responsiveness.
 * As discussed in the previous chapter, you've already picked a scalable algorithm.
 * Your performance bottleneck involves computation, i.e. CPU or RAM, not disk or network access.
-  See the appendix for some discussion of other bottlenecks.
+  See a later chapter for some discussion of other bottlenecks.
 * The focus is on optimizing runtime on a single CPU core.
   Even if you're using parallel or distributed algorithms, eventually you will be running some code on a single CPU core.
 

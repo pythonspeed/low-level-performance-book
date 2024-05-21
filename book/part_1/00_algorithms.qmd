@@ -26,6 +26,7 @@ An algorithm that scales badly will be so slow that your implementation speed wo
 Let's consider a specific example of bad scaling: quadratic algorithms, which are very easy to write accidentally, to the point that there is [a blog devoted purely to showcasing examples](https://accidentallyquadratic.tumblr.com/).
 
 Before we can show the example, we need to briefly discuss the technology stack we'll be using for examples in this book, starting with the NumPy library.
+For more details on the technologies used, see the appendix.
 NumPy's core data structure is the `ndarray`, which are N-dimensional arrays.
 An `ndarray` is a bit like a standard Python list, except that an `ndarray` is:
 
