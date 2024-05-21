@@ -1,5 +1,7 @@
 # Microbenchmarks
 
+TODO rewrite headings to imperative
+
 In much of this book we've relied on microbenchmarks to measure whether or not code is getting faster: we run the code a large number of times, and report how it took on average.
 
 * Python has a [`timeit`](https://docs.python.org/3/library/timeit.html) module you can use for command-line or API-based microbenchmarking.
@@ -180,7 +182,11 @@ This can happen in less obvious way with function inlining, where a function tak
 
 **Solution:** Always benchmark with inputs that are passed in such that the compiler won't decide they're constants and optimize everything away.
 When microbenchmarking Python extensions, the obvious solution is to pass these arguments in from Python.
-Some benchmarking frameworks also have ways to mark arguments as non-optimizable, like the `black_box()** function in Rust's Criterion benchmarking tool.
+Some benchmarking frameworks also have ways to mark arguments as non-optimizable, like the `black_box()` function in Rust's Criterion benchmarking tool.
+
+## Software sources of noise
+
+TODO Python hash seed, hyperfine as workaround
 
 ## Unknown sources of noise
 
