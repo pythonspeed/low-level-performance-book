@@ -16,6 +16,7 @@ You can make your code run faster, or at least more consistently, by keeping the
 Given data size can impact performance results, it's useful to know how memory caches are organized, and their general sizes.
 To simplify somewhat, here's how the CPU talks to RAM:
 
+::: {.content-hidden when-format="markdown"}
 ```{dot}
 digraph G {
   rankdir = "TD"
@@ -32,6 +33,17 @@ digraph G {
   l3 -> RAM
 }
 ```
+:::
+
+::: {.content-hidden unless-format="markdown"}
+```
+     /--> L1 cache (instructions)
+    /                            \
+CPU                               --> L2 cache --> L3 cache --> RAM
+    \                            /
+     \--> L1 cache (data) ------/
+```
+:::
 
 RAM is the slowest, L3 is a bit faster, L2 more so, and L1 is the fastest.
 Typically L1 is per CPU core, L2 may or may not be per core, and L3 is shared across cores.

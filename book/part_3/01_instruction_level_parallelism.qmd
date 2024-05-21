@@ -38,13 +38,26 @@ def pythagorean_theorem(x_length, y_length):
 
 In our original, simplistic mental model, we assumed the CPU core will execute each instruction in order.
 First a multiply, then another multiply, then an addition, then whatever instructions are necessary to calculate the square root:
-
+::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
  A("x_squared = x_length ** 2") --> B("y_squared = y_length ** 2")
  B --> C("__temp = x_squared + y_squared")
  C --> D("... result = sqrt(__temp) ...")
 ```
+:::
+
+::: {.content-hidden unless-format="markdown"}
+```
+x_squared = x_length ** 2
+          ↓
+y_squared = y_length ** 2
+          ↓
+__temp = x_squared + y_squared
+          ↓
+... result = sqrt(__temp) ...
+```
+:::
 
 Modern CPUs, like those used in laptops, desktops, and servers, can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
 Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes.
@@ -54,12 +67,26 @@ If you later switch to a parallel implementation running with multiple threads o
 In this case, calculating `x_squared` and `y_squared` is completely independent, so your CPU is likely to run both at once.
 This happens transparently: the compiler doesn't have to do anything special, the CPU will do this all on its own.
 
+::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
  A("x_squared = x_length ** 2") --> C("__temp = x_squared + y_squared")
  B("y_squared = y_length ** 2") --> C
  C --> D("result = sqrt(__temp)")
 ```
+:::
+
+::: {.content-hidden unless-format="markdown"}
+```
+x_squared = x_length ** 2       y_squared = y_length ** 2
+          \                                /
+           \______________________________/
+                          ↓
+          __temp = x_squared + y_squared
+                          ↓
+          ... result = sqrt(__temp) ...
+```
+:::
 
 Not all code can be transparently run in parallel.
 For one thing, a calculation can't be run if its inputs aren't yet available:
