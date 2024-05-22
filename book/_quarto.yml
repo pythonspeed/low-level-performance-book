@@ -13,14 +13,14 @@ book:
         - part_1/01_interlude.qmd
         - part_1/02_generic_optimization.qmd
         - part_1/03_customize_for_your_data.qmd
-        - part_1/04_bulk_objects.qmd
     - part: "Compiler optimizations"
       chapters:
         - part_2/00.qmd
         - part_2/01_compiler_optimizations.qmd
         - part_2/02_aliasing.qmd
         - part_2/04_undefined_behavior.qmd
-        - part_2/05_writing_for_the_compiler.qmd
+        - part_2/05_bulk_objects.qmd
+        - part_2/06_writing_for_the_compiler.qmd
     - part: "Parallelism in modern CPUs"
       chapters:
         - part_3/00.qmd
@@ -59,6 +59,8 @@ book:
         - part_8/02_choosing_a_programming_language.qmd
         - part_8/03_microbenchmarking.qmd
         # - part_8/04_dont_break_your_code.qmd
+        # document your code?
+        # optimization first, parallelism later
         # - part_8/05_keep_code_from_getting_slower.qmd
         # - part_8/06_keep_learning.qmd # more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
   appendices:

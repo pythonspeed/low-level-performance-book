@@ -27,11 +27,10 @@ In many cases, a performance optimization that changes results slightly may be a
 * In other cases, less accurate results may also be acceptable.
   For example, the monetary cost of inaccuracy may be much lower than the monetary cost savings from a faster run time.
 
-Let's look at an example from the realm of public transportation: bus "headways", the time between the arrival of the previous and the next bus.
+Let's look at some example data from the realm of public transportation: bus "headways", the time between the arrival of the previous and the next bus.
 Headways need to be as low as possible so that passengers can rely on the bus: if the bus arrives every 5 minutes that's a lot better than the bus arriving every 10 minutes.
 
-Our goal is have a fast way to compute the median headway experienced by bus passengers.
-We'll use real-world data from the Boston-area transit authority, the MBTA:
+Our goal is to compute the median headway experienced by passengers on my local transit authority's buses:
 
 ```{python}
 BUS_HEADWAYS = pd.read_parquet(
@@ -49,7 +48,7 @@ NumPy has built-in support for calculating the median, so we could just use that
 print("Median (seconds):", np.median(BUS_HEADWAYS))
 ```
 
-We want to see if we can build a custom algorithm that is faster because it is customized to our particular data.
+Let's see if we can build a custom algorithm that is faster, by customizing it to our particular data.
 
 ### Customizing the algorithm
 

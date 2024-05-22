@@ -10,25 +10,23 @@ This book is written with a series of assumptions to limit its scope:
 * The focus is on optimizing runtime on a single CPU core.
   Even if you're using parallel or distributed algorithms, eventually you will be running some code on a single CPU core.
 
-Since we're focusing on the performance of code running on a single CPU core, we need to understand how that CPU works.
+Given the CPU is how our code runs, it's useful to understand how that CPU works.
 Of course, modern CPUs have billions of transistors.
 No human being, not even the chips' designers, can truly comprehend exactly how they work.
 But to write fast software you don't need perfect understanding, you just need a sufficiently accurate mental model.
 
-As you read through the book you will build a sophisticated, performance-oriented mental model of how the CPU works.
+As you read through the book you will build a more sophisticated, performance-oriented mental model of how the CPU works.
 Our starting point is a much simpler model:
 
-1. A CPU core sequentially executes a series of machine code instructions.
+1. A CPU core sequentially executes a series of instructions, one at a time.
    An instruction might add two numbers, or read a value from RAM.
-2. Only one instruction is executed at a time.
-3. Each instruction takes approximately the same amount of time to execute.
-4. Reading and writing from memory is fast, no different than doing an arithmetic operation.
+2. Each instruction takes approximately the same amount of time to execute.
 
 In short, the number of CPU instructions your program runs can be used as a proxy for your code's performance.
 And even though this is inaccurate, it's still useful.
 Certainly if you cut the number of instructions your program runs by 99%, there's a very good chance your code will run faster.
 
-We can reduce CPU instructions in two ways:
+We can reduce how many CPU instructions your code runs by:
 
 1. Figuring out a more efficient way to get the same results.
 2. Accepting somewhat different results in exchange for running fewer instructions.
