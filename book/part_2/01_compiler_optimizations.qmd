@@ -78,12 +78,13 @@ This is known as "function inlining".
 ```{python}
 @jit
 def in_to_cm(cm):
-    return cm * 0.394
+    return cm * 2.54
 
 @jit
 def cm3_to_liters(cm3):
     return cm3 / 1000
 
+# The calculation is split across multiple different functions:
 @jit
 def volume_liters(width_in, height_in, depth_in):
     width_cm = in_to_cm(width_in)
@@ -91,11 +92,12 @@ def volume_liters(width_in, height_in, depth_in):
     depth_cm = in_to_cm(depth_in)
     return cm3_to_liters(width_cm * height_cm * depth_cm)
 
+# All calculations are unified into a single function:
 @jit
 def volume_liters_manual_inlining(width_in, height_in, depth_in):
-    width_cm = width_in * 0.394
-    height_cm = height_in * 0.394
-    depth_cm = depth_in * 0.394
+    width_cm = width_in * 2.54
+    height_cm = height_in * 2.54
+    depth_cm = depth_in * 2.54
     return (width_cm * height_cm * depth_cm) / 1000
 
 assert (
@@ -104,14 +106,7 @@ assert (
 )
 ```
 
-We can see that the extra function calls in `volume_liters()` don't add overhead, presumably because the compiler inlined them.
-
-```{python}
-#| echo: false
-%%compare_timing
-volume_liters(17.0, 23.0, 53.0)
-volume_liters_manual_inlining(17.0, 23.0, 53.0)
-```
+If we can rely on the compiler to inline the functions, we can choose to break up our code across multiple functions without having to worry about performance implications.
 
 ### Using faster CPU instructions
 
