@@ -1,0 +1,28 @@
+# Don't break your code
+
+When you change your code in order to speed it up, you're always at risk of inadvertently changing its output in ways you don't want.
+The solution is testing, and while testing deserves a whole book of its own, a quick overview of testing options can be helpful.
+
+## Ensure the output hasn't changed
+
+### Use a reference implementation
+
+### Use snapshot testing
+
+Sometimes known as "golden master testing", "approval tests", and probably a number of other names.
+
+## Ensure the output hasn't changed too much
+
+## Test with a wide variety of data
+
+### Test with real data
+
+### Test with simulated data
+
+### Use the Hypothesis library to generate test inputs
+
+Hypothesis is a Python library for "property testing".
+
+### Metamorphic testing
+
+Generating lots of test cases is great, but how do you know what the correct output of your algorithm 

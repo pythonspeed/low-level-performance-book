@@ -58,7 +58,7 @@ book:
         - part_8/01_when.qmd
         - part_8/02_choosing_a_programming_language.qmd
         - part_8/03_microbenchmarking.qmd
-        # - part_8/04_dont_break_your_code.qmd
+        - part_8/04_dont_break_your_code.qmd
         # document your code?
         # optimization first, parallelism later
         # - part_8/05_keep_code_from_getting_slower.qmd
