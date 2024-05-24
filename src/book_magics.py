@@ -32,6 +32,9 @@ def ns_per_iteration(line, globals):
         timeit(line, globals=globals, number=10, timer=perf_counter_ns) / 10
     )
     iterations = max(10_000_000 // estimated_ns, 100)
+    if estimated_ns > 10_000_000:
+        iterations = 10
+
     result = (
         timeit(line, globals=globals, number=iterations, timer=perf_counter_ns)
         // iterations
