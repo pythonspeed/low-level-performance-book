@@ -1,5 +1,6 @@
 # Example: Local thresholding on an image
 
+
 ```{python}
 #| echo: false
 %load_ext book_magics
@@ -176,3 +177,77 @@ NUMBA_RESULT3 = median_local_threshold3(IMAGE, 11, 10)
 median_local_threshold2(IMAGE, 11, 10)
 median_local_threshold3(IMAGE, 11, 10)
 ```
+
+At this point I wasn't sure what to focus on next.
+So I ran the function with Profila, which indicated 60% of the time was spent on `if threshold < 0`.
+I didn't leave it on, though, because it distorts the results somewhat, which is why you don't see it here.
+
+```{python}
+@jit
+def median_local_threshold4(img, block_size, offset):
+    radius = (block_size - 1) // 2
+    result = np.empty(img.shape, dtype=np.uint8)
+    histogram = np.empty((256,), dtype=np.uint32)
+    median = 0
+
+    for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
+
+        # Populate histogram as if we started one pixel to the left:
+        histogram[:] = 0
+        initial_view = img[min_y:max_y, 0:radius].ravel()
+        for k in range(len(initial_view)):
+            histogram[initial_view[k]] += 1
+
+        for j in range(img.shape[1]):
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+
+            # Substract left-most column we don't want anymor
+            if min_x > 0:
+                for y in range(min_y, max_y):
+                    histogram[img[y, min_x - 1]] -= 1
+
+            # Add new right-most column:
+            if max_x < img.shape[1]:
+                for y in range(min_y, max_y):
+                    histogram[img[y, max_x - 1]] += 1
+
+            # Find the the median from the updated histogram, choosing the
+            # starting side heuritisticlly based on the previous median:
+            threshold = ((max_y - min_y) * (max_x - min_x)) // 2
+            the_range = range(256) if median < 127 else range(255, -1, -1)
+            for l in the_range:
+                threshold -= histogram[l]
+                if threshold < 0:
+                    median = l
+                    break
+
+            if img[i, j] > median - offset:
+                result[i, j] = 255
+            else:
+                result[i, j] = 0
+    return result
+
+NUMBA_RESULT4 = median_local_threshold4(IMAGE, 11, 10)
+```
+
+```{python}
+#| echo: false
+%display_image NUMBA_RESULT4
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branches,branch_mispredictions
+median_local_threshold3(IMAGE, 11, 10)
+median_local_threshold4(IMAGE, 11, 10)
+```
+
+What else can you do to speed up this algorithm?
+
+* There are other ways you could potentially take advantage of knowing the previous median to heuristically speed up finding the new one.
+* The cumulative sum in the histogram doesn't benefit from instruction-level parallelism or SIMD.
+  It's possible that using one of those would result in faster results even if it uses more instructions.
+* Do you have other ideas?
