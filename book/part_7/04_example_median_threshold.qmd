@@ -40,11 +40,15 @@ SKIMAGE_RESULT = skimage_median_local_threshold(IMAGE)
 ```{python}
 @jit
 def median_local_threshold(img, block_size, offset):
-    block_size = (block_size - 1) // 2
+    radius = (block_size - 1) // 2
     result = np.empty(img.shape, dtype=np.uint8)
     for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
         for j in range(img.shape[1]):
-            median = np.median(img[max(i - block_size, 0):min(i+block_size, img.shape[0]),max(j - block_size, 0):min(j+block_size, img.shape[1])])
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+            median = np.median(img[min_y:max_y, min_x:max_x])
             if img[i, j] > median - offset:
                 result[i, j] = 255
             else:
@@ -69,16 +73,24 @@ median_local_threshold(IMAGE, 11, 10)
 ```{python}
 @jit
 def median_local_threshold2(img, block_size, offset):
-    block_size = (block_size - 1) // 2
+    radius = (block_size - 1) // 2
     result = np.empty(img.shape, dtype=np.uint8)
     histogram = np.empty((256,), dtype=np.uint32)
 
     for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
         for j in range(img.shape[1]):
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+
+            # Create a histogram:
             histogram[:] = 0
-            view = img[max(i - block_size, 0):min(i+block_size, img.shape[0]),max(j - block_size, 0):min(j+block_size, img.shape[1])].ravel()
+            view = img[min_y:max_y, min_x:max_x].ravel()
             for k in range(len(view)):
                 histogram[view[k]] += 1
+
+            # Use the histogram to find the median:
             threshold = len(view) // 2
             for l in range(256):
                 threshold -= histogram[l]
@@ -104,4 +116,63 @@ NUMBA_RESULT2 = median_local_threshold2(IMAGE, 11, 10)
 %%compare_timing --measure=instructions
 median_local_threshold(IMAGE, 11, 10)
 median_local_threshold2(IMAGE, 11, 10)
+```
+
+```{python}
+@jit
+def median_local_threshold3(img, block_size, offset):
+    radius = (block_size - 1) // 2
+    result = np.empty(img.shape, dtype=np.uint8)
+    histogram = np.empty((256,), dtype=np.uint32)
+
+    for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
+
+        # Populate histogram as if we started one pixel to the left:
+        histogram[:] = 0
+        initial_view = img[min_y:max_y, 0:radius].ravel()
+        for k in range(len(initial_view)):
+            histogram[initial_view[k]] += 1
+
+        for j in range(img.shape[1]):
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+
+            # Substract left-most column we don't want anymor
+            if min_x > 0:
+                for y in range(min_y, max_y):
+                    histogram[img[y, min_x - 1]] -= 1
+
+            # Add new right-most column:
+            if max_x < img.shape[1]:
+                for y in range(min_y, max_y):
+                    histogram[img[y, max_x - 1]] += 1
+
+            # Find the the median from the updated histogram:
+            threshold = ((max_y - min_y) * (max_x - min_x)) // 2
+            for l in range(256):
+                threshold -= histogram[l]
+                if threshold < 0:
+                    break
+            median = l
+            if img[i, j] > median - offset:
+                result[i, j] = 255
+            else:
+                result[i, j] = 0
+    return result
+
+NUMBA_RESULT3 = median_local_threshold3(IMAGE, 11, 10)
+```
+
+```{python}
+#| echo: false
+%display_image NUMBA_RESULT3
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branches,branch_mispredictions
+median_local_threshold2(IMAGE, 11, 10)
+median_local_threshold3(IMAGE, 11, 10)
 ```
