@@ -1,0 +1,78 @@
+# Avoid integer overflows without slowing down your code
+
+Normal Python integers can be of any size, at least until you start running out of either RAM or patience.
+In compiled languages, the integer types have fixed sizes in memory, and therefore a limited range of values.
+For example:
+
+* An unsigned 8-bit integer can only have values between 0 and 255.
+* A signed 16-bit integer can only have values between -32768 and 32767.
+
+What happens when you have an 8-bit unsigned integer with value 255 and you add 1?
+In some languages and code structures the compiler might decide to turn the result into a 64-bit integer, say, but that won't always be possible.
+So what will happen?
+
+There are three options:
+
+* **An error is returned:** Some sort of error is raised to the user, given that you likely didn't intend this behavior.
+  Unfortunately this requires an `if` check for most basic arithmetic operations, which can significantly slow down your code.
+* **Wraparound:** If you add 1 to a `uint8` 255, it will wrap around to 0.
+  This is fast, but it can lead to bugs if your code didn't expect this to happen[^therac-25].
+* **Undefined behavior:** This is even worse, because as we saw in the last chapter it can result in completely unexpected behavior, not just wrong values in specific points in memory.
+  That is, the effects can be both much stranger and much harder to debug.
+
+[^therac-25]: A real world example resulted in several deaths from radiation poisioning: https://en.wikipedia.org/wiki/Therac-25
+
+## An example of overflow leading to wraparound
+
+Empirically, Numba wraps around when integers overflow:
+
+```{python}
+import numpy as np
+from numba import jit, uint8
+
+@jit
+def add_one(x, increment):
+    # Make sure Numba doesn't switch the type:
+    arr = np.array([x], dtype=np.uint8)
+    # In place, so it will stay a uint8:
+    arr[0] += uint8(increment)
+    return arr[0]
+```
+
+We can try this with different values:
+
+```{python}
+print(add_one(12, 1))
+print(add_one(200, 7))
+print(add_one(255, 1))
+print(add_one(255, 20))
+```
+
+## Different languages handle overflow differently
+
+The above example suggests that Numba will wrap around.
+The actual documentation says "arithmetic operations can wrapround or produce undefined results or overflow," which is somewhat worrying (which one?).
+
+C and C++, and therefore Cython, will wrap around for some types and have undefined behavior for others.
+On some platforms Python will set a flag that sets all types to use wraparound.
+
+Rust behavior is well-defined, but varies depending on compilation mode:
+
+* When compiling using the development profile, overflow will result in a panic, the equivalent of a Python exception.
+  This is slow, but will help catch bugs.
+* When compiling using the release profile, overflow will result in wraparound, with no performance penalty.
+  If you really wanted wraparound, there are specific APIs for doing that sort of math.
+
+## Error in development, wraparound in production
+
+So how can you balance the need for performance with making sure your code isn't broken?
+
+Presuming you're not writing critical safety software, Rust's approach is a reasonable one: run your test suite with extra checks, and disable them in production.
+You can also add a few strategic safety checks in key points where they will catch bugs without hurting performance too badly.
+
+* For Rust, this approach is the default.
+* For C, C++, and Cython, you can use tools like UBSan to catch this and other problems that can lead to bugs or undefined behavior; gcc and clang have their own variants.
+* For Numba it's not clear to me how you can do this, since Numba doesn't have asserts you can disable.
+
+The checks for overlow happen at runtime, so they will only catch bugs triggered by code you run.
+So you are still reliant on having a thorough test suite that will cover many edge cases.
