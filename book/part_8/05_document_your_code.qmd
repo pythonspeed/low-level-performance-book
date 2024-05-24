@@ -1,0 +1,9 @@
+# Document your code
+
+Code that has been optimized for speed can often be less readable, because it prioritizes the needs of the CPU or compiler rather than needs of the reader.
+
+## Consider providing a reference implementation
+
+## Add comments explaining how your code works, and how you optimized it
+
+## Add type annotations and use a type checker
