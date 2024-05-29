@@ -1,17 +1,18 @@
-# Example: Local thresholding on an image
+# Let's optimize! 15× faster median local thresholding on an image
 
+Let's optimize some software!
+Our motivation: we have an image, a photo of some text from a book.
+We want to turn it into a 1-bit image, with just black and white, extracting the text so we can easily read it.
+We'll use an example image from [scikit-image](https://scikit-image.org/), an excellent image processing library:
 
 ```{python}
 #| echo: false
 %load_ext book_magics
 ```
-```{python}
-import numpy as np
-from numba import jit
-from skimage import io
-from skimage.data import page
-from skimage.filters import threshold_local
 
+```{python}
+from skimage.data import page
+import numpy as np
 IMAGE = page()
 assert IMAGE.dtype == np.uint8
 ```
@@ -21,61 +22,128 @@ assert IMAGE.dtype == np.uint8
 %display_image IMAGE
 ```
 
+## Median-based local thresholding
+
+The task we're trying to do—turning darker areas into black and lighter areas into white—is called thresholding.
+Since the image is different in different regions, with some darker and some lighter, we'll get the best results if we use local thresholding, where the threshold is calculated from an area around the pixel.
+
+Specifically, for each pixel in the image we will:
+
+1. Calculate the median of the surrounding block.
+2. Subtract a magic constant from the calculated median to calculate our local threshold.
+2. If the pixel's value is bigger than the threshold, the result is black, otherwise white.
+
+scikit-image includes an implementation of this algorithm.
+Here's how we use it:
+
 ```{python}
-def skimage_median_local_threshold(img):
+from skimage.filters import threshold_local
+
+def skimage_median_local_threshold(img, block_size, offset):
+    # The default way to populate a block at the edge of the image is to use
+    # the mirror of the image to fill in missing pixels.
     threshold = threshold_local(
-        img, block_size=11, method="median", offset=10
+        img, block_size=block_size, method="median", offset=offset
     )
     result = (img > threshold).astype(np.uint8)
     result *= 255
     return result
 
-SKIMAGE_RESULT = skimage_median_local_threshold(IMAGE)
+# The block size and offset value were determined "empirically", i.e. they're
+# manually tuning the algorithm to work well with our specific example image.
+SKIMAGE_RESULT = skimage_median_local_threshold(IMAGE, 11, 10)
 ```
+
+And here's what the results look like:
 
 ```{python}
 #| echo: false
 %display_image SKIMAGE_RESULT
 ```
 
+Let's see if we can make this faster!
+
+## Step 1. Reimplement our own version
+
+We're going to be using the Numba compiler, which lets us compile Python code to machine code at runtime.
+Here's an initial implementation of the algorithm:
+
 ```{python}
+from numba import jit
+
 @jit
 def median_local_threshold(img, block_size, offset):
+    # Block size must be an odd number :
+    assert block_size % 2 == 1
     radius = (block_size - 1) // 2
     result = np.empty(img.shape, dtype=np.uint8)
+
+    # For every pixel:
     for i in range(img.shape[0]):
+        # Calculate the Y borders of the block:
         min_y = max(i - radius, 0)
         max_y = min(i + radius + 1, img.shape[0])
         for j in range(img.shape[1]):
+            # Calculate the X borders of the block:
             min_x = max(j - radius, 0)
             max_x = min(j + radius + 1, img.shape[1])
+            # Calculate the median:
             median = np.median(img[min_y:max_y, min_x:max_x])
+            # Set the image to black or white, depending how it relates to the
+            # threshold:
             if img[i, j] > median - offset:
+                # White:
                 result[i, j] = 255
             else:
+                # Black:
                 result[i, j] = 0
     return result
 
 NUMBA_RESULT1 = median_local_threshold(IMAGE, 11, 10)
 ```
 
+Here's the resulting image; it looks similar enough that for our purposes:
+
 ```{python}
 #| echo: false
 %display_image NUMBA_RESULT1
 ```
 
+Now we can compare the performance of the two implementations:
+
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
-skimage_median_local_threshold(IMAGE)
+skimage_median_local_threshold(IMAGE, 11, 10)
 median_local_threshold(IMAGE, 11, 10)
 ```
+
+It's slower.
+But that's OK, we're just getting started.
+
+## Step 2: A faster implementation of the median algorithm
+
+Calculating a median is pretty expensive, and we're doing it for every single pixel, so let's see if we can speed it up.
+
+The generic median implementation Numba is likely to be using a generic algorithm, since it needs to work in a wide variety of circumstances.
+We can hypothesize that it's not optimized for our particular case.
+Even if it is optimized for our particular data, having our own implementation will allow for a second round of optimization, as we'll see in the next step.
+
+We're going to implement a histogram-based median, based on the fact we're using 8-bit images that only have a limited range of potential values.
+The median is the value where 50% of the pixels' values are smaller, and 50% are bigger.
+
+* Wach pixel's value will go into a different bucket in the histogram; since we know our image is 8-bit, we only need 256 buckets.
+* Then, the median is the location in the histogram where we've hit 50% of the pixels by that bucket.
+* That location is an 8-bit brightness value, our local threshold (after some subtracting the magic user-provided offset).
 
 ```{python}
 @jit
 def median_local_threshold2(img, block_size, offset):
     radius = (block_size - 1) // 2
     result = np.empty(img.shape, dtype=np.uint8)
+
+    # 😎 A histogram with a bucket for each of the 8-bit values possible in the
+    # image. We allocate this once and reuse it.
     histogram = np.empty((256,), dtype=np.uint32)
 
     for i in range(img.shape[0]):
@@ -85,19 +153,24 @@ def median_local_threshold2(img, block_size, offset):
             min_x = max(j - radius, 0)
             max_x = min(j + radius + 1, img.shape[1])
 
-            # Create a histogram:
+            # Reset the histogram to zero:
             histogram[:] = 0
+            # Populate the histogram, counting how many of each value are in
+            # the block we're inspecting:
             view = img[min_y:max_y, min_x:max_x].ravel()
             for k in range(len(view)):
                 histogram[view[k]] += 1
 
-            # Use the histogram to find the median:
-            threshold = len(view) // 2
+            # Use the histogram to find the median; keep adding buckets until
+            # we've hit 50% of the pixels. The corresponding bucket is the
+            # median.
+            half_the_pixels_in_block = len(view) // 2
             for l in range(256):
-                threshold -= histogram[l]
-                if threshold < 0:
+                half_the_pixels_in_block -= histogram[l]
+                if half_the_pixels_in_block < 0:
                     break
             median = l
+
             if img[i, j] > median - offset:
                 result[i, j] = 255
             else:
@@ -107,10 +180,14 @@ def median_local_threshold2(img, block_size, offset):
 NUMBA_RESULT2 = median_local_threshold2(IMAGE, 11, 10)
 ```
 
+Here's the resulting image:
+
 ```{python}
 #| echo: false
 %display_image NUMBA_RESULT2
 ```
+
+And here's the performance of our new implementation:
 
 ```{python}
 #| echo: false
@@ -118,6 +195,51 @@ NUMBA_RESULT2 = median_local_threshold2(IMAGE, 11, 10)
 median_local_threshold(IMAGE, 11, 10)
 median_local_threshold2(IMAGE, 11, 10)
 ```
+
+That's better!
+
+## Step 3: Stop recalculating the histogram from scratch
+
+Our algorithm uses a rolling window over the image, calculating the median for a window around each pixel.
+For example, let's say we're looking at a block size of 3.
+We might calculate the median of this area:
+
+```
+......
+.\\\..
+.\\\..
+.\\\..
+......
+......
+```
+
+And then when process the next pixel we'll calculate the median of this area:
+
+```
+......
+..///.
+..///.
+..///.
+......
+......
+```
+
+If we superimpose them, we can see there's an overlap, the `X`:
+
+```
+......
+.\XX/.
+.\XX/.
+.\XX/.
+......
+......
+```
+
+Given the histogram for the first pixel, if we remove the values marked with `\` and add the ones marked with `/`, we've calculated the exact histogram for the next pixel.
+So for a 3×3 block, instead of processing 3 columns we process 2, a minor improvement.
+For a 11×11 block, we will go from processing 11 columns to 2 columns, a much more significant improvement.
+
+Here's what the code looks like:
 
 ```{python}
 @jit
@@ -140,7 +262,10 @@ def median_local_threshold3(img, block_size, offset):
             min_x = max(j - radius, 0)
             max_x = min(j + radius + 1, img.shape[1])
 
-            # Substract left-most column we don't want anymor
+            # 😎 Instead of recalculating histogram from scratch, re-use the
+            # previous pixel's histogram.
+
+            # Substract left-most column we don't want anymore:
             if min_x > 0:
                 for y in range(min_y, max_y):
                     histogram[img[y, min_x - 1]] -= 1
@@ -151,10 +276,10 @@ def median_local_threshold3(img, block_size, offset):
                     histogram[img[y, max_x - 1]] += 1
 
             # Find the the median from the updated histogram:
-            threshold = ((max_y - min_y) * (max_x - min_x)) // 2
+            half_the_pixels_in_block = ((max_y - min_y) * (max_x - min_x)) // 2
             for l in range(256):
-                threshold -= histogram[l]
-                if threshold < 0:
+                half_the_pixels_in_block -= histogram[l]
+                if half_the_pixels_in_block < 0:
                     break
             median = l
             if img[i, j] > median - offset:
@@ -166,10 +291,14 @@ def median_local_threshold3(img, block_size, offset):
 NUMBA_RESULT3 = median_local_threshold3(IMAGE, 11, 10)
 ```
 
+Here's the resulting image:
+
 ```{python}
 #| echo: false
 %display_image NUMBA_RESULT3
 ```
+
+And here's the performance of our latest code:
 
 ```{python}
 #| echo: false
@@ -178,76 +307,18 @@ median_local_threshold2(IMAGE, 11, 10)
 median_local_threshold3(IMAGE, 11, 10)
 ```
 
-At this point I wasn't sure what to focus on next.
-So I ran the function with Profila, which indicated 60% of the time was spent on `if threshold < 0`.
-I didn't leave it on, though, because it distorts the results somewhat, which is why you don't see it here.
-
-```{python}
-@jit
-def median_local_threshold4(img, block_size, offset):
-    radius = (block_size - 1) // 2
-    result = np.empty(img.shape, dtype=np.uint8)
-    histogram = np.empty((256,), dtype=np.uint32)
-    median = 0
-
-    for i in range(img.shape[0]):
-        min_y = max(i - radius, 0)
-        max_y = min(i + radius + 1, img.shape[0])
-
-        # Populate histogram as if we started one pixel to the left:
-        histogram[:] = 0
-        initial_view = img[min_y:max_y, 0:radius].ravel()
-        for k in range(len(initial_view)):
-            histogram[initial_view[k]] += 1
-
-        for j in range(img.shape[1]):
-            min_x = max(j - radius, 0)
-            max_x = min(j + radius + 1, img.shape[1])
-
-            # Substract left-most column we don't want anymor
-            if min_x > 0:
-                for y in range(min_y, max_y):
-                    histogram[img[y, min_x - 1]] -= 1
-
-            # Add new right-most column:
-            if max_x < img.shape[1]:
-                for y in range(min_y, max_y):
-                    histogram[img[y, max_x - 1]] += 1
-
-            # Find the the median from the updated histogram, choosing the
-            # starting side heuritisticlly based on the previous median:
-            threshold = ((max_y - min_y) * (max_x - min_x)) // 2
-            the_range = range(256) if median < 127 else range(255, -1, -1)
-            for l in the_range:
-                threshold -= histogram[l]
-                if threshold < 0:
-                    median = l
-                    break
-
-            if img[i, j] > median - offset:
-                result[i, j] = 255
-            else:
-                result[i, j] = 0
-    return result
-
-NUMBA_RESULT4 = median_local_threshold4(IMAGE, 11, 10)
-```
-
-```{python}
-#| echo: false
-%display_image NUMBA_RESULT4
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions,branches,branch_mispredictions
-median_local_threshold3(IMAGE, 11, 10)
-median_local_threshold4(IMAGE, 11, 10)
-```
+## Next steps
 
 What else can you do to speed up this algorithm?
 
-* There are other ways you could potentially take advantage of knowing the previous median to heuristically speed up finding the new one.
+* You can take advantage of knowing the previous median to heuristically speed up finding the new one.
+  For example, notice that a median is symmetrical: you could calculate it from one side of the histogram or the other.
+  In this case, we're always starting from the same side, but the previous median can give us a hint which side is better to start from.
 * The cumulative sum in the histogram doesn't benefit from instruction-level parallelism or SIMD.
   It's possible that using one of those would result in faster results even if it uses more instructions.
-* Do you have other ideas?
+* So far the code has only used a single CPU.
+  Given each row is calculated independently, parallelism would probably work well if done in horizontal stripes, probably taller than one pixel so as to maximize utilization of memory caches.
+
+Want to learn more about optimizing compiled code for Python data processing?
+I'm working on a book, with test readers going through initial drafts, aimed at Python developers, covering things like instruction-level parallelism and memory caches.
+[Learn more and sign up to get updates here](/products/lowlevelcode/).
