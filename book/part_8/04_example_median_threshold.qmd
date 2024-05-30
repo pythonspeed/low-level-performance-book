@@ -1,7 +1,6 @@
-# Let's optimize! 15× faster median local thresholding on an image
+# Example: A specialized algorithm can be much faster
 
-Let's optimize some software!
-Our motivation: we have an image, a photo of some text from a book.
+Let's say we have an image, a photo of some text from a book.
 We want to turn it into a 1-bit image, with just black and white, extracting the text so we can easily read it.
 We'll use an example image from [scikit-image](https://scikit-image.org/), an excellent image processing library:
 
@@ -66,7 +65,7 @@ Let's see if we can make this faster!
 
 ## Step 1. Reimplement our own version
 
-We're going to be using the Numba compiler, which lets us compile Python code to machine code at runtime.
+We'll start by switching to Numba.
 Here's an initial implementation of the algorithm; it's not quite identical to the original, for example the way edge pixels are handled, but it's close enough for our purposes:
 
 ```{python}
@@ -130,8 +129,13 @@ The generic median implementation Numba provides is likely to be fairly generic,
 We can hypothesize that it's not optimized for our particular case.
 And even if it is, having our own implementation will allow for a second round of optimization, as we'll see in the next step.
 
-We're going to implement a histogram-based median, based on the fact we're using 8-bit images that only have a limited range of potential values.
+We're going to implement a histogram-based median, as we did in an earlier chapter, based on the fact we're using 8-bit images that only have a limited range of potential values.
 The median is the value where 50% of the pixels' values are smaller, and 50% are bigger.
+
+::: {.callout-note}
+While we are using the same technique, you should keep reading.
+In the next step we'll build on this to code use new techniques that haven't been covered so far.
+:::
 
 Here's the basic algorithm for a histogram-based median:
 
@@ -431,8 +435,3 @@ Here are some ideas:
   It's possible that using one of those would result in faster results even if it uses more instructions.
 * So far the code has only used a single CPU.
   Given each row is calculated independently, parallelism would probably work well if done in horizontal stripes, probably taller than one pixel so as to maximize utilization of memory caches.
-
-Want to learn more about optimizing compiled code for Python data processing?
-This article is an extract from a book I'm working on; test readers are currently going through initial drafts.
-Aimed at Python developers, data scientists, and scientists, the book covers topics like instruction-level parallelism, memory caches, and other performance optimization techniques.
-[Learn more and sign up to get updates here](/products/lowlevelcode/).
