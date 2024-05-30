@@ -39,9 +39,9 @@ book:
     - part: "Compilers in practice"
       chapters:
         - part_6/01_undefined_behavior.qmd
-        - part_2/02_overflow.qmd
-        - part_2/03_more_about_simd.qmd
-        - part_2/04_writing_for_the_compiler.qmd
+        - part_6/02_overflow.qmd
+        - part_6/03_more_about_simd.qmd
+        - part_6/04_writing_for_the_compiler.qmd
     - part: "Memory caches"
       chapters:
         - part_7/00.qmd
