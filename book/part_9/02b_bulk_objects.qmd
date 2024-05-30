@@ -47,7 +47,7 @@ mysum(NUMPY_ARRAY)
 
 Here's the problem: CPython represents objects rather differently than compiled languages do.
 For example, to convert a Python `int` into a 64-bit integer that Numba or C++ can use, you call (directly or indirectly) a function provided by CPython called `PyLong_AsLongAndOverflow`.
-You don't have to understand the code, the important thing is to notice it's doing quite a bit of work:
+Don't bother trying to understand this code, the important thing is to notice it's doing quite a bit of work:
 
 ```c
 // This code snippet is copyright © 2001-2023 Python Software Foundation;
