@@ -1,5 +1,5 @@
 project:
-  type: website #book
+  type: book
 
 book:
   title: "Fast compiled code for Pythonistas"
