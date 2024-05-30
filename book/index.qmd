@@ -4,12 +4,17 @@ This book is written for scientists, data scientists, software developers, and o
 Python[^cpython] is notoriously slow, but often used to handle large-scale data processing.
 In order to do so in a reasonable amount of time, the solution has traditionally involved writing Python extensions in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
 
-Sometimes these fast, compiled extensions are shared libraries like NumPy, SciPy, Pandas, or Polars.
+There are many fast, compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
 If those libraries are fast enough for you, no need to read the rest of this book!
 
 Sometimes, however, pre-existing libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
 In that case, you will need to write your own code in a low-level language.
 This book is written to help you make that code _fast_.
-While most of the examples will use a particular language and compiler, namely Numba, the same principles will apply whatever compiled language you're using.
+
+Most of the examples in this book will use the Numba language and compiler, because it is easy to install and uses the same syntax as Python.
+However, this is not a book about Numba: the concepts the book covers also apply to C, C++, Rust, and other low-level languages.
+I will discuss the functionality of these other languages where relevant.
+
+Let's get started!
 
 [^cpython]: Technically, it's not the language that's slow, it's the default implementation. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that can do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features.
