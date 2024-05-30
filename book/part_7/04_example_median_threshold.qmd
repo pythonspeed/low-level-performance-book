@@ -114,7 +114,7 @@ Now we can compare the performance of the two implementations:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 skimage_median_local_threshold(IMAGE, 11, 10)
 median_local_threshold1(IMAGE, 11, 10)
 ```
@@ -194,7 +194,7 @@ And here's the performance of our new implementation:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 median_local_threshold1(IMAGE, 11, 10)
 median_local_threshold2(IMAGE, 11, 10)
 ```
@@ -307,7 +307,7 @@ And here's the performance of our latest code:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 median_local_threshold2(IMAGE, 11, 10)
 median_local_threshold3(IMAGE, 11, 10)
 ```
@@ -388,7 +388,7 @@ Since the heuristic is tied to the image contents, the performance impact will d
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 median_local_threshold3(IMAGE, 11, 10)
 median_local_threshold4(IMAGE, 11, 10)
 ```
@@ -399,7 +399,7 @@ Here's a performance comparison of all the versions of the code:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 
 skimage_median_local_threshold(IMAGE, 11, 10)
 median_local_threshold1(IMAGE, 11, 10)
