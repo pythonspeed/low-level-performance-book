@@ -1,5 +1,5 @@
 project:
-  type: book
+  type: website #book
 
 book:
   title: "Fast compiled code for Pythonistas"
@@ -18,16 +18,12 @@ book:
         - part_2/00.qmd
         - part_2/01_compiler_optimizations.qmd
         - part_2/02_aliasing.qmd
-        - part_2/04_undefined_behavior.qmd
-        - part_2/05_overflow.qmd
         - part_2/06_bulk_objects.qmd
-        - part_2/07_writing_for_the_compiler.qmd
     - part: "Parallelism in modern CPUs"
       chapters:
         - part_3/00.qmd
         - part_3/01_instruction_level_parallelism.qmd
         - part_3/02_simd.qmd
-        - part_3/03_more_about_simd.qmd
     - part: "Branches"
       chapters:
         - part_4/01_avoid_branches.qmd
@@ -41,30 +37,37 @@ book:
         - part_5/01_manual_optimization.qmd
         - part_5/02_using_integers_instead.qmd
         - part_5/03_fast_math.qmd
+    - part: "Compilers in practice"
+      chapters:
+        - part_6/01_undefined_behavior.qmd
+        - part_2/02_overflow.qmd
+        - part_2/03_more_about_simd.qmd
+        - part_2/04_writing_for_the_compiler.qmd
     - part: "Memory caches"
       chapters:
-        - part_6/00.qmd
-        - part_6/01_fit_in_cache.qmd
-        - part_6/02_linear_scan.qmd
+        - part_7/00.qmd
+        - part_7/01_fit_in_cache.qmd
+        - part_7/02_linear_scan.qmd
         # - part_6/03_smaller_data_types.qmd
-        - part_6/04_learn_implementation_details.qmd
-        - part_6/05_n_dimensional.qmd
+        - part_7/04_learn_implementation_details.qmd
+        - part_7/05_n_dimensional.qmd
     - part: "More examples"
       chapters:
-        - part_7/01_example_rescale_contrast.qmd
-        - part_7/02_example_dithering.qmd
-        - part_7/03_example_memory_layout.qmd
-        - part_7/04_example_median_threshold.qmd
+        - part_8/01_example_rescale_contrast.qmd
+        - part_8/02_example_dithering.qmd
+        - part_8/03_example_memory_layout.qmd
+        - part_8/04_example_median_threshold.qmd
     - part: "Performance in practice"
       chapters:
-        - part_8/01_when.qmd
-        - part_8/02_choosing_a_programming_language.qmd
-        - part_8/03_microbenchmarking.qmd
-        - part_8/04_dont_break_your_code.qmd
-        - part_8/05_document_your_code.qmd
+        - part_9/01_when.qmd
+        - part_9/02_choosing_a_programming_language.qmd
+        - part_9/02b_bulk_objects.qmd
+        - part_9/03_microbenchmarking.qmd
+        - part_9/04_dont_break_your_code.qmd
+        - part_9/05_document_your_code.qmd
         # optimization first, parallelism later
-        # - part_8/05_keep_code_from_getting_slower.qmd
-        # - part_8/06_keep_learning.qmd # more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
+        # - part_9/05_keep_code_from_getting_slower.qmd
+        # - part_9/06_keep_learning.qmd # more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
   appendices:
     - appendices/01_prerequisites.qmd
 #    - references.qmd
