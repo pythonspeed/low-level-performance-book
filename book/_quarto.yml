@@ -23,7 +23,7 @@ book:
         - part_3/00.qmd
         - part_3/01_instruction_level_parallelism.qmd
         - part_3/02_simd.qmd
-    - part: "Branches"
+    - part: "Branches, and how to avoid them"
       chapters:
         - part_4/01_avoid_branches.qmd
         - part_4/02_branchless.qmd
