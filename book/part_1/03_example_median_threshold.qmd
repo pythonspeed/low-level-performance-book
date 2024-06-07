@@ -137,18 +137,14 @@ The generic median implementation Numba provides is likely to be fairly generic,
 We can hypothesize that it's not optimized for our particular case.
 And even if it is, having our own implementation will allow for a second round of optimization, as we'll see in the next step.
 
-We're going to implement a histogram-based median, as we did in an earlier chapter, based on the fact we're using 8-bit images that only have a limited range of potential values.
-The median is the value where 50% of the pixels' values are smaller, and 50% are bigger.
-
-::: {.callout-note}
-While we are using the same technique, you should keep reading.
-In the next step we'll build on this to code use new techniques that haven't been covered so far.
-:::
-
+We're going to implement a histogram-based median, based on the fact we're using 8-bit images that only have a limited range of potential values.
 Here's the basic algorithm for a histogram-based median:
 
-* Each pixel's value will go into a different bucket in the histogram; since we know our image is 8-bit, we only need 256 buckets.
-* Then, we add up the size of each bucket in the histogram, from smallest to largest, until we hit 50% of the pixels we inspected.
+* Iterate over each pixel in the chosen neighborhood.
+* Each pixel's value will increase a corresponding bucket in the histogram; since we know our image is 8-bit, we only need 256 buckets.
+  For example, if a pixel has brightness value of 17, the count in bucket 17 will get incremented.
+  If at the end the 17th bucket has a value of 32, that means 32 pixels had brightness 17.
+* Then, we add up the size of each bucket in the histogram, from smallest to largest, until we hit 50% of the pixels we inspected, i.e. half the size of the neighborhood in pixels.
 
 ```{python}
 @jit
