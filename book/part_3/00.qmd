@@ -15,7 +15,7 @@ More explicitly:
 
 Neither of these assumptions is quite accurate:
 
-1. CPU cores have multiple ways of doing work in parallel, including calculations, even in single-threaded code running on a single core.
+1. CPU cores can run instructions in parallel, even in single-threaded code running on a single core.
 2. Different instructions can take different amounts of time.
 
 In the next few chapters we'll focus on the first part: parallelism and its consequences.
