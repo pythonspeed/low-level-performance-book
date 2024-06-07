@@ -38,6 +38,7 @@ def pythagorean_theorem(x_length, y_length):
 
 In our original, simplistic mental model, we assumed the CPU core will execute each instruction in order.
 First a multiply, then another multiply, then an addition, then whatever instructions are necessary to calculate the square root:
+
 ::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
@@ -59,7 +60,8 @@ __temp = x_squared + y_squared
 ```
 :::
 
-Modern CPUs, like those used in laptops, desktops, and servers, can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
+However, modern CPUs, like those used in laptops, desktops, servers, and smartphones, can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
+
 Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes.
 This is parallelism within a _single_ CPU core.
 If you later switch to a parallel implementation running with multiple threads or processes on multiple cores, each individual core will still be able to do instruction-level parallelism internally.
@@ -176,7 +178,9 @@ Unfortunately, when visualized we can see the results have a repeating pattern, 
 %display_image RAND2
 ```
 
-However, this change does enable a massive speedup; the number of instructions is higher, but the speed at which they run drops dramatically thanks to ILP:
+In the following performance comparison I've included the number of CPU instructions the code ran.
+Notice that the number of CPU instructions increased, even as the runtime decreased.
+That's because `generate_not_so_random_numbers()` was able to run those extra insstructions in parallel, speeding up the actual run time.
 
 ```{python}
 #| echo: false
