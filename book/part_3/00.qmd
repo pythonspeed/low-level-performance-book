@@ -13,14 +13,9 @@ More explicitly:
    An instruction might add two numbers, or read a value from RAM.
 2. Each instruction takes approximately the same amount of time to execute.
 
-If this model were accurate, then increasing the number of instructions would slow down your code.
-But in fact, in some situations increasing the number of instructions your code runs can actually speed it up.
+Neither of these assumptions is quite accurate:
 
-That's because modern CPU cores can run multiple instructions in parallel within a single core.
-If you can change your code so that it runs 4 instruction in parallel, rather than just one, your code can potentially run as much as 4× faster.
-That means increasing the number of instructions by 1.5× might be worth it, if it enables that parallelism; the resulting speed-up might be 4/1.5, i.e. 2.67×.
+1. CPU cores have multiple ways of doing work in parallel, including calculations, even in single-threaded code running on a single core.
+2. Different instructions can take different amounts of time.
 
-Note that this in-core parallelism is different from the parallelism you get from multiple cores.
-Multiple cores only benefit you if you can use multiple threads or processes.
-On the other hand, parallelism on a single core can speed up your code within a single thread.
-You're still writing single-threaded code—it just goes faster.
+In the next few chapters we'll focus on the first part: parallelism and its consequences.
