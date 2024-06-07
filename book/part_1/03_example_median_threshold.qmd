@@ -45,10 +45,14 @@ Here's how we use it:
 from skimage.filters import threshold_local
 
 def skimage_median_local_threshold(img, neighborhood_size, offset):
+    # Create a threshold array, the median of each pixel's neighborhood:
     threshold = threshold_local(
         img, block_size=neighborhood_size, method="median", offset=offset
     )
+    # Create array indicating where the pixel is bigger than threshold, with 0s
+    # and 1s:
     result = (img > threshold).astype(np.uint8)
+    # Convert to 0 and 255 (i.e. black and white):
     result *= 255
     return result
 
@@ -168,15 +172,15 @@ def median_local_threshold2(img, neighborhood_size, offset):
             histogram[:] = 0
             # Populate the histogram, counting how many of each value are in
             # the neighborhood we're inspecting:
-            # TODO get rid of usages of ravel()
-            neighborhood = img[min_y:max_y, min_x:max_x].ravel()
-            for k in range(len(neighborhood)):
-                histogram[neighborhood[k]] += 1
+            for neighbor_y in range(min_y, max_y):
+                for neighbor_x in range(min_x, max_x):
+                    value = img[neighbor_y, neighbor_x]
+                    histogram[value] += 1
 
             # Use the histogram to find the median; keep adding buckets until
             # we've hit 50% of the pixels. The corresponding bucket is the
             # median.
-            half_neighborhood_size = len(neighborhood) // 2
+            half_neighborhood_size = (max_y - min_y) * (max_x - min_x) // 2
             for l in range(256):
                 half_neighborhood_size -= histogram[l]
                 if half_neighborhood_size < 0:
@@ -268,9 +272,10 @@ def median_local_threshold3(img, neighborhood_size, offset):
 
         # Populate histogram as if we started one pixel to the left:
         histogram[:] = 0
-        initial_neighborhood = img[min_y:max_y, 0:radius].ravel()
-        for k in range(len(initial_neighborhood)):
-            histogram[initial_neighborhood[k]] += 1
+        for neighbor_y in range(min_y, max_y):
+            for neighbor_x in range(0, radius):
+                value = img[neighbor_y, neighbor_x]
+                histogram[value] += 1
 
         for j in range(img.shape[1]):
             min_x = max(j - radius, 0)
@@ -344,6 +349,7 @@ def median_local_threshold4(img, neighborhood_size, offset):
     radius = (neighborhood_size - 1) // 2
     result = np.empty(img.shape, dtype=np.uint8)
     histogram = np.empty((256,), dtype=np.uint32)
+    # 😎 We're going to preserve previous median values across pixels:
     median = 0
 
     for i in range(img.shape[0]):
@@ -351,9 +357,10 @@ def median_local_threshold4(img, neighborhood_size, offset):
         max_y = min(i + radius + 1, img.shape[0])
 
         histogram[:] = 0
-        initial_neighborhood = img[min_y:max_y, 0:radius].ravel()
-        for k in range(len(initial_neighborhood)):
-            histogram[initial_neighborhood[k]] += 1
+        for neighbor_y in range(min_y, max_y):
+            for neighbor_x in range(0, radius):
+                value = img[neighbor_y, neighbor_x]
+                histogram[value] += 1
 
         for j in range(img.shape[1]):
             min_x = max(j - radius, 0)
