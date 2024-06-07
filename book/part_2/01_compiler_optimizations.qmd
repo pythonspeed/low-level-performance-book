@@ -106,7 +106,14 @@ assert (
 )
 ```
 
-If we can rely on the compiler to inline the functions, we can choose to break up our code across multiple functions without having to worry about performance implications.
+By relying on inlining, we can choose to break up our code across multiple functions without having to worry about performance implications.
+
+How do we know whether the function will be inlined?
+By default, compilers will use compiler and language-specific heuristics to decide whether or not to inline, often tied to function size.
+A function this trivial within the same file is likely to be inlined in pretty much any compiler.
+To override the compiler's heuristics, most compiled languages allow you to give hints to the compiler indicating that it should (or shouldn't) inline a function.[^numba]
+
+[^numba]: Numba has an inlining hint, but it's not relevant for performance optimization, as it's intended for a different part of the compilation process.
 
 ### Using faster CPU instructions
 

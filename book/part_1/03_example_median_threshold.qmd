@@ -1,4 +1,10 @@
-# Example: A specialized algorithm can be much faster
+# Fine-tune algorithms to your particular data
+
+Libraries like NumPy and SciPy are general purpose: they need to run correctly for many different users, with a variety of different requirements.
+When you are writing a custom application, for a specific kind of data, your problem is more constrained.
+And that means opportunities to speed up your code, by customizing your calculations, algorithms, and data structures specifically for your particular situation and data.
+
+## Example: Median-based local thresholding
 
 Let's say we have an image, a photo of some text from a book.
 We want to turn it into a 1-bit image, with just black and white, extracting the text so we can easily read it.
@@ -22,8 +28,6 @@ Here's what it looks like (it's licensed under [this license](https://github.com
 #| echo: false
 %display_image IMAGE
 ```
-
-## Median-based local thresholding
 
 The task we're trying to do—turning darker areas into black, and lighter areas into white—is called thresholding.
 Since the image is different in different regions, with some darker and some lighter, we'll get the best results if we use local thresholding, where the threshold is calculated from the pixel's neighborhood.
@@ -63,7 +67,7 @@ And here's what the results look like:
 
 Let's see if we can make this faster!
 
-## Step 1. Reimplement our own version
+## Use a compiled language for more flexibility
 
 We'll start by switching to Numba.
 Here's an initial implementation of the algorithm; it's not quite identical to the original, for example the way edge pixels are handled, but it's close enough for our purposes:
@@ -121,7 +125,7 @@ median_local_threshold1(IMAGE, 11, 10)
 It's slower.
 But that's OK, we're just getting started.
 
-## Step 2: A faster implementation of the median algorithm
+## Adjust your algorithm to take advantage of your data type
 
 Calculating a median is pretty expensive, and we're doing it for every single pixel, so let's see if we can speed it up.
 
@@ -164,6 +168,7 @@ def median_local_threshold2(img, neighborhood_size, offset):
             histogram[:] = 0
             # Populate the histogram, counting how many of each value are in
             # the neighborhood we're inspecting:
+            # TODO get rid of usages of ravel()
             neighborhood = img[min_y:max_y, min_x:max_x].ravel()
             for k in range(len(neighborhood)):
                 histogram[neighborhood[k]] += 1
@@ -205,7 +210,7 @@ median_local_threshold2(IMAGE, 11, 10)
 
 That's better!
 
-## Step 3: Stop recalculating the histogram from scratch
+## Take advantage of similar calculations you've already done
 
 Our algorithm uses a rolling neighborhood or window over the image, calculating the median for a window around each pixel.
 And the neighborhood for one pixel has a significant overlap for the neighborhood of the next pixel.
@@ -316,7 +321,7 @@ median_local_threshold2(IMAGE, 11, 10)
 median_local_threshold3(IMAGE, 11, 10)
 ```
 
-## Step #4: Adapative heuristics
+## Use adapative heuristics to take advantage of patterns in your data
 
 Notice that a median's definition is symmetrical:
 
@@ -325,7 +330,7 @@ Notice that a median's definition is symmetrical:
    We used this definition in our code above, adding up buckets from the smallest to the largest.
 
 Depending on the distribution of values, one approach to adding up buckets to find the median may be faster than the other.
-For example, given a 0-255 range, if the median is going to be 10 we want to start from the smallest bucket to minimize additions.
+For example, given a 0-255 range, if the median is going to be 10 we want to start from the smallest bucket to minimize additions: we'll only have to check 10 buckets, vs 245 if we started from the other side.
 But if the median is going to be 200, we want to start from the largest bucket.
 
 So which side we should start from?
@@ -423,15 +428,3 @@ Let's go over the steps we went through:
    But in this _specific_ algorithm, the overlapping pixel neighborhoods mean we can make a reasonable guess.
 
 This process demonstrates part of why generic libraries may be slower than custom code you write for your particular use case and your particular data.
-
-## Next steps
-
-What else can you do to speed up this algorithm?
-Here are some ideas:
-
-* There may be a faster alternative to histogram-based medians.
-* We're not fully taking advantage of histogram overlap; there's also overlap between rows.
-* The cumulative sum in the histogram doesn't benefit from instruction-level parallelism or SIMD.
-  It's possible that using one of those would result in faster results even if it uses more instructions.
-* So far the code has only used a single CPU.
-  Given each row is calculated independently, parallelism would probably work well if done in horizontal stripes, probably taller than one pixel so as to maximize utilization of memory caches.

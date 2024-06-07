@@ -68,6 +68,13 @@ def naive_filter_python(arr1, arr2):
     return result
 ```
 
+::: {.class-note}
+You may be wondering why I'm doing `for i in range(len(arr1))` and not `for item in arr1:`.
+The reason involves maximizing Numba performance to work around current limitations in the Numba compiler; I talk about this in a later chapter.
+
+In other cases, the code examples choose to use easier-to-read APIs rather than more idiomatic NumPy APIs, in order to minimize how much knowledge you need to know to understand the code.
+:::
+
 How long does this take to run for different input sizes?
 
 ```{python}

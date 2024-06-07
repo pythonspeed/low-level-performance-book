@@ -1,8 +1,21 @@
-# Fine-tune algorithms to your particular data
+# Trade precision and/or accuracy for speed
 
-Libraries like NumPy and SciPy are general purpose: they need to run correctly for many different users, with a variety of different requirements.
-When you are writing a custom application, for a specific kind of data, your problem is more constrained.
-And that means opportunities to speed up your code, by customizing your calculations, algorithms, and data structures specifically for your particular situation and data.
+In our previous chapter we aimed to do the same calculation, with the same results, only faster.
+Another potential optimization—thought not the only one—is relaxing the precision or even accuracy of your code.
+In many cases, a performance optimization that changes results slightly may be acceptable and even desirable:
+
+* The results you're calculating may be more "precise" than the error caused by your input data.
+  If that extra precision is slowing your code down, you can reduce your precision and still got results that are faster and still just as accurate.
+  A generic library has no way of knowing what level of precision is acceptable, so it can't make this sort of compromise.
+* In other cases, less accurate results may also be acceptable.
+  For example, the monetary cost of inaccuracy may be much lower than the monetary cost savings from a faster run time.
+
+## Example: Medians once again
+
+Let's look at some example data from the realm of public transportation: bus "headways", the time between the arrival of the previous and the next bus.
+Headways need to be as low as possible so that passengers can rely on the bus: if the bus arrives every 5 minutes that's a lot better than the bus arriving every 10 minutes.
+
+Our goal is to compute the median headway experienced by passengers on my local transit authority's buses:
 
 ```{python}
 #| echo: false
@@ -14,25 +27,7 @@ And that means opportunities to speed up your code, by customizing your calculat
 import numpy as np
 from numba import jit
 import pandas as pd
-```
 
-## Trade precision and/or accuracy for speed
-
-One potential optimization—thought not the only one—is relaxing the precision or even accuracy of your code.
-In many cases, a performance optimization that changes results slightly may be acceptable and even desirable:
-
-* The results you're calculating may be more "precise" than the error caused by your input data.
-  If that extra precision is slowing your code down, you can reduce your precision and still got results that are faster and still just as accurate.
-  A generic library has no way of knowing what level of precision is acceptable, so it can't make this sort of compromise.
-* In other cases, less accurate results may also be acceptable.
-  For example, the monetary cost of inaccuracy may be much lower than the monetary cost savings from a faster run time.
-
-Let's look at some example data from the realm of public transportation: bus "headways", the time between the arrival of the previous and the next bus.
-Headways need to be as low as possible so that passengers can rely on the bus: if the bus arrives every 5 minutes that's a lot better than the bus arriving every 10 minutes.
-
-Our goal is to compute the median headway experienced by passengers on my local transit authority's buses:
-
-```{python}
 BUS_HEADWAYS = pd.read_parquet(
     "../data/MBTA-bus-2022-05.parquet",
     columns=["headway"]
@@ -48,10 +43,9 @@ NumPy has built-in support for calculating the median, so we could just use that
 print("Median (seconds):", np.median(BUS_HEADWAYS))
 ```
 
-Let's see if we can build a custom algorithm that is faster, by customizing it to our particular data.
+## A lossy algorithm may suffice if it's losing unimportant information
 
-### Customizing the algorithm
-
+We've already seen we can use a histogram to calculate a median, but will that work here?
 Let's look at the data:
 
 ```{python}
@@ -63,7 +57,11 @@ print(
 )
 ```
 
-Based on these results, we can build a custom median algorithm using two reasonable assumptions:
+Given that range of values, we're not going to be able to use a small number of buckets if we have a bucket for each value.
+And using a very large number of buckets will potentially be a lot slower, since we'll need to do a lot more addition to find the median.
+
+But maybe we can get away with a small number of buckets anyway.
+Given the above data range, and an understanding of the problem domain, we can build a histogram-based median algorithm using two reasonable assumptions:
 
 **Super-long headways don't have to be very accurate** As we can see above, 99.9% of headways are less than 68 minutes (4067 seconds).
 And from a passenger experience perspective, the impact of headways is much more meaningful for frequent buses.
@@ -73,7 +71,7 @@ On the other hand, a bus route that runs every 2 hours is almost as awful as a b
 **Reducing accuracy to 15 seconds is reasonable:** The data we have is at a 1-second resolution, but it's unlikely that a headway of 67 seconds really make a difference versus a headway of 66 seconds.
 Plus, the arrival and departure of a bus at a stop takes a few seconds, and it's doubtful that the timing data is actually as accurate as it is precise.
 
-Using these two constraints, we can write a much faster median algorithm, by using a histogram:
+Using these two constraints, we can write the following code:
 
 ```{python}
 @jit
@@ -121,4 +119,5 @@ histogram_median(BUS_HEADWAYS)
 ```
 
 Our new algorithm wouldn't work with generic inputs: it makes many assumptions about the distribution and range of the data.
+And the result it gives are less accurate than a normal median calculation.
 But for this _specific_ situation and data, it's good enough—and much faster than a general purpose algorithm.

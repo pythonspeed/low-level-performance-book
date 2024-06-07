@@ -12,7 +12,8 @@ book:
         - part_1/00_algorithms.qmd
         - part_1/01_interlude.qmd
         - part_1/02_generic_optimization.qmd
-        - part_1/03_customize_for_your_data.qmd
+        - part_1/03_example_median_threshold.qmd
+        - part_1/04_customize_for_your_data.qmd
     - part: "Compiler optimizations"
       chapters:
         - part_2/00.qmd
@@ -54,7 +55,6 @@ book:
         - part_8/01_example_rescale_contrast.qmd
         - part_8/02_example_dithering.qmd
         - part_8/03_example_memory_layout.qmd
-        - part_8/04_example_median_threshold.qmd
     - part: "Performance in practice"
       chapters:
         - part_9/01_when.qmd
