@@ -105,7 +105,7 @@ This small tweak makes our algorithm run noticeably faster:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 find_primes(1_000_000)
 find_primes_2(1_000_000)
 ```
@@ -144,7 +144,7 @@ This version is even faster:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 find_primes_2(1_000_000)
 find_primes_3(1_000_000)
 ```
@@ -184,7 +184,7 @@ Once again, we've sped up the code:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 find_primes_3(1_000_000)
 find_primes_4(1_000_000)
 ```
