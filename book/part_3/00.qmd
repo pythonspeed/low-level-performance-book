@@ -1,13 +1,26 @@
 # Take advantage of modern CPUs' in-core parallelism
 
-So far we've been working with a simple mental model of CPUs, where we assumed each core only executes a single instruction at a time.
-In fact, modern CPUs can run multiple insrutctions in parallel within a single core, in two different ways:
+Given the CPU is how our code runs, it's useful to understand how that CPU works.
+Of course, modern CPUs have billions of transistors.
+No human being, not even the chips' designers, can truly comprehend exactly how they work.
+But to write fast software you don't need perfect understanding, you just need a sufficiently accurate mental model.
 
-* **Implicit, automatic parallelism:** Instruction-level parallelism (ILP) allows the CPU to take pre-existing code and run parts of it in parallel.
-  However, from the outside the CPU core will still appear _as if_ it were executing one instruction at a time.
-* **Explicit, opt-in parallelism:** Single Instruction Multiple Data (SIMD) instructions are specialized CPU instructions the compiler emits that tells the CPU to run the same operation on a multiple pieces of data.
-  For example, instead of adding four pairs of 64-bit integers one by one, you can add all four pairs at the same time with a single SIMD instruction.
+So far we've been working with an implicit, and highly simplified, mental model of CPUs.
+The assumption was that if we reduced the number of instructions our process runs, our program will run faster.
+More explicitly:
 
-Both instruction-level parallelism and SIMD are different from the parallelism you get from multiple cores.
+1. A CPU core sequentially executes a series of instructions, one at a time.
+   An instruction might add two numbers, or read a value from RAM.
+2. Each instruction takes approximately the same amount of time to execute.
+
+If this model were accurate, then increasing the number of instructions would slow down your code.
+But in fact, in some situations increasing the number of instructions your code runs can actually speed it up.
+
+That's because modern CPU cores can run multiple instructions in parallel within a single core.
+If you can change your code so that it runs 4 instruction in parallel, rather than just one, your code can potentially run as much as 4× faster.
+That means increasing the number of instructions by 1.5× might be worth it, if it enables that parallelism; the resulting speed-up might be 4/1.5, i.e. 2.67×.
+
+Note that this in-core parallelism is different from the parallelism you get from multiple cores.
 Multiple cores only benefit you if you can use multiple threads or processes.
-On the other hand, ILP and SIMD can speed up your code within a single thread, running on a single CPU core.
+On the other hand, parallelism on a single core can speed up your code within a single thread.
+You're still writing single-threaded code—it just goes faster.

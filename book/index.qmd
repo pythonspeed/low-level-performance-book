@@ -15,6 +15,18 @@ Most of the examples in this book will use the Numba language and compiler, beca
 However, this is not a book about Numba: the concepts the book covers also apply to C, C++, Rust, and other low-level languages.
 I will discuss the functionality of these other languages where relevant.
 
-Let's get started!
+## What this book assumes
+
+This book is written with a series of assumptions to limit its scope:
+
+* The goal is to optimize data processing: you're running the same code repeatedly on relatively large amounts of data.
+* You care about throughput, not responsiveness.
+* As discussed in the next chapter, you've already picked a scalable algorithm.
+* Your performance bottleneck involves computation, i.e. CPU or RAM, not disk or network access.
+  See a later chapter for some discussion of other bottlenecks.
+* The focus is on optimizing runtime on a single CPU core.
+  Even if you're using parallel or distributed algorithms, eventually you will be running some code on a single CPU core.
+
+With those assumptions in mind, let's get started!
 
 [^cpython]: Technically, it's not the language that's slow, it's the default implementation. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that can do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features.

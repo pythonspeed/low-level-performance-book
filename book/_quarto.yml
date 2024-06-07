@@ -10,7 +10,6 @@ book:
     - part: "General performance"
       chapters:
         - part_1/00_algorithms.qmd
-        - part_1/01_interlude.qmd
         - part_1/02_generic_optimization.qmd
         - part_1/03_example_median_threshold.qmd
         - part_1/04_customize_for_your_data.qmd
