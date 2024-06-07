@@ -1,10 +1,19 @@
 # Avoid aliasing to enable compiler optimizations
 
-To understand the problem we'll cover in this chapter, we first need to cover a couple of definitions:
+Compilers can't read your mind; they can only read your code.
+And one key requirement for the compiler's optimization passes is that your code continues to have the _exact_ same behavior.
+**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
+
+As a result, in cases where the optimization might change your code's behavior, tthe compiler won't apply seemingly obvious optimizations.
+In this chapter we'll cover one of the problems that can prevent the compiler from optimizing your code: the potential for aliasing.
+
+## Pointers and aliasing
+
+We first need to cover a couple of definitions:
 
 * A "pointer" is a piece of data that points at a memory address.
   For example, in Numba every NumPy array or view has a pointer that points at the location in memory where the array's underlying data is kept.
-* Aliasing means having multiple pointers referencing the same memory address at the same time.
+* "Aliasing" means having multiple pointers referencing the same memory address at the same time.
 
 When you slice a NumPy array, for example, by default the data doesn't get copied.
 Instead, you get a view object that has a pointer that points at the same memory as the original array.
@@ -36,7 +45,7 @@ print("Updated array", arr)
 print("Updated view ", arr_view)
 ```
 
-## An example of the problem
+## The performance impact of the potential for aliasing
 
 Here's the problem with aliasing: the _possibility_ that aliasing might occur can limit what the compiler is able to do to speed up your code.
 That's because seemingly identically-behaved functions will actually behave differently when inputs are aliased.

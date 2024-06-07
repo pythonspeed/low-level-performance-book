@@ -196,12 +196,3 @@ os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
 
 You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
 :::
-
-## The compiler ensures optimized code has identical behavior to the original code
-
-The compiler can optimize your code, but there are limitations.
-One key requirement for the compiler's optimization passes is that your code continues to have the _exact_ same behavior.
-**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
-
-Sometimes the compiler won't apply seemingly obvious optimizations because the optimization might change your code's behavior; when in doubt, the compiler will err on the side of safer, more conservative changes.
-We'll see one situation that limits the compiler in our next chapter, and discuss some others when we talk about floating point number.
