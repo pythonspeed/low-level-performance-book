@@ -9,6 +9,12 @@ preview:
 wc:
     wc --words book/**/*.qmd book/*.qmd
 
+spellcheck:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export ASPELL_CONF="personal $PWD/book/.aspell.en.pws"
+    quarto render book/ --profile spellcheck
+
 helpthisbook:
     #!/usr/bin/env bash
     set -euxo pipefail
