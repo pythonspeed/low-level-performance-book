@@ -102,7 +102,7 @@ While both versions have the same speed, the manually hoisted version is arguabl
 ### Inlining
 
 Calling a function takes some time, even in a low-level language.
-Plus, it's more difficult for the compiler to optimize across function boundaries.
+In addition, it's more difficult for the compiler to optimize across function boundaries.
 Thus, the compiler will sometimes take the contents of a function's code and put them inside the calling function, so that it can do more optimization passes.
 This is known as "function inlining".
 
@@ -115,21 +115,29 @@ def in_to_cm(cm):
 def cm3_to_liters(cm3):
     return cm3 / 1000
 
-# The calculation is split across multiple different functions:
+# The calculation is split across multiple different functions. However, we can
+# expect the compiler to automatically combine them into a single function, so
+# there's no additional overhead from those function calls.
 @jit
 def volume_liters(width_in, height_in, depth_in):
-    width_cm = in_to_cm(width_in)
-    height_cm = in_to_cm(height_in)
-    depth_cm = in_to_cm(depth_in)
-    return cm3_to_liters(width_cm * height_cm * depth_cm)
+    total = 0
+    for i in range(1, 10_000):
+        width_cm = in_to_cm(width_in + i)
+        height_cm = in_to_cm(height_in + i)
+        depth_cm = in_to_cm(depth_in + i)
+        total += cm3_to_liters(width_cm * height_cm * depth_cm)
+    return total
 
-# All calculations are unified into a single function:
+# All calculations are manually unified into a single function:
 @jit
 def volume_liters_manual_inlining(width_in, height_in, depth_in):
-    width_cm = width_in * 2.54
-    height_cm = height_in * 2.54
-    depth_cm = depth_in * 2.54
-    return (width_cm * height_cm * depth_cm) / 1000
+    total = 0
+    for i in range(1, 10_000):
+        width_cm = (width_in + i) * 2.54
+        height_cm = (height_in + i) * 2.54
+        depth_cm = (depth_in + i) * 2.54
+        total += (width_cm * height_cm * depth_cm) / 1000
+    return total
 
 assert (
     volume_liters(17.0, 23.0, 52.0) ==
@@ -139,10 +147,17 @@ assert (
 
 By relying on inlining, we can choose to break up our code across multiple functions without having to worry about performance implications.
 
+```{python}
+#| echo: false
+%%compare_timing
+
+volume_liters(17.0, 23.0, 52.0)
+volume_liters_manual_inlining(17.0, 23.0, 52.0)
+```
 How do we know whether the function will be inlined?
 By default, compilers will use compiler and language-specific heuristics to decide whether or not to inline, often tied to function size.
-A function this trivial within the same file is likely to be inlined in pretty much any compiler.
-To override the compiler's heuristics, most compiled languages allow you to give hints to the compiler indicating that it should (or shouldn't) inline a function.[^numba]
+Function as trivial as `in_to_cm()` and `cm3_to_liters()` within the same file are likely to be inlined in pretty much any compiler.
+To override the compiler's heuristics, most compiled languages allow you to add hints to functions, telling the compiler that it should (or shouldn't) inline that function.[^numba]
 
 [^numba]: Numba has an inlining hint, but it's not relevant for performance optimization, as it's intended for a different part of the compilation process.
 
