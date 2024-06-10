@@ -6,8 +6,7 @@ No human being, not even the chips' designers, can truly comprehend exactly how 
 But to write fast software you don't need perfect understanding; instead, you need a sufficiently accurate mental model.
 
 So far we've been working with an implicit, and highly simplified, mental model of CPUs.
-The assumption was that if we reduced the number of instructions our process runs, our program will run faster.
-More explicitly:
+To make it explicit, we assumed that:
 
 1. A CPU core sequentially executes a series of instructions, one at a time.
    An instruction might add two numbers, or read a value from RAM.
@@ -19,3 +18,4 @@ Neither of these assumptions is quite accurate:
 2. Different instructions can take different amounts of time.
 
 In the next few chapters we'll focus on the first part: parallelism and its consequences.
+When we discuss reading memory we'll see how the same CPU instruction can take varying amounts of time.
