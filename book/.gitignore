@@ -2,3 +2,4 @@
 _book/
 .jupyter_cache
 **/*.ipynb
+_site/
