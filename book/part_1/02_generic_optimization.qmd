@@ -1,7 +1,10 @@
 # Get rid of repetitive and wasteful code
 
 Once you've picked a good algorithm, you can make your implementation more efficient by removing repetitive, wasteful code.
-Put another way, if your algorithm is $O(N·log(N))$, you can model the performance as being $k·N·log(N)$, and your goal is to try to shrink the constant $k$.
+Put more formally, if your algorithm is $O(n)$, you can model the performance with the formula $K·n$, where $K$ is a constant tied to a specific implementation.
+Your goal is to try to shrink the constant $K$ by making the code more efficient.
+The code's scalability doen't change when you change $K$: doubling $n$ will still double the run time.
+But for any given $n$, the code will run faster compared to the original version.
 
 ```{python}
 #| echo: false

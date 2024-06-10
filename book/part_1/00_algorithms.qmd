@@ -93,19 +93,33 @@ naive_filter_python(LARGER_DATA, LARGER_DATA2)
 ```
 
 When the data is 30× larger, the run time is rather more than 30× slower!
-That's because the algorithm takes `len(arr1) × len(arr2)` steps.
-If we assume both arrays have approximately the same length $N$, we can say the algorithm is $O(N^{2})$: it scales with the square of the length of the inputs.
+Why is that?
+
+## Understand Big-O notation
+
+In this chapter we're focusing on how an algorithm's performance scales with the size of the input.
+In `naive_filter_python()`, at its core the algorithm does `len(arr1) · len(arr2)` steps.
+For every item in `arr1`, it checks if the item is in `arr2`, which in the worst case involves traversing every item in `arr2`.
+To simplify our discussion, let's assume that both arrays have approximately the same length $n$.
+Then the algorithm will, worst case, take $n^2$ steps; more succinctly, we can say the algorithm is $O(n^2).
+
+Big-O syntax which indicates an upper bound on how the algorithm run time scales with the input size.
+In this case, we're saying that the runtime of `naive_filter_python()` is at worst proportional to ${n^{2}}$.
+Maybe we'll get lucky and all the entries from `arr1` will be at the start of `arr2` and we'll do better than this, but we can't guarantee that.
+
+Let's switch to a faster implementation of the same $O(n^2)$ algorithm and see if it will help us.
 
 ## A faster language won't make an algorithm scale
 
-Since this is a book about writing low-level compiled languages, let's see how fast our algorithm runs if we use a compiled language.
+Since this is a book about writing low-level compiled languages, we're going to see how fast our algorithm runs if we use a compiled language.
 In particular, we will compile the code using [Numba](https://numba.pydata.org/).
 Numba is a programming language that implements a subset of Python, but compiles to machine code, and has native support for NumPy arrays.
 Keep in mind that this is not a book about Numba: the concepts the book covers also apply to C, C++, Rust, and other low-level languages.
 
-Numba is useful for educational purposes because it is so easy to use: just decorate a function with `@numba.jit`.
+Numba is easy to install and simple to use: you can install the `numba` package with `pip`/`conda`/your package manager of choice.
+To make a function faster, you decorate it with `@numba.jit`.
 The first time you call this function with a set of arguments with specific types, Numba will generate machine code customized for those particular types.
-Subsequent runs will use the pre-compiled version and run extremely quickly.
+Subsequent runs will use the pre-compiled version and hopefully run much more quickly.
 
 ```{python}
 from numba import jit
@@ -152,7 +166,7 @@ But because it uses the same $O(N^{2})$ it is still going to scale badly as the 
 ## Linear algorithms beat quadratic algorithms
 
 Let's try a different approach: a more scalable algorithm.
-Instead of a run time that scales $O(N^{2})$ with input size $N$, the following algorithm scales $O(N·k)$, where $k$ is a fixed constant.
+Instead of a run time that scales with $O(n^{2})$ given input size $n$, the following algorithm scales with $O(n)$, i.e. we're switching from quadratic scaling to linear scaling.
 We will implement this more scalable algorithm in Python, without bothering to use a compiled language:
 
 ```{python}
@@ -182,7 +196,7 @@ assert np.array_equal(
 )
 ```
 
-Let's compare our implementation above that is implemented in a fast, compiled language (Numba) to our new implementation that is written in a slow language (Python).
+Let's compare `naive_filter_compiled()`—implemented in a fast language (Numba)—to `smarter_filter_python()`, which is written in a slow language (Python).
 We'll use the `benchit` library to generate a graph of run time over a series of inputs of increasing size:
 
 ```{python}
@@ -212,7 +226,8 @@ timings.plot(logx=False, logy=False, dpi=100, figsize=(8, 4), fontsize=12)
 For small inputs, `smarter_filter_python()` is slower than `naive_filter_compiled()`, with the choice of programming language being the bottleneck.
 Python is slower than Numba, and that's what matters.
 But once inputs are large enough, the `smarter_filter_python()` function becomes faster than `naive_filter_compiled()`, despite being implemented in slower Python.
-Given larger inputs, it's the algorithm that matters, and the linear algorithm is faster than the quadratic algorithm.
+
+Once input length $n$ gets large enough, it's the algorithm scalability that matters, and the linear algorithm is faster than the quadratic algorithm.
 This is why it's so important to pick a scalable algorithm: once your inputs are large enough, a non-scalable algorithm will overwhelm any benefits you get from switching to a faster programming language.
 
 Once you've picked a scalable algorithm, what else can you do to speed up your code?
