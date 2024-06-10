@@ -20,7 +20,6 @@ I will discuss the functionality of these other languages where relevant.
 This book is written with a series of assumptions to limit its scope:
 
 * The goal is to optimize data processing: you're running the same code repeatedly on relatively large amounts of data.
-* You care about throughput, not responsiveness.
 * As discussed in the next chapter, you've already picked a scalable algorithm.
 * Your performance bottleneck involves computation, i.e. CPU or RAM, not disk or network access.
   See a later chapter for some discussion of other bottlenecks.
