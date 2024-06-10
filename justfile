@@ -12,8 +12,9 @@ wc:
 spellcheck:
     #!/usr/bin/env bash
     set -euxo pipefail
+    export PYTHONPATH=$PWD/src
     export ASPELL_CONF="personal $PWD/book/.aspell.en.pws"
-    quarto render book/ --profile spellcheck
+    quarto preview book/ --profile spellcheck
 
 helpthisbook:
     #!/usr/bin/env bash

@@ -7,7 +7,7 @@ In order to do so in a reasonable amount of time, the solution has traditionally
 There are many fast, compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
 If those libraries are fast enough for you, no need to read the rest of this book!
 
-Sometimes, however, pre-existing libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
+Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
 In that case, you will need to write your own code in a low-level language.
 This book is written to help you make that code _fast_.
 

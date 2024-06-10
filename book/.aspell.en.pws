@@ -1,4 +1,4 @@
-personal_ws-1.1 en 0
+personal_ws-1.1 en 25 
 CPU
 CPUs
 CPython
@@ -8,13 +8,19 @@ Microbenchmarks
 NumPy
 Numba
 Polars
+Profila
 PyPy
 Pythonistas
 SIMD
 SciPy
 benchmarking
 branchless
+grayscale
+hotspots
 interoperating
+parallelization
 pre
+profiler
 runtime
 scalable
+vectorized

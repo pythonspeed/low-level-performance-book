@@ -1,2 +1,5 @@
 filters:
   - spellcheck.lua
+
+project:
+  type: website
