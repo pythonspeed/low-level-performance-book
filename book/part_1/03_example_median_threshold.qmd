@@ -131,9 +131,13 @@ But that's OK, we're just getting started.
 
 ## Adjust your algorithm to take advantage of your data type
 
-Calculating a median is pretty expensive, and we're doing it for every single pixel, so let's see if we can speed it up.
+I'm going to guess that most of the time in this function is tied to calculating the median.
+How do I know that?
+For one thing, the needs to look at all the neighbors of any given pixel; for a 11×11 neighborhood, that's 121 pixels to look at, which seems like it would be far more expensive than the final thresholding once we find the median.
+For another, the [documentation for `numpy.median()`](https://numpy.org/doc/stable/reference/generated/numpy.median.html) talks about how by default it allocates a new array for every call, and we've already talked about avoiding allocations in the inner loop.
+You can certainly validate my assumption with a profiler.
 
-The generic median implementation Numba provides is likely to be fairly generic, since it needs to work in a wide variety of circumstances.
+Now, the generic median implementation Numba provides is likely to be fairly generic, since it will need to work in a wide variety of circumstances.
 We can hypothesize that it's not optimized for our particular case.
 And even if it is, having our own implementation will allow for a second round of optimization, as we'll see in the next step.
 
@@ -143,8 +147,42 @@ Here's the basic algorithm for a histogram-based median:
 * Iterate over each pixel in the chosen neighborhood.
 * Each pixel's value will increase a corresponding bucket in the histogram; since we know our image is 8-bit, we only need 256 buckets.
   For example, if a pixel has brightness value of 17, the count in bucket 17 will get incremented.
-  If at the end the 17th bucket has a value of 32, that means 32 pixels had brightness 17.
+  Once we're done constructing the histogram, if for example the 17th bucket has a value of 32, that means 32 pixels had a brightness of 17.
 * Then, we add up the size of each bucket in the histogram, from smallest to largest, until we hit 50% of the pixels we inspected, i.e. half the size of the neighborhood in pixels.
+  That 50% point is the median, since 50% of the pixels are smaller in value and 50% of the pixels were larger in value.
+
+To give a sense of what the histogram looks like, we can implement that subset of the algorithm, call it on the neighborhood of a particular pixel, and plot the result:
+
+```{python}
+import matplotlib.pyplot as plt
+
+# This isn't actually used in the implementation below, we're just implementing
+# this subset of the algorithm for educational purposes:
+def plot_neighborhood_histogram(y, x):
+    # Build a 256-bucket histogram, based on the values of the pixels in the
+    # specified 11×11 neighborhood:
+    histogram = np.zeros((256,), dtype=np.uint32)
+    for i in range(y - 5, y + 5):
+        for j in range(x - 5, x + 5):
+            histogram[IMAGE[i, j]] += 1
+
+    # Draw a barchart of the histogram:
+    plt.bar(range(256), histogram)
+    plt.ylabel("Number of pixels with that brightness")
+    plt.xlabel("Buckets for each level of pixel brightness")
+    plt.show()
+
+plot_neighborhood_histogram(100, 100)
+```
+
+If we look at this histogram, we can estimate just by eye that the point where half the pixels are on one side and half on the other, which is to say the median, will be somewhere between 140 and 160.
+And indeed:
+
+```{python}
+print("Median value of this neighborhood:", np.median(IMAGE[95:105, 95:105]))
+```
+
+Let's reimplement our local thresholding algorithm using a histogram-based median:
 
 ```{python}
 @jit
