@@ -40,7 +40,7 @@ Here's what the image looks like:
 ```
 
 We want to convert this image to grayscale.
-Instead of three channels, we'll have just one that measures brightness, with 0 being black and 255 being white.
+Instead of three channels, we'll have only one: a channel that measures brightness, with 0 being black and 255 being white.
 Here's one simplistic way to do it:
 
 ```{python}
@@ -70,7 +70,7 @@ Numba lets us compile Python code to machine code, simply by adding the `@numba.
 For NumPy APIs used in this code, the result doesn't actually use the NumPy library.
 Instead, Numba has actually _reimplemented_ these APIs in a (mostly) compatible way using the Numba language.
 
-One way we can use Numba, then, is to take our existing NumPy code, and just add a decorator:
+One way we can use Numba, then, is to take our existing NumPy code, and add a decorator:
 
 ```{python}
 from numba import jit

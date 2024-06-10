@@ -62,8 +62,8 @@ def naive_filter_python(arr1, arr2):
 
     # The result array may be too large, so shrink it down to the number of
     # items we found. A simple slice of a NumPy array doesn't copy the data, it
-    # just creates a view pointing at the same underlying memory, so this is a
-    # cheap operation:
+    # creates a view pointing at the same underlying memory, so this is a cheap
+    # operation:
     result = result[:found_items]
     return result
 ```

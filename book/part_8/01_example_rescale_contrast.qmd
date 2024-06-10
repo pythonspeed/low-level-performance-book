@@ -92,7 +92,7 @@ assert np.array_equal(
 )
 ```
 
-Notice that instead of having a whole temporary `float64` array the size of the original image, we just have temporary `float64` values for one pixel at a time, massively reducing our memory usage.
+Notice that instead of having a whole temporary `float64` array the size of the original image, we now have temporary `float64` values for only one pixel at a time, massively reducing our memory usage.
 
 As it turns out, not only do we save memory, but our code also runs faster:
 

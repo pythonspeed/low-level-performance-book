@@ -37,7 +37,7 @@ print("Size:", len(BUS_HEADWAYS))
 print("dtype:", BUS_HEADWAYS.dtype)
 ```
 
-NumPy has built-in support for calculating the median, so we could just use that:
+NumPy has built-in support for calculating the median, so we could use that:
 
 ```{python}
 print("Median (seconds):", np.median(BUS_HEADWAYS))
@@ -81,7 +81,7 @@ def histogram_median(bus_headways):
     by_quarter_minutes = np.zeros((500,), dtype=np.uint32)
     for headway in bus_headways:
         number_quarter_minutes = np.uint16(headway / 15)
-        # If the data is too large, just use the highest bucket. Since 7500 is
+        # If the data is too large, use the highest bucket. Since 7500 is
         # higher than the 99.9th percentile value, we're underestimating less
         # than 0.1% of the data.
         by_quarter_minutes[min(number_quarter_minutes, 499)] += 1

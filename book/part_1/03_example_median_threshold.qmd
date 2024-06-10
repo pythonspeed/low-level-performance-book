@@ -7,7 +7,7 @@ And that means opportunities to speed up your code, by customizing your calculat
 ## Example: Median-based local thresholding
 
 Let's say we have an image, a photo of some text from a book.
-We want to turn it into a 1-bit image, with just black and white, extracting the text so we can easily read it.
+We want to turn it into an image with only two colors, black and white.
 We'll use an example image from [scikit-image](https://scikit-image.org/), an excellent image processing library:
 
 ```{python}

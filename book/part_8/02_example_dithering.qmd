@@ -17,7 +17,7 @@ To help us identify hotspots we're going to use the Profila profiler:
 ## Example: Dithering an image from grayscale to black and white
 
 As an example, in this chapter we'll be optimizing Floyd-Steinberg dithering.
-We'll be using this algorithm to convert a grayscale image with values of 0 to 255 into an image with just two colors, black and white.
+We'll be using this algorithm to convert a grayscale image with values of 0 to 255 into an image with only two colors, black and white.
 
 As explained in the [Wikipedia article](https://en.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering), this algorithm rounds a pixel's value to the nearest of the two extremes (0 for black or 255 for white).
 The difference between the original value and the rounded value, known as the error, is added to neighboring pixels, with the following distribution:
@@ -66,7 +66,7 @@ That being said, Some intermediate steps and failed experiments were omitted for
 ## A naive implementation
 
 Here's the first version I implemented.
-I didn't try to make it slow or fast: I just tried to implement the algorithm.
+I didn't try to make it slow or fast: I merely tried to implement the algorithm.
 
 The code stores temporary results in 16-bit integers, because adding the error might make some pixels either negative or bigger than 255.
 Both those cases won't fit in an unsigned 8-bit integer.
@@ -329,7 +329,7 @@ for _ in range(100):
 ```
 
 So how can we get rid of memory copying?
-If we split our staging array into two, one for the current row and one for the next row, we can just swap those two arrays instead of copying the data.
+If we split our staging array into two, one for the current row and one for the next row, we can swap those two arrays instead of copying the data.
 
 ```{python}
 @njit
@@ -387,11 +387,11 @@ And even predictable branches add performance overhead, and given they're predic
 
 Here's how we can do it.
 The code currently has temporary staging arrays for accumulating errors, and there's no reason they have to be the same size as the input or the result.
-We can just add an extra item at the start and end.
+We can add an extra item at the start and end.
 As a result edge pixels can behave the same way as non-edge pixels, and we can get rid of the conditionals.
 
 As an additional optimization, notice that copying `staging_current` into the `result` array isn't actually necessary.
-Once a pixel is finalized, it won't change, so we can just write directly to `result` and skip updating `staging_current`.
+Once a pixel is finalized, it won't change, so we can write directly to `result` and skip updating `staging_current`.
 
 ```{python}
 @njit

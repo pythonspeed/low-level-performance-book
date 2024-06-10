@@ -19,9 +19,9 @@ from numba import jit
 ## Example: A literal edge case
 
 Let's say we have a time series of daily values between 0 and 1, and we want to calculate the 7-day moving average.
-For most values we just calculate the average of the previous (inclusive) 7 values.
+For most values we only calculate the average of the previous (inclusive) 7 values.
 But for the first 6 days, we won't have sufficient previous values.
-There are various strategies to deal with this missing data, and in this case we'll just repeat the value in the first day:
+There are various strategies to deal with this missing data, and in this case we'll repeat the value in the first day:
 
 ```{python}
 DATA = np.random.random((1_000_000,))

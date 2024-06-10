@@ -35,7 +35,7 @@ _ = scan_memory(np.ones((10,), dtype=np.uint8), LINEAR)
 
 Depending on the value of the multiplier, the memory will be traversed in different ways:
 
-1. If the multiplier is 1 (`LINEAR`), this is just a linear scan of memory.
+1. If the multiplier is 1 (`LINEAR`), this is a linear scan of memory.
 2. If you pass in a large number like 22695477 (`RANDOM`), this is a pseudo-random traversal of the array, bouncing around in memory.
 
 Here's the time it takes to reach each variation:

@@ -27,7 +27,7 @@ Bounds checking behavior depends on the language you're using:
 [^rust]: Technically Rust also has additional `unsafe` APIs to do lookups without bounds checking. Using `unsafe` is tricky, and misuse invalidates all of Rust's safety guarantees, so I would suggest pretending these APIs don't exist.
 
 In Numba, bounds checking is disabled by default, but we can manually enable or disable it to compare the performance impact.
-As an example we'll use a moving average function again, but this time we'll just use zeros to fill in the missing first few values.
+As an example we'll use a moving average function again, but this time we'll use zeros to fill in the missing first few values.
 
 ```{python}
 #| echo: false

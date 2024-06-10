@@ -69,7 +69,7 @@ What's happening is that the compiler notices we're reading from `external_array
 The compiler considers out-of-bounds reads to be impossible, so we have introduced undefined behavior.
 
 Given out-of-bounds reads _do not exist_ as far as the C compiler is concerned, It can therefore assume that the 5th iteration of the loop will never reached.
-That means the loop "must" exit before that point... so the code can be optimized into just returning `True`.
+That means the loop "must" exit before that point... so the code can be optimized into always and only returning `True`.
 
 Oops.
 

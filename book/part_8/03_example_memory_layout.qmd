@@ -42,7 +42,7 @@ On the other hand, when we choose the brightest of four values, we are repeatedl
 That suggests the row-oriented memory representation might be faster.
 
 So which should we choose?
-Given the first phase is likely better suited to a column orientation, we'll just use that layout for now, and assume that's what normalization spits out.
+Given the first phase is likely better suited to a column orientation, we'll use that layout for now, and assume that's what normalization spits out.
 
 Next, let's try to implement a fast version of choosing the brightest channel.
 

@@ -215,7 +215,7 @@ To see the performance impact of allocating in a loop, consider the following ex
 def allocate_in_loop(arr):
     total = 0
     for i in range(len(arr) // 4):
-        # This is just a view, so it doesn't allocate:
+        # This is only a view, so it doesn't allocate:
         slice_of_4 = arr[i * 4:(i + 1) * 4]
         # 🙁 Doing power of 2 on the array view creates a temporary array! Oops.
         total += (slice_of_4 ** 2).mean()

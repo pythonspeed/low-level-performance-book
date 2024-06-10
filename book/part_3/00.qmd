@@ -3,7 +3,7 @@
 Given the CPU is how our code runs, it's useful to understand how that CPU works.
 Of course, modern CPUs have billions of transistors.
 No human being, not even the chips' designers, can truly comprehend exactly how they work.
-But to write fast software you don't need perfect understanding, you just need a sufficiently accurate mental model.
+But to write fast software you don't need perfect understanding; instead, you need a sufficiently accurate mental model.
 
 So far we've been working with an implicit, and highly simplified, mental model of CPUs.
 The assumption was that if we reduced the number of instructions our process runs, our program will run faster.
