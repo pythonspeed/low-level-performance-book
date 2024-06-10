@@ -504,51 +504,6 @@ dither6(image)
 
 This version of the code is slightly harder to understand, but hopefully it's not too bad.
 
-## Getting rid of division
-
-Reader Michael Dunphy suggested replacing the division in the code with bitshifting.
-You'll recall from earlier in the book that division is a relatively expensive CPU instruction, and that since we're dividing by a power of 2, a cheaper bitshift instruction is a fine replacement.
-I expected the compiler to do this automatically, but it seems that in some cases it won't; [I filed a bug against Numba](https://github.com/numba/numba/issues/9211).
-
-```{python}
-@njit
-def dither7(img):
-    result = np.empty(img.shape, dtype=np.uint8)
-    y_size = img.shape[0]
-    x_size = img.shape[1]
-    staging_current = np.zeros(x_size + 2, np.int16)
-    staging_current[1:-1] = img[0]
-    staging_next = np.zeros(x_size + 2, np.int16)
-
-    for y in range(y_size):
-        right_pixel_error = 0
-        downleft_prev_error = 0
-        downleft_prevprev_error = 0
-        for x in range(x_size):
-            old_value = staging_current[x + 1] + right_pixel_error
-            new_value = 0 if old_value < 128 else 255
-            result[y, x] = new_value
-            error = old_value - new_value
-            # 😎 Replace division with bitshift:
-            right_pixel_error = (error * 7) >> 4
-            staging_next[x] = (
-                # 😎 Replace division with bitshift:
-                img[y + 1, x - 1] + downleft_prev_error + ((error * 3) >> 4)
-            )
-            # 😎 Replace division with bitshift:
-            downleft_prev_error = downleft_prevprev_error + ((error * 5) >> 4)
-            # 😎 Replace division with bitshift:
-            downleft_prevprev_error = error >> 4
-
-        staging_next[x_size] = img[y + 1, x_size - 1] + downleft_prev_error
-
-        staging_current, staging_next = staging_next, staging_current
-
-    return result
-
-assert np.array_equal(dither7(image), baseline_result)
-```
-
 Here's the results compared to all previous versions:
 
 ```{python}
@@ -560,19 +515,4 @@ dither3(image)
 dither4(image)
 dither5(image)
 dither6(image)
-dither7(image)
 ```
-
-## Can you do better?
-
-Can _you_ make this code even faster? Some ideas:
-
-* Reader Michael Dunphy also suggested replacing the conditional rounding code with explicit arithmetic operations.
-* Reader Szabolcs Dombi suggested replacing multiplication with equivalent operations based on bitshifting and addition.
-* Some optimizations may be easier to identify and try if you go back and start from an earlier version of the code.
-* So far each optimized version made sure the results exactly matched the original version.
-  However, dithering is a visual effect; most of the time, as long as it looks right, that's all that matters.
-  If we're willing to accept slightly different results, perhaps we can do better.
-
-If you give it a try and find some additional tricks, [let me know](mailto:itamar@pythonspeed.com).
-Note that some tweaks will be faster on one CPU but not another, and the version of Numba can make a difference too.

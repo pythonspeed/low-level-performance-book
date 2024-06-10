@@ -31,15 +31,46 @@ But before seeing the reasons compilations won't work, it's worth understanding 
 
 ### Hoisting expressions out of inner loops
 
-The compiler can move or "hoist" repetitive expressions out of loops, so they're called once instead of many times.
-Consider these two functions, that do the same calculation in different ways:
+Consider these two functions, that do the same calculation in different ways; for now we're sticking to normal Python:
+
+```{python}
+def python_unhoisted(m, n):
+    total = 0
+    for i in range(m):
+        total += m * ((n ** 2) * (1.5 / n) + n)
+    return total
+
+@jit
+def python_manually_hoisted(m, n):
+    total = 0
+    constant = (n ** 2) * (1.5 / n) + n
+    for i in range(m):
+        total += m * constant
+    return total
+
+# The results are the same:
+assert python_unhoisted(100, 17) == python_manually_hoisted(100, 17)
+```
+
+The expression `((n ** 2) * (1.5 / n) + n)` in the `python_unhoisted()` function is repeated in every iteration, but it always give the same result.
+Unfortunately, this version of Python isn't smart enough to take advantage of that, so `python_unhoisted()` does a lot more work:
+
+```{python}
+#| echo: false
+%%compare_timing
+
+python_unhoisted(1_000, 3)
+python_manually_hoisted(1_000, 3)
+```
+
+Now let's switch to compiled code:
 
 ```{python}
 @jit
 def compiler_will_hoist(m, n):
     total = 0
     for i in range(m):
-        total = m * ((n ** 2) * (1.5 / n) + n)
+        total += m * ((n ** 2) * (1.5 / n) + n)
     return total
 
 @jit
@@ -47,16 +78,16 @@ def manually_hoisted(m, n):
     total = 0
     constant = (n ** 2) * (1.5 / n) + n
     for i in range(m):
-        total = m * constant
+        total += m * constant
     return total
 
 # The results are the same:
 assert compiler_will_hoist(100, 17) == manually_hoisted(100, 17)
 ```
 
-The expression `((n ** 2) * (1.5 / n) + n)` in the `compiler_will_hoist()` function is repeated in every iteration, but it always give the same result.
-The compiler is therefore able to move it out of the loop and run it only once, as we do manually in `manually_hoisted()`.
-Both functions therefore run at the same speed:
+The compiler is smart enough to notice that `((n ** 2) * (1.5 / n) + n)` is a repeated expression whose result doesn't change.
+It is therefore able to move it ("hoist" it) out of the loop in `compiler_will_hoist()` and run it only once, as we do manually in `manually_hoisted()`.
+Both functions therefore run at around the same speed:
 
 ```{python}
 #| echo: false
@@ -115,23 +146,15 @@ To override the compiler's heuristics, most compiled languages allow you to give
 
 [^numba]: Numba has an inlining hint, but it's not relevant for performance optimization, as it's intended for a different part of the compilation process.
 
-### Using faster CPU instructions
+### Replacing generic implementations with faster, specialized implementations
 
 For any given piece of code there are different ways the compiler could translate the code into CPU instructions.
-This is relevant because some CPU instructions are faster than others.
-For example, division is a complex operation, so in situations where the compiler can avoid using it, it will try to use other CPU instructions.
-
-One such useful instruction is bitshifting: a bitshift of 3 to the right will change 97 to 12, as it's shifting the bits of `1100001` three to the right, resulting in `1100`.
-Put another way, bitshifting N to the right is equivalent to dividing by $2^N$.
+If you specify the work to be done in a more constrained way, this gives the compiler opportunities to switch to a more specialized but faster implementation.
+For example, let's say we want to divide numbers by 8; we can do it two ways:
 
 ```{python}
-assert 97 >> 3 == 12
-assert 97 // (2 ** 3) == 12
-```
-
-We can compare the speed up division and bitshifting using the following code:
-
-```{python}
+# This needs to use generic division code, because maybe you'll want to divide
+# by 950124, or 237, or 3; the compiler can't know in advance.
 @jit
 def generic_division(divisor, size):
     arr = np.empty((size,), dtype=np.uint64)
@@ -139,33 +162,8 @@ def generic_division(divisor, size):
         arr[i] = i // divisor
     return arr
 
-@jit
-def generic_bitshift(bits, size):
-    arr = np.empty((size,), dtype=np.uint64)
-    for i in range(len(arr)):
-        arr[i] = i >> bits
-    return arr
-
-assert np.array_equal(
-    generic_division(8, 1000),
-    generic_bitshift(3, 1000)
-)
-```
-
-```{python}
-#| echo: false
-%%compare_timing
-generic_division(8, 100_000)
-generic_bitshift(3, 100_000)
-```
-
-If the compiler is asked to do a generic division, it can't hardcode a faster implementation that's specific to powers of 2.
-After all, you might call that function with some other number.
-
-But if the compiler knows you're dividing by a power of 2, it can choose to use faster operations than division to get the same result.
-To see whether bitshifts were actually used we'd have to look at the generated CPU instructions, but even without doing that we can see that in this case the compiler was able to generate faster code to get the _equivalent_ of division by 8:
-
-```{python}
+# This can generate division specifically specialized for the number 8; because
+# it's a power of 2, that can be done very efficiently.
 @jit
 def specific_division_by_8(size):
     arr = np.empty((size,), dtype=np.uint64)
@@ -178,6 +176,10 @@ assert np.array_equal(
     generic_division(8, 1000)
 )
 ```
+
+If the compiler is asked to do a generic division, it needs to be able to handle any possible number you give it.
+But if the compiler knows you're dividing by a specific number, it can choose to use faster operations than division to get the same result.
+For powers of 2, at least, the compiler can use very efficient alternatives to a generic implementation of division:
 
 ```{python}
 #| echo: false

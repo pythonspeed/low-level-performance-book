@@ -44,6 +44,17 @@ You can speed up code running in a loop by:
 2. Speeding up the work you repeatedly do inside the loop, the code you will be calling over and over again.
 
 If you have nested loops, the innermost loop will have the most iterations, and therefore is the most impactful place to fix inefficient code.
+For example:
+
+```python
+for i in range(N):
+    # outer_loop_function() will run N times:
+    outer_loop_function()
+
+    for j in range(M):
+        # inner_loop_function() will run N·M times:
+        inner_loop_function()
+```
 
 ## Don't process data you don't need to
 
