@@ -1,4 +1,4 @@
-personal_ws-1.1 en 25 
+personal_ws-1.1 en 27 
 CPU
 CPUs
 CPython
@@ -21,6 +21,8 @@ interoperating
 parallelization
 pre
 profiler
+reimplement
 runtime
+scalability
 scalable
 vectorized
