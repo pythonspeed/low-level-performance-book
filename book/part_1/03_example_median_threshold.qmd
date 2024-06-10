@@ -246,7 +246,49 @@ median_local_threshold1(IMAGE, 11, 10)
 median_local_threshold2(IMAGE, 11, 10)
 ```
 
-That's better!
+That's faster!
+
+## Validate performance against a wide range of data
+
+Or is it?
+We've only tested it against a single image, with a single neighborhood size of 11×11.
+To actually know whether it's faster in general, we'll want to test it against a broad range of realistic data.
+
+Since this is just an educational demonstration, I don't have more images available.
+But we can compare different neighborhood sizes, and determine that our algorithm is faster in all cases.
+The larger the neighborhood, the more of a speed benefit we get from the histogram-based median:
+
+```{python}
+#| echo: false
+%%compare_timing
+median_local_threshold1(IMAGE, 3, 10)
+median_local_threshold1(IMAGE, 21, 10)
+median_local_threshold2(IMAGE, 3, 10)
+median_local_threshold2(IMAGE, 21, 10)
+```
+
+And we can also compare the edge cases of completely black and completely white images:
+
+```{python}
+BLACK_IMAGE = np.zeros((256, 256), dtype=np.uint8)
+WHITE_IMAGE = np.ones((256, 256), dtype=np.uint8)
+WHITE_IMAGE *= 255
+```
+
+These edge cases are informative insofar as our median algorithm cumulatively adds up the buckets in the histogram until it hits 50% of pixels in the neighborhood.
+That mean very dark or very light medians will involve adding up fewer or more buckets, and therefore have different performance.
+And in fact when run on a completely white image, our new algorithm is slightly slower:
+
+```{python}
+#| echo: false
+%%compare_timing
+median_local_threshold1(BLACK_IMAGE, 11, 10)
+median_local_threshold1(WHITE_IMAGE, 11, 10)
+median_local_threshold2(BLACK_IMAGE, 11, 10)
+median_local_threshold2(WHITE_IMAGE, 11, 10)
+```
+
+Given we're not done optimizing, that's something we can live with.
 
 ## Take advantage of similar calculations you've already done
 
