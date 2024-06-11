@@ -36,7 +36,8 @@ helpthisbook:
 
     INPUT_CHAPTERS=$(cat book/_quarto.yml | grep .qmd | grep -v '#' | wc -l)
     OUTPUT_CHAPTERS=$(find _helpthisbook -iname '*.md' | wc -l)
-    if [ ! $INPUT_CHAPTERS == $OUTPUT_CHAPTERS ]
+    # Extra 10 0000.qmd chapters
+    if [ ! `expr $INPUT_CHAPTERS + 10` == $OUTPUT_CHAPTERS ]
     then
         echo "WRONG NUMBER OF CHAPTERS: IN $INPUT_CHAPTERS OUT $OUTPUT_CHAPTERS"
         exit 1
