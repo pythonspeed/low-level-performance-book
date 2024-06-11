@@ -15,13 +15,13 @@ Let's return to our original example, calculating volumes in liters:
 
 ```{python}
 import numpy as np
-from numba import njit
+from numba import jit
 
 generator = np.random.default_rng(0)
 # Containers are between 1 and 10 inches in each dimension:
 SIZES_INCHES = generator.uniform(1, 10, (1_000_000, 3)).astype(np.float32)
 
-@njit
+@jit
 def volume_liters(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     for i in range(sizes.shape[0]):
@@ -38,7 +38,7 @@ result = volume_liters(SIZES_INCHES)
 We can compile this with Numba's fast math mode:
 
 ```{python}
-@njit(fastmath=True)
+@jit(fastmath=True)
 def volume_liters_fm(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     for i in range(sizes.shape[0]):
@@ -64,7 +64,7 @@ volume_liters_fm(SIZES_INCHES)
 We can also try benchmarking our manually optimized version and a fast math equivalent.
 
 ```{python}
-@njit
+@jit
 def volume_liters_3(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     in3_to_liter = (2.54 * 2.54 * 2.54) / 1000
@@ -73,7 +73,7 @@ def volume_liters_3(sizes):
         result[i] = width_in * height_in * depth_in * in3_to_liter
     return result
 
-@njit(fastmath=True)
+@jit(fastmath=True)
 def volume_liters_3_fm(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     in3_to_liter = (2.54 * 2.54 * 2.54) / 1000
@@ -111,7 +111,7 @@ How you do so is different for each compiler.
 Here's how you'd do it in Numba using the [LLVM-specific list of optimizations](https://llvm.org/docs/LangRef.html#fast-math-flags):
 
 ```{python}
-@njit(fastmath={"nsz", "arcp", "contract", "afn", "reassoc"})
+@jit(fastmath={"nsz", "arcp", "contract", "afn", "reassoc"})
 def volume_liters_fm_explicit(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     for i in range(sizes.shape[0]):

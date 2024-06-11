@@ -11,7 +11,7 @@ os.environ["NUMBA_SLP_VECTORIZE"] = "0"
 
 # Import the dependencies we'll need:
 import numpy as np
-from numba import njit
+from numba import jit
 ```
 
 ```{python}
@@ -29,7 +29,7 @@ We don't care how the CPU executes the resulting code: so long as we get the cor
 #| eval: false
 from math import sqrt
 
-@njit
+@jit
 def pythagorean_theorem(x_length, y_length):
     x_squared = x_length ** 2
     y_squared = y_length ** 2
@@ -108,12 +108,12 @@ from numba import uint32, uint64
 
 # 64-bit linear congruent generator; we'll use the top 32-bits only, in order
 # to maximize the cycle length and therefore perceived randomness.
-@njit("uint32(uint32)")
+@jit("uint32(uint32)")
 def lcg(seed):
     temp = uint64(seed) * 2862933555777941757 + 3037000493
     return temp >> 32
 
-@njit
+@jit
 def generate_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
     result[0] = uint32(1)
@@ -154,7 +154,7 @@ In short, each value in the array has a data dependency on the previous value in
 Let's try a different variant, where we calculate `result[i]` purely based on `i`:
 
 ```{python}
-@njit
+@jit
 def generate_not_so_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
     for i in range(1, n):
@@ -195,7 +195,7 @@ We can preserve the pseudo-randomness, while breaking the data dependency, by in
 This should allow us to do a bunch of the calculation in parallel, while still getting better results:
 
 ```{python}
-@njit
+@jit
 def generate_random_numbers_3(n):
     result = np.empty((n,), dtype=np.uint32)
 
@@ -247,7 +247,7 @@ To try to reduce the number of instructions, instead of reading and writing inte
 Variables with numeric values are easier for the compiler to optimize away compared to reads and writes from an array, where it has to prove the value hasn't changed:
 
 ```{python}
-@njit
+@jit
 def generate_random_numbers_4(n):
     result = np.empty((n,), dtype=np.uint32)
     # 😎 Use simple variables to make it faster to access the previous value:
@@ -299,7 +299,7 @@ That variable acts as a data dependency, and prevents instruction-level parallel
 ```{python}
 DATA = np.arange(0, 1_000_000, dtype=np.uint64)
 
-@njit
+@jit
 def sum1(arr):
     total = 0
     for i in range(len(arr)):
@@ -315,7 +315,7 @@ We can solve this by having two accumulators, and switching back and forth betwe
 At the end of the function we add the two accumulators to get the final sum:
 
 ```{python}
-@njit
+@jit
 def sum2(arr):
     # 😎 Two accumulators instead of one:
     total1, total2 = 0, 0

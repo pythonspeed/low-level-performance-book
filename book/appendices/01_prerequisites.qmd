@@ -73,10 +73,10 @@ $ pip install numba
 ```
 
 Numba takes Python code and compiles it to machine code using the LLVM compiler toolchain, which is also used in the `clang` C/C++ compiler and Rust.
-In particular, it compiles any function decorated with the `numba.njit` function:
+In particular, it compiles any function decorated with the `numba.jit` function:
 
 ```{python}
-from numba import njit
+from numba import jit
 
 def a_normal_python_function(arr):
     total = 0
@@ -84,7 +84,7 @@ def a_normal_python_function(arr):
         total += arr[i]
     return total
 
-@njit
+@jit
 def a_function_compiled_with_numba(arr):
     total = 0
     for i in range(len(arr)):
@@ -92,7 +92,7 @@ def a_function_compiled_with_numba(arr):
     return total
 ```
 
-The first time you call a function decorated with `@njit` with a specific set of typed parameters, Numba will compile the function.
+The first time you call a function decorated with `@jit` with a specific set of typed parameters, Numba will compile the function.
 We can use the Jupyter/IPython `%time` magic to measure how long a function call takes; notice the first call to `a_function_compiled_with_numba()` takes much longer, because it needs to compile the code.
 
 ```{python}
@@ -131,7 +131,7 @@ Unless you tell it otherwise, integers will typically be 64-bit, and floats will
 Numba is designed to closely interoperate with NumPy, and as such, NumPy arrays are a built-in type in Numba: you can just pass them in as arguments to a Numba function.
 In addition, Numba _reimplements_ large parts of the NumPy API.
 
-When you call a NumPy API inside a function decorated with `numba.njit`, you are not actually calling the NumPy API.
+When you call a NumPy API inside a function decorated with `numba.jit`, you are not actually calling the NumPy API.
 Instead, you are calling a re-implemented version specifically written for Numba.
 Sometimes that re-implemented version may work slightly differently, or give slightly different results, especially if floating-point numbers are involved.
 
@@ -139,7 +139,7 @@ Sometimes that re-implemented version may work slightly differently, or give sli
 def sum_numpy(arr):
     return arr.sum()
 
-@njit
+@jit
 def sum_numba(arr):
     return arr.sum()
 

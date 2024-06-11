@@ -6,7 +6,7 @@ So there's nothing stopping you from applying similar optimizations manually.
 
 ```{python}
 import numpy as np
-from numba import njit
+from numba import jit
 ```
 
 ```{python}
@@ -26,7 +26,7 @@ generator = np.random.default_rng(0)
 # Containers are between 1 and 10 inches in each dimension:
 SIZES_INCHES = generator.uniform(1, 10, (1_000_000, 3)).astype(np.float32)
 
-@njit
+@jit
 def volume_liters(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     for i in range(sizes.shape[0]):
@@ -45,7 +45,7 @@ result = volume_liters(SIZES_INCHES)
 With a little tweaking, we can move part of the calculation out of the inner loop, hopefully resulting in faster code:
 
 ```{python}
-@njit
+@jit
 def volume_liters_2(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     # 😎 Hoist some of the calculations into a constant:
@@ -80,7 +80,7 @@ So another optimization we can apply is replacing division by `X` with multiplic
 Again, the compiler won't apply this optimization by default because it may change the results slightly.
 
 ```{python}
-@njit
+@jit
 def volume_liters_3(sizes):
     result = np.empty((sizes.shape[0],), dtype=np.float32)
     # 😎 Hoist the division into a constant, so we do even less in the inner

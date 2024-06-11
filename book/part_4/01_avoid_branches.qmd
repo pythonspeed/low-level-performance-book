@@ -15,9 +15,9 @@ Consider the following example—depending on the value of `x`, execution will t
 
 ```{python}
 import numpy as np
-from numba import njit
+from numba import jit
 
-@njit
+@jit
 def abs(x):
     if x > 0: # <-- this is a branch
         x = -x
@@ -28,7 +28,7 @@ Merely having a conditional expression doesn't mean the code is a branch; the ke
 For example, the following function does not have a branch:
 
 ```python
-@njit
+@jit
 def abs_branchless(x):
     # is_negative will be either 0 or 1:
     is_negative = np.int64(x > 0)  # <-- this is NOT a branch
@@ -41,7 +41,7 @@ def abs_branchless(x):
 But the following function does have a branch, because the `while` may or may not continue in each iteration:
 
 ```python
-@njit
+@jit
 def loop(x):
     while x > 0: # <-- this is a branch
         x = transform(x)

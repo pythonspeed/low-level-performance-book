@@ -44,7 +44,7 @@ Let's load the libraries we'll be using, as well as a test image, a 400×400 Num
 ```{python}
 import numpy as np
 from skimage import io
-from numba import njit
+from numba import jit
 
 image = io.imread("../images/hallway.jpg")
 ```
@@ -73,7 +73,7 @@ Both those cases won't fit in an unsigned 8-bit integer.
 At the end I turn the result into an 8-bit image, which is what the function is supposed to return.
 
 ```{python}
-@njit
+@jit
 def dither(img):
     # Create an int16 array to allow negative values, as well as a wider range
     # than a uint8. This will start as copy of the input but will get modified
@@ -221,7 +221,7 @@ All of this can be simplified into a single simple check: measuring whether the 
 In Python: `new_value = 0 if old_value < 128 else 255`.
 
 ```{python}
-@njit
+@jit
 def dither2(img):
     staging = img.astype(np.int16)
     y_size = img.shape[0]
@@ -270,7 +270,7 @@ And once we're done with a row it always fits in 8 bits and never changes again.
 So we really only need to keep 2 rows worth of memory as `int16`, and we can reuse the same memory as we traverse the image:
 
 ```{python}
-@njit
+@jit
 def dither3(img):
     result = np.empty(img.shape, dtype=np.uint8)
     # 😎 Temporary storage of current and next row's intermediate values:
@@ -332,7 +332,7 @@ So how can we get rid of memory copying?
 If we split our staging array into two, one for the current row and one for the next row, we can swap those two arrays instead of copying the data.
 
 ```{python}
-@njit
+@jit
 def dither4(img):
     result = np.empty(img.shape, dtype=np.uint8)
     # Two arrays, one for staging the current row and one for the next:
@@ -394,7 +394,7 @@ As an additional optimization, notice that copying `staging_current` into the `r
 Once a pixel is finalized, it won't change, so we can write directly to `result` and skip updating `staging_current`.
 
 ```{python}
-@njit
+@jit
 def dither5(img):
     result = np.empty(img.shape, dtype=np.uint8)
     y_size = img.shape[0]
@@ -447,7 +447,7 @@ If we can move some of the temporary integer values we're accumulating to variab
 Reading and writing from registers is faster than reading and writing memory, even when the CPU is using a fast cache to speed up the latter.
 
 ```{python}
-@njit
+@jit
 def dither6(img):
     result = np.empty(img.shape, dtype=np.uint8)
     y_size = img.shape[0]
