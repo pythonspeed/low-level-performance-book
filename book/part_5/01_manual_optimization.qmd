@@ -5,11 +5,6 @@ But it might only be _slightly_ different, or different in ways that you, the au
 So there's nothing stopping you from applying similar optimizations manually.
 
 ```{python}
-import numpy as np
-from numba import jit
-```
-
-```{python}
 #| echo: false
 %load_ext book_magics
 ```
@@ -22,6 +17,9 @@ We want to calculate the volume of these boxes in liters, so we first must conve
 Here's what a first pass calculation might look like:
 
 ```{python}
+import numpy as np
+from numba import jit
+
 generator = np.random.default_rng(0)
 # Containers are between 1 and 10 inches in each dimension:
 SIZES_INCHES = generator.uniform(1, 10, (1_000_000, 3)).astype(np.float32)

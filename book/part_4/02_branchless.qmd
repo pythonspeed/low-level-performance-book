@@ -3,11 +3,6 @@
 One potential solution to the performance costs of branches is branchless programming, where we restructure code to get rid of branches altogether.
 
 ```{python}
-import numpy as np
-from numba import jit
-```
-
-```{python}
 #| echo: false
 %load_ext book_magics
 ```
@@ -23,6 +18,9 @@ To clean those areas up, a simplistic but often useful algorithm is setting all 
 To test our algorithms, let's generate two simulated images:
 
 ```{python}
+import numpy as np
+from numba import jit
+
 rng = np.random.default_rng(12345)
 noise = rng.integers(0, high=1000, size=(4096, 4096), dtype=np.uint16)
 signal = rng.integers(0, high=5000, size=(4096, 4096), dtype=np.uint16)

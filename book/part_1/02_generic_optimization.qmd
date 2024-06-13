@@ -11,12 +11,6 @@ But for any given $n$, the code will run faster compared to the original version
 %load_ext book_magics
 ```
 
-```{python}
-# Import the dependencies we'll need:
-import numpy as np
-from numba import jit
-```
-
 ## Focus your efforts on inner loops
 
 As far as speed goes, the three most important locations in your data processing code are loops, loops, and loops.
@@ -65,6 +59,10 @@ As an example, let's implement the Sieve of Eratosthenes, a classic algorithm fo
 It works by iterating over all whole numbers in a range, crossing out multiples of 2 (4, 6, 8, ...), then multiples of 3 (6, 9, 12, ...), then multiples of 5 (10, 15, 20, ...), and so on.
 
 ```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import jit
+
 # 😎 Remember that by using the @jit decorator, our Python code gets compiled
 # to fast machine code.
 @jit

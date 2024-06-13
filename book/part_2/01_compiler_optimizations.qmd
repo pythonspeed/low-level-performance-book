@@ -10,16 +10,6 @@ The hope is that the cumulative series of transformations will result in code th
    We won't consider these optimizations here, but we'll cover at least some of them in later chapters.
 
 ```{python}
-# Disable automatic usage of SIMD so it doesn't distort or hide certain
-# effects; we'll talk about SIMD in later chapters.
-import os
-os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
-
-from numba import jit
-import numpy as np
-```
-
-```{python}
 #| echo: false
 %load_ext book_magics
 ```
@@ -40,7 +30,6 @@ def python_unhoisted(m, n):
         total += m * ((n ** 2) * (1.5 / n) + n)
     return total
 
-@jit
 def python_manually_hoisted(m, n):
     total = 0
     constant = (n ** 2) * (1.5 / n) + n
@@ -66,6 +55,14 @@ python_manually_hoisted(1_000, 3)
 Now let's switch to compiled code:
 
 ```{python}
+# Disable automatic usage of SIMD so it doesn't distort or hide certain
+# effects; we'll talk about SIMD in later chapters.
+import os
+os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
+
+from numba import jit
+import numpy as np
+
 @jit
 def compiler_will_hoist(m, n):
     total = 0

@@ -12,23 +12,9 @@ This is a different meaning than typically used in Python programming, where "ve
 Given we're speeding up Python, what "vectorization" means can be ambiguous, so make sure you understand which of the two meaning applies when reading documentation.
 :::
 
-We'll set up our normal imports:
-
-```{python}
-# Import the dependencies we'll need:
-import numpy as np
-from numba import jit
-```
-
 ```{python}
 #| echo: false
 %load_ext book_magics
-```
-
-We'll also import a context manager that let us disable SIMD on the fly when defining functions:
-
-```{python}
-from book_utilities import disabled_simd
 ```
 
 ## Unlike instruction-level parallelism, SIMD requires work by the compiler
@@ -89,6 +75,14 @@ We'll talk about how the batch size is decided in just a bit, but first let's se
 In particular, we have two versions of the exact same code, one compiled with SIMD (the default) and one with SIMD disabled:
 
 ```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import jit
+
+# A context manager that let us disable SIMD on the fly when defining
+# functions:
+from book_utilities import disabled_simd
+
 DATA_FLOAT64 = np.ones((1_000_000,), dtype=np.float64)
 DATA_FLOAT32 = np.ones((1_000_000,), dtype=np.float32)
 

@@ -6,12 +6,6 @@ Even so, calling the same code over and over in an inner loop is a waste of reso
 If you can, handling edge cases separately can speed up your code.
 
 ```{python}
-# Import the dependencies we'll need:
-import numpy as np
-from numba import jit
-```
-
-```{python}
 #| echo: false
 %load_ext book_magics
 ```
@@ -24,6 +18,10 @@ But for the first 6 days, we won't have sufficient previous values.
 There are various strategies to deal with this missing data, and in this case we'll repeat the value in the first day:
 
 ```{python}
+# Import the dependencies we'll need:
+import numpy as np
+from numba import jit
+
 DATA = np.random.random((1_000_000,))
 
 @jit
