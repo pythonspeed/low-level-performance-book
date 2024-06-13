@@ -1,9 +1,9 @@
 # Use a scalable algorithm
 
-As explained in the introduction, this book focuses on situations where the performance bottleneck is computation.
-Given that assumption, there are two high-level reasons the code might be slow:
+As explained in the introduction, this book focuses on situations where you've already identified which parts of the code are slow, broadly speaking, and where you've determined the performance bottleneck is computation.
+Given those assumptions, there are two high-level reasons the code might be slow:
 
-1. Which algorithm is being used.
+1. The choice of algorithm.
 2. How you implemented the algorithm.
    For example, low-level languages like C usually run the same algorithm much faster than Python can.
 
