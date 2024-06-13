@@ -115,14 +115,12 @@ Big-O syntax indicates an upper bound on how the algorithm run time scales with 
 In this case, we're saying that the runtime of `naive_filter_python()` is at worst proportional to ${n^{2}}$.
 Maybe we'll get lucky and all the entries from `arr1` will be at the start of `arr2` and we'll do better than this, but we can't guarantee that.
 
-Let's switch to a faster implementation of the same $O(n^2)$ algorithm and see if it will help us.
-
 ## A faster language won't make an algorithm scale
 
-Since this is a book about writing low-level compiled languages, we're going to see how fast our algorithm runs if we use a compiled language.
+So far we've been using Python, which is pretty slow; next we'll try an implementation of the same $O(n^2)$ algorithm in a compiled language.
 In particular, we will compile the code using [Numba](https://numba.pydata.org/).
-Numba is a programming language that implements a subset of Python, but compiles to machine code, and has native support for NumPy arrays.
-Keep in mind that this is not a book about Numba: the concepts the book covers also apply to C, C++, Rust, and other low-level languages.
+Numba is a programming language that implements a subset of Python, compiles to machine code, and has native support for NumPy arrays.
+Keep in mind that this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
 
 Numba is easy to install and simple to use: you can install the `numba` package with `pip`/`conda`/your package manager of choice.
 To make a function faster, you decorate it with `@numba.jit`.
@@ -132,9 +130,10 @@ Subsequent runs will use the pre-compiled version and hopefully run much more qu
 ```{python}
 from numba import jit
 
-# 😎 This is approximately the same code as naive_filter_python()
-# above, but it will be compiled to machine code the first time it is called
-# with particular types because of the @jit decorator.
+# 😎 This is approximately the same code as naive_filter_python() above. It
+# uses Numba because of the `@jit` decorator. The first time it is called with
+# particular types of inputs (e.g. two int64 arrays) it will be compiled to
+# machine code.
 @jit
 def naive_filter_compiled(arr1, arr2):
     # When NumPy APIs are used, Numba uses an equivalent, Numba-specific
