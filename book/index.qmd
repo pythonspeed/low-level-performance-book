@@ -1,10 +1,29 @@
 # Introduction {.unnumbered}
 
-This book is written for scientists, data scientists, software developers, and others who use Python to do numeric computing or data processing.
+There are many kinds of software you can write: web applications, video games, scientific computing, and much more.
+This book doesn't address all these types of software.
+Instead, this book is specifically written for scientists, data scientists, and software developers who use Python to do numeric computing or data processing.
+
+Even with that limited focus, there are still many potential reasons your software might be slow.
+Your bottleneck might be computation, or network latency, or disk bandwidth.
+We'll briefly cover that performance big picture at the end of the book.
+
+Most of this book assumes that:
+
+1. You've already profiled your code to find the key bottleneck.
+2. You've discovered the bottleneck is computation, i.e. the amount of CPU time the code uses.
+3. You now need to speed up that computation.
+
+Even more specifically, we'll be focusing on optimizing code running on a single CPU core.
+Even if you're using parallel or distributed processing, actual execution devolves to a collection of threads each running on a single CPU core.
+And if you can get a 10× speedup on a single core, that may allow you to stick to a single multithreaded process on a single machine, a much simpler problem than scaling to multiple machines.
+
+## Speeding up Python-based data processing computation
+
 Python[^cpython] is notoriously slow, but often used to handle large-scale data processing.
 In order to do so in a reasonable amount of time, the solution has traditionally involved writing Python extensions in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
 
-There are many fast, compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
+There are many pre-existing compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
 If those libraries are fast enough for you, no need to read the rest of this book!
 
 Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
@@ -12,20 +31,9 @@ In that case, you will need to write your own code in a low-level language.
 This book is written to help you make that code _fast_.
 
 Most of the examples in this book will use the Numba language and compiler, because it is easy to install and uses the same syntax as Python.
-However, this is not a book about Numba: the concepts the book covers also apply to C, C++, Rust, and other low-level languages.
+However, this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
 I will discuss the functionality of these other languages where relevant.
 
-## What this book assumes
-
-This book is written with a series of assumptions to limit its scope:
-
-* The goal is to optimize data processing: you're running the same code repeatedly on relatively large amounts of data.
-* As discussed in the next chapter, you've already picked a scalable algorithm.
-* Your performance bottleneck involves computation, i.e. CPU or RAM, not disk or network access.
-  See a later chapter for some discussion of other bottlenecks.
-* The focus is on optimizing runtime on a single CPU core.
-  Even if you're using parallel or distributed algorithms, eventually you will be running some code on a single CPU core.
-
-With those assumptions in mind, let's get started!
+That's enough introduction; let's get started!
 
 [^cpython]: Technically, it's not the language that's slow, it's the default implementation. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that can do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features.
