@@ -12,11 +12,11 @@ But in this chapter we'll focus on the first decision, the choice of algorithm.
 
 Because an algorithm can have multiple implementations, we can't really measure its speed.
 Instead, we can consider how it scales with its input size.
-For example, an algorithm processing a 1,000,000-base DNA sequence will almost certainly take longer to run than if it were processing a 1,000-base sequence.
+For example, if we switch from processing a 1,000-base DNA sequence to a 1,000,000-base sequence, the algorithm will almost certainly take longer to run.
 The question is, how much longer?
 
-Depending on the algorithm's scalability, it might take 3× as long, or 1,000× as long, or even 1,000,000× as long.
-That last case is a warning: if your algorithm scales badly enough, it will be so slow for larger inputs that your implementation speed simply won't matter.
+Depending on the algorithm's scalability, it might take 3× as long to run, or 1,000× as long, or even 1,000,000× as long.
+That last case is a warning: if your algorithm scales badly enough, larger inputs will may make your code so slow that you will not vastly better implementation speedups to make a meaningful difference in run time.
 
 ```{python}
 #| echo: false
