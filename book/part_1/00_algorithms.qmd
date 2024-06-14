@@ -45,7 +45,7 @@ We'll assume both arrays have approximately the same length.
 ```{python}
 import numpy as np
 
-def naive_filter_python(arr1, arr2):
+def quadratic_filter_python(arr1, arr2):
     # Create a new array that is the same size and has the same
     # type as the first input array:
     result = np.empty(shape=arr1.shape, dtype=arr1.dtype)
@@ -96,8 +96,8 @@ LARGER_DATA2 = np.arange(0, 3_003, dtype=np.uint64)
 ```{python}
 #| echo: false
 %%compare_timing
-naive_filter_python(SMALL_DATA, SMALL_DATA2)
-naive_filter_python(LARGER_DATA, LARGER_DATA2)
+quadratic_filter_python(SMALL_DATA, SMALL_DATA2)
+quadratic_filter_python(LARGER_DATA, LARGER_DATA2)
 ```
 
 When the data is 30× larger, the run time is rather more than 30× slower!
@@ -105,22 +105,34 @@ Why is that?
 
 ## Understand Big-O notation
 
-In this chapter we're focusing on how an algorithm's performance scales with the size of the input.
-`naive_filter_python()` might run slower or faster on different computers, and below we'll reimplement the same algorithm in a compiled language.
-But across all these different environments and implementations, the scalability won't change, because the scalability is tied to the algorithm, not the implementation.
+`quadratic_filter_python()` might run slower or faster on different computers, and below we'll reimplement the same algorithm in a compiled language.
+But in this chapter we're focusing on how an algorithm's performance scales with the size of the input.
+And across any different hardware environments and implementations, the scalability won't change, because the scalability is tied to the algorithm, not the implementation.
 
-At its core, our algorithm does `len(arr1) · len(arr2)` comparisons.
+Big-O notation is a way to express that scalability mathematically.
+Specifically, $O()$ implies an upper bound; the function will scale this badly, and no worse.
+
+Our algorithm does `len(arr1) · len(arr2)` comparisons.
 For every item in `arr1`, it checks if the item is in `arr2` by comparing it with all the items in `arr2` one by one; in the worst case this involves traversing every item in `arr2`.
-To simplify our discussion, let's assume that both arrays have approximately the same length $n$.
-Then the algorithm will, worst case, take $n^2$ steps; more succinctly, we can say the algorithm is $O(n^2)$.
+We'll define:
 
-Big-O syntax indicates an upper bound on how the algorithm run time scales with the input size.
-In this case, we're saying that the runtime of `naive_filter_python()` is at worst proportional to ${n^{2}}$.
-Maybe we'll get lucky and all the entries from `arr1` will be at the start of `arr2` and we'll do better than this, but we can't guarantee that.
+* $n =$ `len(arr1)`
+* $m =$ `len(arr2)`
+
+And now we can say the algorithm is $O(n·m)$.
+
+$O(n·m)$ means the run time of a specific implementation will at worst be proportional to $n·m$.
+If we double $n$ (i.e. `len(arr1)`), the run time will at worst double; if we double $m$ (i.e. `len(arr2)`), the run time will at worst double:
+
+$$O(n·m) \implies ImplRuntime(n, m) \propto n·m$$
+
+In the real world, with a specific implementation, things are more complicated, but this simplified model does give us a good sense of an algorithm's scalability.
+
+TODO ADD RECOMMENDATION TO A BOOK ABOUT THE TOPIC
 
 ## A faster language won't make an algorithm scale
 
-So far we've been using Python, which is pretty slow; next we'll try an implementation of the same $O(n^2)$ algorithm in a compiled language.
+So far we've been using Python, which is pretty slow; next we'll try an implementation of the same $O(n·m)$ algorithm in a compiled language.
 In particular, we will compile the code using [Numba](https://numba.pydata.org/).
 Numba is a programming language that implements a subset of Python, compiles to machine code, and has native support for NumPy arrays.
 Keep in mind that this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
@@ -133,12 +145,12 @@ Subsequent runs will use the pre-compiled version and hopefully run much more qu
 ```{python}
 from numba import jit
 
-# 😎 This is approximately the same code as naive_filter_python() above. It
+# 😎 This is approximately the same code as quadratic_filter_python() above. It
 # uses Numba because of the `@jit` decorator. The first time it is called with
 # particular types of inputs (e.g. two int64 arrays) it will be compiled to
 # machine code.
 @jit
-def naive_filter_compiled(arr1, arr2):
+def quadratic_filter_compiled(arr1, arr2):
     # When NumPy APIs are used, Numba uses an equivalent, Numba-specific
     # reimplemented version.
     result = np.empty(shape=arr1.shape, dtype=arr1.dtype)
@@ -156,8 +168,8 @@ def naive_filter_compiled(arr1, arr2):
     return result
 
 assert np.array_equal(
-    naive_filter_python(SMALL_DATA, SMALL_DATA2),
-    naive_filter_compiled(SMALL_DATA, SMALL_DATA2)
+    quadratic_filter_python(SMALL_DATA, SMALL_DATA2),
+    quadratic_filter_compiled(SMALL_DATA, SMALL_DATA2)
 )
 ```
 
@@ -166,31 +178,34 @@ How does this version scale?
 ```{python}
 #| echo: false
 %%compare_timing
-naive_filter_python(SMALL_DATA, SMALL_DATA2)
-naive_filter_python(LARGER_DATA, LARGER_DATA2)
-naive_filter_compiled(SMALL_DATA, SMALL_DATA2)
-naive_filter_compiled(LARGER_DATA, LARGER_DATA2)
+quadratic_filter_python(SMALL_DATA, SMALL_DATA2)
+quadratic_filter_python(LARGER_DATA, LARGER_DATA2)
+quadratic_filter_compiled(SMALL_DATA, SMALL_DATA2)
+quadratic_filter_compiled(LARGER_DATA, LARGER_DATA2)
 ```
 
 This is a lot faster than our original Python algorithm.
-But because it uses the same $O(n^{2})$ algorithm it is still going to scale badly as the input size grows.
+But because it uses the same $O(n·m)$ algorithm it is still going to scale badly as the input size grows.
 
 ## Linear algorithms beat quadratic algorithms
 
 Let's try a different approach: a more scalable algorithm.
-Instead of a run time that scales with $O(n^{2})$ given input size $n$, the following algorithm scales with $O(n)$, i.e. we're switching from quadratic scaling to linear scaling.
+Instead of a run time that scales with $O(n·m)$ given inputs of size $n$ and $m$, the following algorithm scales with $O(n+m)$, i.e. we're switching from quadratic scaling to linear scaling.
+As you might imagine, as $n$ and $m$ get bigger, $n·m$ gets larger much faster than $n+m$!
+
 We will implement this more scalable algorithm in Python, without bothering to use a compiled language:
 
 ```{python}
 # This is still written in Python, a slow language!
-def smarter_filter_python(arr1, arr2):
+def linear_filter_python(arr1, arr2):
     result = np.empty(shape=arr1.shape, dtype=arr1.dtype)
 
-    # This scales linearly with the size of arr2:
+    # This scales linearly with the size of arr2, which we're calling `m`:
     arr2_as_set = set(arr2)
 
     found_items = 0
 
+    # This scales linearly with the size of arr1, which we're calling `n`:
     for i in range(len(arr1)):
         item = arr1[i]
         # 😎 Checking if an item is contained in a Python set takes a fixed
@@ -203,12 +218,12 @@ def smarter_filter_python(arr1, arr2):
     return result
 
 assert np.array_equal(
-    naive_filter_python(SMALL_DATA, SMALL_DATA2),
-    smarter_filter_python(SMALL_DATA, SMALL_DATA2),
+    quadratic_filter_python(SMALL_DATA, SMALL_DATA2),
+    linear_filter_python(SMALL_DATA, SMALL_DATA2),
 )
 ```
 
-Let's compare `naive_filter_compiled()`—implemented in a fast language (Numba)—to `smarter_filter_python()`, which is written in a slow language (Python).
+Let's compare `quadratic_filter_compiled()`—implemented in a fast language (Numba)—to `linear_filter_python()`, which is written in a slow language (Python).
 We'll use the `benchit` library to generate a graph of run time over a series of inputs of increasing size:
 
 ```{python}
@@ -222,7 +237,7 @@ inputs = {
 }
 
 timings = benchit.timings(
-    [naive_filter_compiled, smarter_filter_python],
+    [quadratic_filter_compiled, linear_filter_python],
     inputs,
     multivar=True,
     input_name="Array length",
@@ -235,13 +250,13 @@ Here's what the resulting run time looks like; lower values on the Y axis are be
 timings.plot(logx=False, logy=False, dpi=100, figsize=(8, 4), fontsize=12)
 ```
 
-For small inputs, `smarter_filter_python()` is slower than `naive_filter_compiled()`, with the choice of programming language being the bottleneck.
+For small inputs, `linear_filter_python()` is slower than `quadratic_filter_compiled()`, with the choice of programming language being the bottleneck.
 Python is slower than Numba, and that's what matters.
-But once inputs are large enough, the `smarter_filter_python()` function becomes faster than `naive_filter_compiled()`, despite being implemented in slower Python.
+But once inputs are large enough, the `linear_filter_python()` function becomes faster than `quadratic_filter_compiled()`, despite being implemented in slower Python.
 
 ## Use a scalable algorithm, if you can
 
-As we saw in the above examples, once input length $n$ gets large enough, a slow implementation of a scalable algorithm can beat a fast implementation of a non-scalable algorithm.
+As we saw in the above examples, once input lengths gets large enough, a slow implementation of a scalable algorithm can beat a fast implementation of a non-scalable algorithm.
 Of course, a fast implementation of scalable algorithm is even better.
 And in some situations there is no scalable algorithm, and the only thing you can do is focus on speed of implementation:
 
