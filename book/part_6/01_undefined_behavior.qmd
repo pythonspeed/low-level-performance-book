@@ -16,7 +16,7 @@ To demonstrate the intersection of undefined behavior and the compiler's optimiz
 ```
 
 Cython is a bit like Numba, in that it lets you compile a Python-like language to machine code, but unlike Numba it first gets converted to C or C++, and then that get compiled into machine code.
-The following is based on [an example by Paul J. Lucas](https://medium.com/@pauljlucas/undefined-behavior-in-c-and-c-f30844f20e2a1).
+The following is based on [an example by Paul J. Lucas](https://dev.to/pauljlucas/undefined-behavior-in-c-and-c-3a20).
 
 First, we'll start with this code example:
 
