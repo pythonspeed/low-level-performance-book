@@ -3,11 +3,6 @@
 Your CPU is capable of transparently running multiple instructions at the same time on the same core, making your code run that much faster... but only if your code structure enables it.
 In order to better demonstrate the effects of this CPU feature, we will disable SIMD code generation in the code examples in this chapter; we'll talk about what SIMD means and what it does in the next chapter.
 
-```{python}
-#| echo: false
-%load_ext book_magics
-```
-
 ## Data dependencies are a bottleneck for instruction-level parallelism
 
 Consider the following function.
@@ -93,7 +88,8 @@ To see the speed impact of ILP, let's look at an example: generating an array of
 For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
 
 ```{python}
-# Tell Numba to disable SIMD, so it doesn't hide other effects:
+# Tell Numba to disable SIMD, so it doesn't hide other effects; we'll talk
+# about SIMD in the next chapter.
 import os
 os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
 os.environ["NUMBA_SLP_VECTORIZE"] = "0"
@@ -114,9 +110,15 @@ def generate_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
     result[0] = uint32(1)
     for i in range(1, n):
-        # 🙁 result[i] has a data dependency on result[i - 1]:
+        # 🙁 result[i] has a data dependency on result[i - 1], preventing
+        # instruction-level parallelism:
         result[i] = lcg(result[i - 1])
     return result
+```
+
+```{python}
+#| echo: false
+%load_ext book_magics
 ```
 
 To get a sense of the randomness, we can visualize the result as an image.
@@ -145,38 +147,43 @@ Imagine we asked for 4 values:
 
 In short, each value in the array has a data dependency on the previous value in the array; they cannot be calculated in parallel.
 
-### Removing a calculation data dependency
+### Experiment to find the impact of data dependencies
 
-Let's try a different variant, where we calculate `result[i]` purely based on `i`:
+How much speed are we losing because of the data dependencies above?
+To find out, we'll tweak the code to completely remove all data dependencies.
+The result won't be useful code, but it will let us see how much of a speed-up we can potentially get.
+
+We're going to calculate `result[i]` purely based on `i`:
 
 ```{python}
 @jit
 def generate_not_so_random_numbers(n):
     result = np.empty((n,), dtype=np.uint32)
     for i in range(1, n):
-        # 😎 This calculation no longer has a data dependency preventing ILP:
+        # 🤔 As a temporary experiment, remove all data dependencies that are
+        # preventing ILP, allowing us to see how much faster we can go:
         result[i] = lcg(i)
     return result
 
 RAND2 = to_image(generate_not_so_random_numbers)
 ```
 
-In this case we've broken the dependency chain.
 These calculations are completely unrelated and can be calculated in parallel:
 
 * `result[3] = lcg(3)`
 * `result[2] = lcg(2)`
 
-Unfortunately, when visualized we can see the results have a repeating pattern, so this is a bad random number generator:
+This version of the code is not a good random number generator, as we can see when we visualize the results:
 
 ```{python}
 #| echo: false
 %display_image RAND2
 ```
 
+But this experiment can give us a sense of how fast we could potentially go.
 In the following performance comparison I've included the number of CPU instructions the code ran.
 Notice that the number of CPU instructions increased, even as the runtime decreased.
-That's because `generate_not_so_random_numbers()` was able to run those extra insstructions in parallel, speeding up the actual run time.
+That's because `generate_not_so_random_numbers()` allows the CPU to run those extra instructions in parallel, speeding up the actual run time.
 
 ```{python}
 #| echo: false
@@ -185,9 +192,11 @@ generate_random_numbers(1_000_000)
 generate_not_so_random_numbers(1_000_000)
 ```
 
-### Interleaving to avoid a data dependency
+### Use interleaving to reduce the impact of data dependencies
 
-We can preserve the pseudo-randomness, while breaking the data dependency, by interleaving multiple independent calculations that don't share a data dependency.
+Our performance experiment was informative, but not useful as a random number generator.
+But there are less naive approaches that should preserve the pseudo-randomness, while breaking the data dependency.
+In this case we can do so by interleaving multiple independent calculations that don't share a data dependency.
 This should allow us to do a bunch of the calculation in parallel, while still getting better results:
 
 ```{python}
@@ -231,22 +240,34 @@ This is faster than the first version, but still pretty slow:
 #| echo: false
 %%compare_timing --measure=instructions
 generate_random_numbers(1_000_000)
+generate_not_so_random_numbers(1_000_000)
 generate_random_numbers_3(1_000_000)
 ```
 
-### Simplifying the calculation
+### Try to use temporary variables instead of reading and writing to arrays
 
-So why is our latest version slower than our second attempt?
-The fact that the number of instructions is so much higher seems like a problem.
+Why is `generate_random_numbers_3()` slower than our `generate_not_so_random_numbers()` experiment?
+For one thing, it's running twice as many CPU instructions.
+Why is that?
 
-To try to reduce the number of instructions, instead of reading and writing intermediate values from the array, we can store them in temporary variables.
-Variables with numeric values are easier for the compiler to optimize away compared to reads and writes from an array, where it has to prove the value hasn't changed:
+Without looking at the generated machine code, my theory is that it is all the `result[(i - 1) * 4]` calculations, plus extra reads from the array.
+Now, you might ask why the compiler doesn't notice that the value it is writing in iteration `i` is a value it will immediately read back in iteration `i + 1`.
+Can't it cache that value in a compiler-generated temporary variable, and skip the array reads and corresponding math?
+
+In theory, it probably could.
+In practice, we've told the compiler a write to `result[i * 4]` followed by `i += 1` followed by a read to `result[(i - 1) * 4]`, with a whole bunch of other array reads and writes in the middle.
+This particular version of the compiler may simply not notice the possibility of omitting the extra calculations and extra reads.
+
+To try to reduce the number of instructions, instead of reading back intermediate values from the array, we can explicitly store them in temporary variables.
+This reduces the amount of arithmetic and array reads we're asking the compiler to do, so it should be faster on that account.
+And since the code we're giving the compiler is simpler, it may also enable the compiler to do additional optimizations:
 
 ```{python}
 @jit
 def generate_random_numbers_4(n):
     result = np.empty((n,), dtype=np.uint32)
-    # 😎 Use simple variables to make it faster to access the previous value:
+    # 😎 Use simple variables to make it faster to access the previous value;
+    # no more math, no more array reads:
     random_number1 = uint32(1)
     random_number2 = lcg(lcg(random_number1) + 1)
     random_number3 = lcg(lcg(random_number2) + 1)
@@ -341,7 +362,7 @@ sum2(DATA)
 
 ::: {.callout-note}
 If you were to run the above code with SIMD enabled, the `sum1()` function would actually be faster than `sum2()` when run on `uint64`s.
-That's because the compiler would figure out it can use SIMD in the first case, but not the second, and using SIMD is apparently faster than instruction-level parallelism.
+That's because the compiler would figure out it can use SIMD in the first case, but not the second, and using SIMD is faster than instruction-level parallelism in this case, on my specific computer.
 
 This technique is still worth trying even if SIMD is enabled, as we'll see in an example in a later chapter.
 :::
