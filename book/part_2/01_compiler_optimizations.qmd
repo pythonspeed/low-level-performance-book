@@ -55,11 +55,6 @@ python_manually_hoisted(1_000, 3)
 Now let's switch to compiled code:
 
 ```{python}
-# Disable automatic usage of SIMD so it doesn't distort or hide certain
-# effects; we'll talk about SIMD in later chapters.
-import os
-os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
-
 from numba import jit
 import numpy as np
 
