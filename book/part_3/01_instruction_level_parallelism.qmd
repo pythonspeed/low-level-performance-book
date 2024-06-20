@@ -196,8 +196,14 @@ generate_not_so_random_numbers(1_000_000)
 
 Our performance experiment was informative, but not useful as a random number generator.
 But there are less naive approaches that should preserve the pseudo-randomness, while breaking the data dependency.
-In this case we can do so by interleaving multiple independent calculations that don't share a data dependency.
-This should allow us to do a bunch of the calculation in parallel, while still getting better results:
+
+Instead of having a single random number generator, we're going to have 4, and we're going to interleave their calculations.
+The result will be slightly different, but it's a random number generator, so that's fine.
+
+For other algorithms we might be able to get the same kind of performance improvement by interleaving calculations from different areas of the data.
+For example, in a row-oriented algorithm processing 2D data we could interleave the calculations for multiple rows.
+
+Here's our new version:
 
 ```{python}
 @jit
@@ -266,8 +272,7 @@ And since the code we're giving the compiler is simpler, it may also enable the 
 @jit
 def generate_random_numbers_4(n):
     result = np.empty((n,), dtype=np.uint32)
-    # 😎 Use simple variables to make it faster to access the previous value;
-    # no more math, no more array reads:
+    # 😎 Use simple variables to make it faster to access the previous value:
     random_number1 = uint32(1)
     random_number2 = lcg(lcg(random_number1) + 1)
     random_number3 = lcg(lcg(random_number2) + 1)
@@ -278,6 +283,7 @@ def generate_random_numbers_4(n):
         random_number2 = lcg(random_number2)
         random_number3 = lcg(random_number3)
         random_number4 = lcg(random_number4)
+        # 😎 Less math, no more array reads:
         result[i * 4    ] = random_number1
         result[i * 4 + 1] = random_number2
         result[i * 4 + 2] = random_number3
