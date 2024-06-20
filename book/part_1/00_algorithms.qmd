@@ -150,6 +150,18 @@ To make a function faster, you decorate it with `@numba.jit`.
 The first time you call this function with a set of arguments with specific types, Numba will generate machine code customized for those particular types.
 Subsequent runs will use the pre-compiled version and hopefully run much more quickly.
 
+::: {.callout-important}
+### How to read code examples in this book
+
+In many of the book's chapters I will end up rewriting a function step-by-step in order to speed it up.
+That means some of the code will change, and some will stay the same.
+To make it easier to notice what has changed:
+
+* Scan the code for comments, which I have added anywhere I change the code or where you need to notice an important point.
+* Code without comments should be the same as previous versions of a function.
+* Comments starting with a 😎 indicate a performance speedup.
+:::
+
 ```{python}
 from numba import jit
 
@@ -213,7 +225,8 @@ def linear_filter_python(arr1, arr2):
 
     found_items = 0
 
-    # This scales linearly with the size of arr1, which we're calling `n`:
+    # This for loop continues to scale linearly with the size of arr1, which
+    # we're calling `n`:
     for i in range(len(arr1)):
         item = arr1[i]
         # 😎 Checking if an item is contained in a Python set takes a fixed
