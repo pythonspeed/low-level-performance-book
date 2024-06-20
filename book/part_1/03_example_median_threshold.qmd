@@ -133,11 +133,10 @@ But that's OK, we're just getting started.
 
 I'm going to guess that most of the time in this function is tied to calculating the median.
 How do I know that?
-For one thing, the needs to look at all the neighbors of any given pixel; for a 11×11 neighborhood, that's 121 pixels to look at, which seems like it would be far more expensive than the final thresholding once we find the median.
-For another, the [documentation for `numpy.median()`](https://numpy.org/doc/stable/reference/generated/numpy.median.html) talks about how by default it allocates a new array for every call, and we've already talked about avoiding allocations in the inner loop.
-You can certainly validate my assumption with a profiler.
+For one thing, the median needs to look at all the neighbors of any given pixel; for a 11×11 neighborhood, that's 121 pixels to look at, which seems like it would be far more expensive than the thresholding step.
+With a more complex function I would likely validate my assumption with a profiler, but one could certainly use a profiler in this case as well.
 
-Now, the generic median implementation Numba provides is likely to be fairly generic, since it will need to work in a wide variety of circumstances.
+Now, the median implementation Numba provides is likely to be fairly generic, since it will need to work in a wide variety of circumstances.
 We can hypothesize that it's not optimized for our particular case.
 And even if it is, having our own implementation will allow for a second round of optimization, as we'll see in the next step.
 
@@ -192,10 +191,6 @@ def median_local_threshold2(img, neighborhood_size, offset):
     radius = (neighborhood_size - 1) // 2
     result = np.empty(img.shape, dtype=np.uint8)
 
-    # 😎 A histogram with a bucket for each of the 8-bit values possible in the
-    # image. We allocate this once and reuse it.
-    histogram = np.empty((256,), dtype=np.uint32)
-
     for i in range(img.shape[0]):
         min_y = max(i - radius, 0)
         max_y = min(i + radius + 1, img.shape[0])
@@ -203,8 +198,10 @@ def median_local_threshold2(img, neighborhood_size, offset):
             min_x = max(j - radius, 0)
             max_x = min(j + radius + 1, img.shape[1])
 
-            # Reset the histogram to zero:
-            histogram[:] = 0
+            # A histogram with a bucket for each of the 8-bit values
+            # possible in the image.
+            histogram = np.zeros((256,), dtype=np.uint32)
+
             # Populate the histogram, counting how many of each value are in
             # the neighborhood we're inspecting:
             for neighbor_y in range(min_y, max_y):
