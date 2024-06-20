@@ -128,7 +128,15 @@ $$O(n·m) \implies ImplRuntime(n, m) \propto n·m$$
 
 In the real world, with a specific implementation, things are more complicated, but this simplified model does give us a good sense of an algorithm's scalability.
 
-TODO ADD RECOMMENDATION TO A BOOK ABOUT THE TOPIC
+::: {.callout-tip}
+### Further reading
+
+To learn more about Big-O notation, you can read:
+
+* [Big-O: How Code Slows as Data Grows](https://nedbatchelder.com/text/bigo.html), by Ned Batchelder.
+  There's also a video talk version linked from the article.
+* [_Grokking Algorithms, 2nd Edition_](https://www.manning.com/books/grokking-algorithms-second-edition) by Aditya Y Bhargava.
+:::
 
 ## A faster language won't make an algorithm scale
 
