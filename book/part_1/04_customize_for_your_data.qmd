@@ -101,13 +101,13 @@ def approximate_histogram_median(img):
     for y in range(img.shape[0]):
         for x in range(img.shape[1]):
             value = img[y, x]
-            # Convert the 0-255 value into one of 32 buckets:
+            # Convert the 0-255 value into one of 64 buckets:
             histogram[value // 4] += 1
 
-    half_neighborhood_size = img.shape[0] * img.shape[1] // 2
+    visited_pixels = img.shape[0] * img.shape[1] // 2
     for l in range(64):
-        half_neighborhood_size -= histogram[l]
-        if half_neighborhood_size < 0:
+        visited_pixels -= histogram[l]
+        if visited_pixels < 0:
             break
 
     # Convert back to 0-255 range:
@@ -158,6 +158,32 @@ median_local_threshold2(IMAGE, 11, 13)
 median_local_threshold2_approximate(IMAGE, 11, 13)
 ```
 
-Is this optimization worth it?
-I'd say yes; and it can also be used together with the additional optimizations in the previous chapter.
-For a different kind of image, however, it's possible this optimization would result in worse quality.
+## Fine-tune parameters to maximize performance
+
+In addition to tweaking our algorithm, we can also tweak parameters.
+For example, we can use a smaller neighborhood size:
+
+```{python}
+NUMBA_RESULT3 = median_local_threshold2_approximate(IMAGE, 9, 13)
+```
+
+Here's the resulting image:
+
+```{python}
+#| echo: false
+%display_image NUMBA_RESULT3
+```
+
+This may be slightly worse for some letters, like the "e" in "values", but it's not that different.
+And it gives us another small speed-up:
+
+```{python}
+#| echo: false
+%%compare_timing
+median_local_threshold2_approximate(IMAGE, 11, 13)
+median_local_threshold2_approximate(IMAGE, 9, 13)
+```
+
+Are these optimizations worth it?
+In this case I'd say yes.
+Whether they'd be worth it for other images depends very much on the specific images and on the specific requirements for the algorithm.
