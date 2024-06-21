@@ -59,7 +59,7 @@ def skimage_median_local_threshold(img, neighborhood_size, offset):
 # The neighborhood size and offset value were determined "empirically", i.e.
 # they're manually tuning the algorithm to work well with our specific example
 # image.
-SKIMAGE_RESULT = skimage_median_local_threshold(IMAGE, 11, 10)
+SKIMAGE_RESULT = skimage_median_local_threshold(IMAGE, 11, 13)
 ```
 
 And here's what the results look like:
@@ -107,7 +107,7 @@ def median_local_threshold1(img, neighborhood_size, offset):
                 result[i, j] = 0
     return result
 
-NUMBA_RESULT1 = median_local_threshold1(IMAGE, 11, 10)
+NUMBA_RESULT1 = median_local_threshold1(IMAGE, 11, 13)
 ```
 
 Here's the resulting image; it looks similar enough that for our purposes:
@@ -122,8 +122,8 @@ Now we can compare the performance of the two implementations:
 ```{python}
 #| echo: false
 %%compare_timing
-skimage_median_local_threshold(IMAGE, 11, 10)
-median_local_threshold1(IMAGE, 11, 10)
+skimage_median_local_threshold(IMAGE, 11, 13)
+median_local_threshold1(IMAGE, 11, 13)
 ```
 
 It's slower.
@@ -234,7 +234,7 @@ def median_local_threshold2(img, neighborhood_size, offset):
                 result[i, j] = 0
     return result
 
-NUMBA_RESULT2 = median_local_threshold2(IMAGE, 11, 10)
+NUMBA_RESULT2 = median_local_threshold2(IMAGE, 11, 13)
 ```
 
 Here's the resulting image:
@@ -249,8 +249,8 @@ And here's the performance of our new implementation:
 ```{python}
 #| echo: false
 %%compare_timing
-median_local_threshold1(IMAGE, 11, 10)
-median_local_threshold2(IMAGE, 11, 10)
+median_local_threshold1(IMAGE, 11, 13)
+median_local_threshold2(IMAGE, 11, 13)
 ```
 
 That's faster!
@@ -268,10 +268,10 @@ The larger the neighborhood, the more of a speed benefit we get from the histogr
 ```{python}
 #| echo: false
 %%compare_timing
-median_local_threshold1(IMAGE, 3, 10)
-median_local_threshold1(IMAGE, 21, 10)
-median_local_threshold2(IMAGE, 3, 10)
-median_local_threshold2(IMAGE, 21, 10)
+median_local_threshold1(IMAGE, 3, 13)
+median_local_threshold1(IMAGE, 21, 13)
+median_local_threshold2(IMAGE, 3, 13)
+median_local_threshold2(IMAGE, 21, 13)
 ```
 
 And we can also compare the edge cases of completely black and completely white images:
@@ -289,10 +289,10 @@ And in fact when run on a completely white image, our new algorithm is slightly 
 ```{python}
 #| echo: false
 %%compare_timing
-median_local_threshold1(BLACK_IMAGE, 11, 10)
-median_local_threshold1(WHITE_IMAGE, 11, 10)
-median_local_threshold2(BLACK_IMAGE, 11, 10)
-median_local_threshold2(WHITE_IMAGE, 11, 10)
+median_local_threshold1(BLACK_IMAGE, 11, 13)
+median_local_threshold1(WHITE_IMAGE, 11, 13)
+median_local_threshold2(BLACK_IMAGE, 11, 13)
+median_local_threshold2(WHITE_IMAGE, 11, 13)
 ```
 
 Given we're not done optimizing, that's something we can live with.
@@ -391,7 +391,7 @@ def median_local_threshold3(img, neighborhood_size, offset):
                 result[i, j] = 0
     return result
 
-NUMBA_RESULT3 = median_local_threshold3(IMAGE, 11, 10)
+NUMBA_RESULT3 = median_local_threshold3(IMAGE, 11, 13)
 ```
 
 Notice that we've lost some of the abstraction we had in `median_local_threshold2()`.
@@ -410,8 +410,8 @@ And here's the performance of our latest code:
 ```{python}
 #| echo: false
 %%compare_timing
-median_local_threshold2(IMAGE, 11, 10)
-median_local_threshold3(IMAGE, 11, 10)
+median_local_threshold2(IMAGE, 11, 13)
+median_local_threshold3(IMAGE, 11, 13)
 ```
 
 ## Use adapative heuristics to take advantage of patterns in your data
@@ -479,7 +479,7 @@ def median_local_threshold4(img, neighborhood_size, offset):
                 result[i, j] = 0
     return result
 
-NUMBA_RESULT4 = median_local_threshold4(IMAGE, 11, 10)
+NUMBA_RESULT4 = median_local_threshold4(IMAGE, 11, 13)
 ```
 
 ```{python}
@@ -493,8 +493,8 @@ Since the heuristic is tied to the image contents, the performance impact will d
 ```{python}
 #| echo: false
 %%compare_timing
-median_local_threshold3(IMAGE, 11, 10)
-median_local_threshold4(IMAGE, 11, 10)
+median_local_threshold3(IMAGE, 11, 13)
+median_local_threshold4(IMAGE, 11, 13)
 ```
 
 ## The big picture
@@ -505,11 +505,11 @@ Here's a performance comparison of all the versions of the code:
 #| echo: false
 %%compare_timing
 
-skimage_median_local_threshold(IMAGE, 11, 10)
-median_local_threshold1(IMAGE, 11, 10)
-median_local_threshold2(IMAGE, 11, 10)
-median_local_threshold3(IMAGE, 11, 10)
-median_local_threshold4(IMAGE, 11, 10)
+skimage_median_local_threshold(IMAGE, 11, 13)
+median_local_threshold1(IMAGE, 11, 13)
+median_local_threshold2(IMAGE, 11, 13)
+median_local_threshold3(IMAGE, 11, 13)
+median_local_threshold4(IMAGE, 11, 13)
 ```
 
 Let's go over the steps we went through:
