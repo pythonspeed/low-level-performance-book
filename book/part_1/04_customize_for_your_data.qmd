@@ -12,12 +12,10 @@ In many cases, a performance optimization that changes results slightly may be a
 
 A generic library like NumPy can't make this decision for you, so once again this will require us to implement our own function.
 
-## Example: Medians once again
+## Example: Back to median-filter local thresholding
 
-Let's look at some example data from the realm of public transportation: bus "headways", the time between the arrival of the previous and the next bus.
-Headways need to be as low as possible so that passengers can rely on the bus: if the bus arrives every 5 minutes that's a lot better than the bus arriving every 10 minutes.
-
-Our goal is to compute the median headway experienced by passengers on my local transit authority's buses:
+Let's return to the example in the previous chapter, looking at an intermediate step for clarity.
+We implemented a histogram-based median as a optimization of Numba's generic median implementation:
 
 ```{python}
 #| echo: false
@@ -25,147 +23,141 @@ Our goal is to compute the median headway experienced by passengers on my local 
 ```
 
 ```{python}
-# Import the dependencies we'll need:
+from skimage.data import page
 import numpy as np
 from numba import jit
-import pandas as pd
 
-BUS_HEADWAYS = pd.read_parquet(
-    "../data/MBTA-bus-2022-05.parquet",
-    columns=["headway"]
-)["headway"].dropna().values
+IMAGE = page()
 
-print("Size:", len(BUS_HEADWAYS))
-print("dtype:", BUS_HEADWAYS.dtype)
+
+@jit
+def histogram_median(img):
+    histogram = np.zeros((256,), dtype=np.uint32)
+
+    for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
+            value = img[y, x]
+            histogram[value] += 1
+
+    half_neighborhood_size = img.shape[0] * img.shape[1] // 2
+    for l in range(256):
+        half_neighborhood_size -= histogram[l]
+        if half_neighborhood_size < 0:
+            break
+    return l
+
+
+@jit
+def median_local_threshold2(img, neighborhood_size, offset):
+    assert neighborhood_size % 2 == 1
+    radius = (neighborhood_size - 1) // 2
+    result = np.empty(img.shape, dtype=np.uint8)
+
+    for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
+        for j in range(img.shape[1]):
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+
+            neighborhood = img[min_y:max_y, min_x:max_x]
+            median = histogram_median(neighborhood)
+
+            if img[i, j] > median - offset:
+                result[i, j] = 255
+            else:
+                result[i, j] = 0
+    return result
+
+NUMBA_RESULT = median_local_threshold2(IMAGE, 11, 13)
 ```
 
-NumPy has built-in support for calculating the median, so we could use that:
+Here's the resulting image:
 
 ```{python}
-print("Median (seconds):", np.median(BUS_HEADWAYS))
+#| echo: false
+%display_image NUMBA_RESULT
 ```
 
-## Inspect the data to get a sense of how you can optimize your algorithm
+## Reduce your algorithm's precision
 
-We've already seen we can use a histogram to calculate a median, but will that work here?
-Let's look at the data:
+This algorithm is a bit of a hack:
 
-```{python}
-print("Min value (seconds):", int(BUS_HEADWAYS.min()))
-print("Max value (seconds):", int(BUS_HEADWAYS.max()))
-print(
-    "99.9th percentile (seconds):",
-    int(np.quantile(BUS_HEADWAYS, 0.999))
-)
-```
+* It uses magic constants: the neighborhood size and the offset.
+* While a median is a reasonable way to choose a threshold, there are others.
+* The way we're judging the results is just by looking at the image and deciding if it's good enough.
 
-If we have were to have a bucket for every potential value, as we did in the previous chapter, we'd need 75,000 buckets.
-Creating a histogram and finding the median with that many buckets will likely be a lot slower, since we'll need to do a lot more addition to find the median.
+So if we change the results slightly, as long as we still think the results look OK, that's perfectly fine.
 
-But there's an additional problem: in the previous chapter, we knew values were limited to whatever fits in a `uint8`, i.e. 0 to 255.
-So we knew we only needed 256 buckets.
-In this case... it's a bit hard to tell. We'd probably want 100,000 buckets, just to be safe.
-
-Let's try that, then:
+So let's change the histogram algorithm to use 64 buckets instead of 256.
+That should speed up the threshold calculation, and while as a _median_ calculation it will be less accurate, as a _threshold_ calculation it may still be sufficient.
 
 ```{python}
 @jit
-def histogram_median(bus_headways):
-    histogram = np.zeros((100_000,), dtype=np.uint32)
-    for headway in bus_headways:
-        histogram[int(headway)] += 1
+def approximate_histogram_median(img):
+    # 😎 Use a smaller number of buckets:
+    histogram = np.zeros((64,), dtype=np.uint32)
 
-    # Now that we know how many samples there are for every quarter minute
-    # index, add up the cumulative counts until we hit 50% of values:
-    median_location = len(bus_headways) / 2
-    cumulative_samples = 0
-    median = 0
-    for i in range(len(histogram)):
-        cumulative_samples += histogram[i]
-        if cumulative_samples >= median_location:
-            median = i
+    for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
+            value = img[y, x]
+            # Convert the 0-255 value into one of 32 buckets:
+            histogram[value // 4] += 1
+
+    half_neighborhood_size = img.shape[0] * img.shape[1] // 2
+    for l in range(64):
+        half_neighborhood_size -= histogram[l]
+        if half_neighborhood_size < 0:
             break
 
-    return median
+    # Convert back to 0-255 range:
+    return l * 4
+
+
+@jit
+def median_local_threshold2_approximate(img, neighborhood_size, offset):
+    assert neighborhood_size % 2 == 1
+    radius = (neighborhood_size - 1) // 2
+    result = np.empty(img.shape, dtype=np.uint8)
+
+    for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
+        for j in range(img.shape[1]):
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+
+            neighborhood = img[min_y:max_y, min_x:max_x]
+
+            # 😎 Use a slightly less accurate median implementation:
+            median = approximate_histogram_median(neighborhood)
+
+            if img[i, j] > median - offset:
+                result[i, j] = 255
+            else:
+                result[i, j] = 0
+    return result
+
+NUMBA_RESULT2 = median_local_threshold2_approximate(IMAGE, 11, 13)
 ```
 
-We can compare our algorithm to the built-in NumPy `np.median()`:
+Here's the resulting image:
 
 ```{python}
-print("Median:", np.median(BUS_HEADWAYS), "secs")
-print("Histogram median:", histogram_median(BUS_HEADWAYS), "secs")
+#| echo: false
+%display_image NUMBA_RESULT2
 ```
 
-And we can compare the run time of the two:
+It is very slightly different than the previous image, but not in a meaningful way.
+And here's the performance of our new implementation:
 
 ```{python}
 #| echo: false
 %%compare_timing
-np.median(BUS_HEADWAYS)
-histogram_median(BUS_HEADWAYS)
+median_local_threshold2(IMAGE, 11, 13)
+median_local_threshold2_approximate(IMAGE, 11, 13)
 ```
 
-## A lossy algorithm may suffice if it's losing unimportant information
-
-But maybe we can get away with a small number of buckets anyway.
-Given the above data range, and an understanding of the problem domain, we can build a histogram-based median algorithm using two reasonable assumptions:
-
-**Super-long headways don't have to be very accurate** As we can see above, 99.9% of headways are less than 68 minutes (4067 seconds).
-And from a passenger experience perspective, the impact of headways is much more meaningful for frequent buses.
-For example, a change from a 5-minute to a 15-minute headway can have a major negative impact on the usefulness of a bus route.
-On the other hand, a bus route that runs every 2 hours is almost as awful as a bus that runs every 3 hours.
-
-**Reducing accuracy to 15 seconds is reasonable:** The data we have is at a 1-second resolution, but it's unlikely that a headway of 67 seconds really make a difference versus a headway of 66 seconds.
-Plus, the arrival and departure of a bus at a stop takes a few seconds, and it's doubtful that the timing data is actually as accurate as it is precise.
-
-Using these two constraints, we can write the following code:
-
-```{python}
-@jit
-def lossy_histogram_median(bus_headways):
-    # Histogram by number of quarter-minutes (15 seconds), with a maximum of
-    # 500 × 15 = 7,500 seconds.
-    by_quarter_minutes = np.zeros((500,), dtype=np.uint32)
-    for headway in bus_headways:
-        headway = int(headway)
-        number_quarter_minutes = np.uint16(headway / 15)
-        # If the data is too large, use the highest bucket. Since 7500 is
-        # higher than the 99.9th percentile value, we're underestimating less
-        # than 0.1% of the data.
-        by_quarter_minutes[min(number_quarter_minutes, 499)] += 1
-
-    # Now that we know how many samples there are for every quarter minute
-    # index, add up the cumulative counts until we hit 50% of values:
-    median_location = len(bus_headways) / 2
-    cumulative_samples = 0
-    median = 0
-    for i in range(len(by_quarter_minutes)):
-        cumulative_samples += by_quarter_minutes[i]
-        if cumulative_samples >= median_location:
-            median = i
-            break
-
-    # Convert back to seconds:
-    return median * 15.0
-```
-
-We can compare our algorithm to the built-in NumPy `np.median()`, and see that the results are pretty close.
-This is partially luck, but even in the worst case we won't be off by more than half a minute:
-
-```{python}
-print("Median:", np.median(BUS_HEADWAYS), "secs")
-print("Approximate median:", lossy_histogram_median(BUS_HEADWAYS), "secs")
-```
-
-And if we compare the run time of the two, our custom algorithm is much faster:
-
-```{python}
-#| echo: false
-%%compare_timing
-np.median(BUS_HEADWAYS)
-lossy_histogram_median(BUS_HEADWAYS)
-```
-
-Our new algorithm wouldn't work with generic inputs: it makes many assumptions about the distribution and range of the data.
-And the result it gives are less accurate than a normal median calculation.
-But for this _specific_ situation and data, it's good enough—and much faster than a general purpose algorithm.
+Is this optimization worth it?
+I'd say yes; and it can also be used together with the additional optimizations in the previous chapter.
+For a different kind of image, however, it's possible this optimization would result in worse quality.
