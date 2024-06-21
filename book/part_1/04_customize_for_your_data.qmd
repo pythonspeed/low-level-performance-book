@@ -1,7 +1,7 @@
 # Trade precision and/or accuracy for speed
 
 In our previous chapter we aimed to do the same calculation, with the same results, only faster.
-Another potential optimization—thought not the only one—is relaxing the precision or even accuracy of your code.
+Another potential optimization tied to the specifics of your particular data is relaxing the precision or even accuracy of your code.
 In many cases, a performance optimization that changes results slightly may be acceptable and even desirable:
 
 * The results you're calculating may be more "precise" than the error caused by your input data.
@@ -9,6 +9,8 @@ In many cases, a performance optimization that changes results slightly may be a
   A generic library has no way of knowing what level of precision is acceptable, so it can't make this sort of compromise.
 * In other cases, less accurate results may also be acceptable.
   For example, the monetary cost of inaccuracy may be much lower than the monetary cost savings from a faster run time.
+
+A generic library like NumPy can't make this decision for you, so once again this will require us to implement our own function.
 
 ## Example: Medians once again
 
@@ -43,7 +45,7 @@ NumPy has built-in support for calculating the median, so we could use that:
 print("Median (seconds):", np.median(BUS_HEADWAYS))
 ```
 
-## A lossy algorithm may suffice if it's losing unimportant information
+## Inspect the data to get a sense of how you can optimize your algorithm
 
 We've already seen we can use a histogram to calculate a median, but will that work here?
 Let's look at the data:
@@ -57,8 +59,53 @@ print(
 )
 ```
 
-Given that range of values, we're not going to be able to use a small number of buckets if we have a bucket for each value.
-And using a very large number of buckets will potentially be a lot slower, since we'll need to do a lot more addition to find the median.
+If we have were to have a bucket for every potential value, as we did in the previous chapter, we'd need 75,000 buckets.
+Creating a histogram and finding the median with that many buckets will likely be a lot slower, since we'll need to do a lot more addition to find the median.
+
+But there's an additional problem: in the previous chapter, we knew values were limited to whatever fits in a `uint8`, i.e. 0 to 255.
+So we knew we only needed 256 buckets.
+In this case... it's a bit hard to tell. We'd probably want 100,000 buckets, just to be safe.
+
+Let's try that, then:
+
+```{python}
+@jit
+def histogram_median(bus_headways):
+    histogram = np.zeros((100_000,), dtype=np.uint32)
+    for headway in bus_headways:
+        histogram[int(headway)] += 1
+
+    # Now that we know how many samples there are for every quarter minute
+    # index, add up the cumulative counts until we hit 50% of values:
+    median_location = len(bus_headways) / 2
+    cumulative_samples = 0
+    median = 0
+    for i in range(len(histogram)):
+        cumulative_samples += histogram[i]
+        if cumulative_samples >= median_location:
+            median = i
+            break
+
+    return median
+```
+
+We can compare our algorithm to the built-in NumPy `np.median()`:
+
+```{python}
+print("Median:", np.median(BUS_HEADWAYS), "secs")
+print("Histogram median:", histogram_median(BUS_HEADWAYS), "secs")
+```
+
+And we can compare the run time of the two:
+
+```{python}
+#| echo: false
+%%compare_timing
+np.median(BUS_HEADWAYS)
+histogram_median(BUS_HEADWAYS)
+```
+
+## A lossy algorithm may suffice if it's losing unimportant information
 
 But maybe we can get away with a small number of buckets anyway.
 Given the above data range, and an understanding of the problem domain, we can build a histogram-based median algorithm using two reasonable assumptions:
@@ -75,11 +122,12 @@ Using these two constraints, we can write the following code:
 
 ```{python}
 @jit
-def histogram_median(bus_headways):
+def lossy_histogram_median(bus_headways):
     # Histogram by number of quarter-minutes (15 seconds), with a maximum of
     # 500 × 15 = 7,500 seconds.
     by_quarter_minutes = np.zeros((500,), dtype=np.uint32)
     for headway in bus_headways:
+        headway = int(headway)
         number_quarter_minutes = np.uint16(headway / 15)
         # If the data is too large, use the highest bucket. Since 7500 is
         # higher than the 99.9th percentile value, we're underestimating less
@@ -106,7 +154,7 @@ This is partially luck, but even in the worst case we won't be off by more than 
 
 ```{python}
 print("Median:", np.median(BUS_HEADWAYS), "secs")
-print("Approximate median:", histogram_median(BUS_HEADWAYS), "secs")
+print("Approximate median:", lossy_histogram_median(BUS_HEADWAYS), "secs")
 ```
 
 And if we compare the run time of the two, our custom algorithm is much faster:
@@ -115,7 +163,7 @@ And if we compare the run time of the two, our custom algorithm is much faster:
 #| echo: false
 %%compare_timing
 np.median(BUS_HEADWAYS)
-histogram_median(BUS_HEADWAYS)
+lossy_histogram_median(BUS_HEADWAYS)
 ```
 
 Our new algorithm wouldn't work with generic inputs: it makes many assumptions about the distribution and range of the data.
