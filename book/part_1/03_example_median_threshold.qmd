@@ -186,6 +186,30 @@ Let's reimplement our local thresholding algorithm using a histogram-based media
 
 ```{python}
 @jit
+def histogram_median(img):
+    # A histogram with a bucket for each of the 8-bit values
+    # possible in the image.
+    histogram = np.zeros((256,), dtype=np.uint32)
+
+    # Populate the histogram, counting how many of each value are in
+    # the neighborhood we're inspecting:
+    for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
+            value = img[y, x]
+            histogram[value] += 1
+
+    # Use the histogram to find the median; keep adding buckets until
+    # we've hit 50% of the pixels. The corresponding bucket is the
+    # median.
+    half_neighborhood_size = img.shape[0] * img.shape[1] // 2
+    for l in range(256):
+        half_neighborhood_size -= histogram[l]
+        if half_neighborhood_size < 0:
+            break
+    return l
+
+
+@jit
 def median_local_threshold2(img, neighborhood_size, offset):
     assert neighborhood_size % 2 == 1
     radius = (neighborhood_size - 1) // 2
@@ -198,26 +222,11 @@ def median_local_threshold2(img, neighborhood_size, offset):
             min_x = max(j - radius, 0)
             max_x = min(j + radius + 1, img.shape[1])
 
-            # A histogram with a bucket for each of the 8-bit values
-            # possible in the image.
-            histogram = np.zeros((256,), dtype=np.uint32)
+            # Get the neighborhood of the pixel:
+            neighborhood = img[min_y:max_y, min_x:max_x]
 
-            # Populate the histogram, counting how many of each value are in
-            # the neighborhood we're inspecting:
-            for neighbor_y in range(min_y, max_y):
-                for neighbor_x in range(min_x, max_x):
-                    value = img[neighbor_y, neighbor_x]
-                    histogram[value] += 1
-
-            # Use the histogram to find the median; keep adding buckets until
-            # we've hit 50% of the pixels. The corresponding bucket is the
-            # median.
-            half_neighborhood_size = (max_y - min_y) * (max_x - min_x) // 2
-            for l in range(256):
-                half_neighborhood_size -= histogram[l]
-                if half_neighborhood_size < 0:
-                    break
-            median = l
+            # Calculate its median:
+            median = histogram_median(neighborhood)
 
             if img[i, j] > median - offset:
                 result[i, j] = 255
@@ -375,6 +384,7 @@ def median_local_threshold3(img, neighborhood_size, offset):
                 if half_neighborhood_size < 0:
                     break
             median = l
+
             if img[i, j] > median - offset:
                 result[i, j] = 255
             else:
@@ -383,6 +393,10 @@ def median_local_threshold3(img, neighborhood_size, offset):
 
 NUMBA_RESULT3 = median_local_threshold3(IMAGE, 11, 10)
 ```
+
+Notice that we've lost some of the abstraction we had in `median_local_threshold2()`.
+Rather than a separate, reusable histogram-based median function, the median calculation is now completely tied to the higher-level algorithm.
+Improving performance sometimes involves removing abstractions, so that we can tune implementation details specifically to our use case.
 
 Here's the resulting image:
 
