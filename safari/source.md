@@ -1,6 +1,7 @@
 ## Scientific computing
 https://scientificcomputing.rs/
 https://www.reddit.com/r/rust/comments/15i9jn2/hpc_rust_resources_to_learn/
+https://www.reddit.com/r/rust/comments/1dtovnm/comment/lbax729/ points to https://grayscott-with-rust-grasland-5e6591fc7054976525da4f6c87122ea76c.pages.in2p3.fr/08-victor.html
 
 ## Numpy
 https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29 DONE
@@ -129,3 +130,4 @@ https://dora.carsmos.ai/blog/rust-python/ - covers tracing/opentelemetry, among 
 
 ## General
 https://www.reddit.com/r/rust/comments/18br7d0/best_way_to_learn_how_to_write_blazing_fast_code/
+
