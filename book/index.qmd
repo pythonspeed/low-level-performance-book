@@ -15,8 +15,9 @@ In particular, in most of this book I'm assuming that:
 2. You've discovered the bottleneck is computation, i.e. the amount of CPU time the code uses.
    If the bottleneck was something else, like network latency, this book won't help.
 
-I'll be covering these last two in the end of the book; if you're not familiar with the process, you may wish to [start by reading that section first](jump to the last part of the book).
-So assuming your bottleneck is computation, how do you speed it up?
+I'll be covering this bigger picture at the end of the book; if you're not familiar with the process, you may wish to [start by reading that section first](part_9/01_when.qmd), and then return to the beginning of the book.
+
+Assuming your performance bottleneck is computation, how do you speed it up?
 
 ## Speeding up Python-based data processing computation
 
@@ -27,28 +28,29 @@ There are many pre-existing compiled extensions available as free libraries: Num
 If those libraries are fast enough for you, no need to read the rest of this book!
 
 Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
-In that case, you will need to write your own code in a low-level language.
-And if that isn't sufficient, the next common advice you'll get is to switch to using parallelism.
+In that case, the common advice you will get is:
+
+1. Re-write your code in a compiled language.
+2. Then, take advantage of parallelism, using multiple CPU cores.
 
 ## The missing step: optimization
 
-There's a missing step in this process, though.
-A better plan is as follows:
+There's a key step missing in the middle of this process, a step that is the main focus of this book.
+Here's a better plan for speeding up your code:
 
-1. Re-write your code in compiled language.
+1. Re-write your code in a compiled language.
 2. **Optimize your code.**
-   This is the main focus of this book.
-3. If it's still necessary, take advantage of parallelism, using multiple CPUs or multiple machines.
+3. Then, take advantage of parallelism, using multiple CPU cores.
 
 Why not jump straight to parallelism?
 
 Imagine you've done step 1, and you still need to make your code 100× faster.
-That means that if you're going to rely on optimism, you will need to use 100 CPU cores, which can be very expensive, whether you're running in the cloud or buying a local machine.
+If you're going to rely on parallelism, you will need to use 100 CPU cores, which can be very expensive, whether you're running in the cloud or buying a local machine.
 You might also need to switch to a solution that involves multiple machines, which makes your software that much more complex.
 
-If, however, you can optimize your code first and make it 10× faster, you only need to use 10 cores to reach that final 100× speedup.
+If, however, you can optimize your code first and make it 10× faster, you only need to use 10 CPU cores to reach that final 100× speedup.
 That means you've dropped the financial cost of computing by 90%.
-It also means you can stick to running on a single machine, making your life much easier.
+It also means you can stick to running on a single machine, which means much simpler software.
 
 ## Reading the book
 
