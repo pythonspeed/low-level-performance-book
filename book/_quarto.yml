@@ -2,7 +2,7 @@ project:
   type: book
 
 book:
-  title: "Faster compile code for data scientists"
+  title: "Faster than Python: optimizing compiled code"
   author: "Itamar Turner-Trauring"
   date: "1/1/2024"
   chapters:
