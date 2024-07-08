@@ -7,14 +7,15 @@ Instead, this book is specifically written for scientists, data scientists, and 
 Even with that limited focus, there are still many potential reasons your software might be slow.
 Your bottleneck might be computation, or network latency, or disk bandwidth.
 Once again, this book won't cover all of these.
-This book focuses on one particular, common subset of the performance problem: computation.
+This book focuses on one particular subset of the performance problem: computation.
 
-In particular, I'm assuming that:
+In particular, in most of this book I'm assuming that:
 
 1. You've already profiled your code to find the key bottleneck.
 2. You've discovered the bottleneck is computation, i.e. the amount of CPU time the code uses.
    If the bottleneck was something else, like network latency, this book won't help.
 
+I'll be covering these last two in the end of the book; if you're not familiar with the process, you may wish to [start by reading that section first](jump to the last part of the book).
 So assuming your bottleneck is computation, how do you speed it up?
 
 ## Speeding up Python-based data processing computation

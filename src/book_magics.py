@@ -12,7 +12,8 @@ from IPython.core.magic import (
     needs_local_scope,
 )
 from IPython.core.magic_arguments import argument, magic_arguments, parse_argstring
-from IPython.display import display, Markdown, Image, HTML
+from IPython.display import display, Markdown, Image
+from IPython.core import page as ipython_page
 from pytablewriter import MarkdownTableWriter
 from pytablewriter.style import Style
 import numpy as np
@@ -24,6 +25,10 @@ from numba import config as numba_config
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
 HELP_THIS_BOOK = os.getenv("HELP_THIS_BOOK") == "1"
+
+
+# Workaround for https://github.com/quarto-dev/quarto-cli/issues/10248
+ipython_page.page = lambda text: display(Markdown(f"```\n{text}\n```"))
 
 
 def ns_per_iteration(line, globals):

@@ -7,3 +7,4 @@ benchit
 py-perf-event
 pandas
 pyarrow
+line_profiler

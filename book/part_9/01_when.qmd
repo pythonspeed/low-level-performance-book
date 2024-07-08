@@ -1,51 +1,96 @@
-# When is a low-level compiled language useful?
+# Identify the bottleneck in your code before you optimize it
 
-So far we've been focusing on how building a mental model of how to write faster compiled code.
-Starting with this chapter we'll focus on applying this knowledge in practice, for real code that needs to be optimized.
-
-To begin with, just because your code is slow to run doesn't mean rewriting in a low-level compiled language is the way to speed it up.
-In many cases that rewrite will be a waste of your time, with little or no benefit.
-So before going down that route—the topic of the rest of this book—it's important to understand that other bottlenecks exist, and some hints on how to identify when rewriting your code is actually necessary.
+In most of this book we focus on optimizing code, especially compiled code.
+But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in optimizing computation.
+So before start optimizing your code—the topic of the rest of this book—it's important to understand that other bottlenecks exist, and to do the work to identify which specific bottleneck is impacting your code.
 
 ```{python}
 #| echo: false
 %load_ext book_magics
 ```
 
-## Identifying bottlenecks with a profiler
+## Identify bottlenecks with a profiler
 
 The starting point to optimizing your code is figuring out why it's slow.
-By using one of the many performance profilers for Python—cProfile, PySpy, Austin, PyInstrument, VizTracer, and many more—you can identify which parts of your code are taking the most time.
-If you've never used a profiler before, running [`line_profiler`](https://pypi.org/project/line-profiler/) on a function is probably the easiest one to get started with profiling.
+By using one of the many performance profilers for Python—Scalene, Py-Spy, Austin, PyInstrument, VizTracer, and many more—you can identify which parts of your code are taking the most time.
 
-Some profilers—like the [Sciagraph profiler](https://sciagraph.com) I created—can tell you whether that code was spending it's time waiting or doing computation.
-In other cases you'll need to figure it out from context: if you're spending all your time reading from a file or waiting for a result from PostgreSQL, that's probably not going to be solved by faster computation!x
+The following example code matches the basic high-level structure of many data processing programs:
 
-## Non-computational performance bottlenecks
+```{python}
+import pandas as pd
 
-If your code is just waiting, rewriting it in a lower-level compiled language is unlikely to help.
-Here are just some of the reasons your code might just sit around doing nothing.
+def read_data():
+    # Birth name and date for people born in Missouri between 1980 and 1989:
+    return pd.read_csv(
+        "https://archive.org/download/Missouri_Birth_Index_-_1980-1989/Reclaim_The_Records_-_Missouri_Birth_Index_-_1980-1989.csv"
+    )
+
+def process_data(input_df):
+    # Return the distribution of the first letter of the first name:
+    first_letter = input_df["FIRST NAME"].dropna().apply(
+        lambda s: s[0]
+    )
+    return first_letter.value_counts()
+
+def generate_report(output):
+    output.to_csv("result.csv")
+
+def full_pipeline():
+    input_df = read_data()
+    result = process_data(input_df)
+    generate_report(result)
+```
+
+We can then profile our top-level function to see where it's spending the most time.
+We'll use [`line_profiler`](https://pypi.org/project/line-profiler/) to profile our code, as it's probably the simplest profiler you can use:
+
+```{python}
+%load_ext line_profiler
+%lprun -f full_pipeline full_pipeline()
+```
+
+As you can see, reading in the CSV is the main bottleneck, using up 99% of the time.
+This time will be some combination of bandwidth (downloading the file) and computation (parsing the CSV).
+Some profilers—like the [Sciagraph profiler](https://sciagraph.com) I created—can tell you whether code was spending it's time waiting or doing computation.
+Lacking that information, you'll need to figure this out from some combination of context, detailed profiling, and experiments.
+In any case, the fact that loading the data uses the vast majority of the time means there is no point in trying to optimize `process_data()`, at least for now.
+If we wanted faster results, we'd need to figure out a faster way to load the data.
+
+Keep in mind that profilers can distort the results somewhat, so low overhead is an important feature in a profiler.
+For this sort of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
+
+## Keep in mind non-computational performance bottlenecks
+
+As is the case in the example above, computation isn't always your code's main bottleneck.
+Here are some examples of reasons your code might be slow that have nothing to do with how fast your code is:
 
 ### Waiting for a remote service
 
-In many web applications, the database is the key performance bottleneck in the backend.
-To speed things up, you'll need to optimize the query, add an index, tune the database, and so on.
+Imagine your program processes the result of a database query.
+If that database query takes 10 minutes and your processing takes 1 minute, there's no point in optimizing your processing code.
+Instead, you should be focusing your efforts on figuring on speeding up the database query.
 
 ### Network latency and bandwidth
 
-Your program may end up spending much of its time reading and writing over the network.
+Your program may end up spending much of its time reading and writing data over the network.
 This can be due to bandwidth limitations: you can download at 10MB/sec, and you're downloading a 5000MB file.
 
 Or, the bottleneck may be due to latency, the time it takes to send a message to the remote server.
-Imagine you're downloading 100,000 files of 1KB each, sequentially.
-If the latency of a download, the time to get a response, is 1 milliseconds, it will take you 100 seconds to download all the files.
-The bandwidth you use will only be 1MB/second.
-If your maximum download speed is 100MB/sec, switching to one giant download will allow you to download the file in 1 second, 100× faster.
+Imagine a network where it takes 10 milliseconds to send and then get a response from a server, and your bandwidth maxes out at 100MB/second.
+You want to download 100,000 files of 1KB each.
+
+* If you're downloading these files sequentially, one by one, and the latency of network messages is 10 milliseconds, it will take you 1,000 seconds to download all the files.
+  As a result, the bandwidth you use will only be 0.1MB/second.
+* If you can send a single request to download all 100,000 at once, network latency becomes irrelevant, and bandwidth becomes the bottleneck.
+  That means you will download the file at 100MB/second, in only 1 second: that's 1000× faster!
 
 ### Reading and writing from disk
 
-Like the network, reading and writing from disk can suffer both from slowness caused by both bandwidth and latency.
-The bandwidth from a local disk can be quite higher, and the access speed is much faster so latency is lower, but this can still be a bottleneck.
+Like the network, reading and writing from disk can suffer from slowness caused by both bandwidth and latency.
+Spinning hard drives have very high latency.
+More modern SSDs and NVMe disks have very high bandwidth and low latency, so they cause less performance problems.
+Nonetheless, bottlenecks can still be caused by reading large amounts of data or using bad access patterns.
+Compressing the data on disk can help reduce bandwidth issues, by reducing how much data you need to read.
 
 ### Swapping
 
@@ -54,18 +99,16 @@ For example, your computer may have 64GB of RAM (i.e. memory), but you have 120G
 
 In these situations, the operating system will move some memory out of RAM and on to disk; this is known as swapping.
 If you swap out data you aren't currently using, this won't be noticeable.
-But if you are continuously accessing more data than fits in RAM, it will be continuously moved back and forth from disk.
+But if you are continuously reading and writing in-memory data that doesn't fit in RAM, it will be continuously moved back and forth from disk.
 Beyond a certain point your whole computer will grind to a halt as it spends all its time trying to move data back and forth between disk and RAM.
 
-## Computational bottlenecks you might be able to solve with just Python
+## Solve computational bottlenecks with vectorized operations
 
 Even if the bottleneck in your program is computation, there might be ways you can fix it just by tweaking your Python code.
 Elsewhere in the book we cover making your code more efficient, but there are some library-specific issues you might also encounter.
 
-### Not using vectorization
-
 Libraries like NumPy, SciPy, Pandas and others can process data very quickly by doing batch processing in functions implemented in a low-level language like C or Fortran.
-This is known as "vectorization".
+This is known as "vectorization" (a different meaning than "vectorization" when used to discuss SIMD!).
 
 In general, avoid using `for` loops and other similar constructs like list comprehensions on large NumPy arrays.
 If you have such a loop in your code, switching to a vectorized API can give you a significant speed-up, without having to switch away from Python.
@@ -74,6 +117,7 @@ For example:
 ```{python}
 import numpy as np
 
+# Notice this is a normal Python function, not a compiled Numba function:
 def sum_with_for_loop(arr):
     total = 0
     for value in arr:
@@ -95,11 +139,11 @@ sum_with_for_loop(ARR)
 sum_vectorized(ARR)
 ```
 
-## Sometimes Python is not enough
+### Identify situations when vectorized operations are not enough
 
-Sometimes none of the situations above apply, and you really do need to abandon Python and switch to lower-level compiled code.
+Sometimes vectorization is not sufficient, and you really do need to abandon Python and switch to lower-level compiled code.
 
-### Case 1: The vectorized implementation uses too much memory
+#### Case 1: The vectorized implementation uses too much memory
 
 Vectorized APIs operate on complete arrays.
 That means when you create temporary intermediate values, they will also have to be arrays.
@@ -109,12 +153,12 @@ You can reduce this massive memory usage overhead by doing the operation in chun
 Or, you can switch to a lower-level language and then use a `for` loop to iterate over individual values is fast enough.
 This means temporary values can be tiny, instead of gigantic, saving you lots of memory.
 
-### Case 2: The vectorized implementation is too slow
+#### Case 2: The vectorized implementation is too slow
 
 Sometimes the vectorized implementation is just too slow.
 If you want an optimized version, you're going to have to implement it with lower-level code, where you have more control over how the code runs.
 
-### Case 3: The algorithm can't be expressed with vectorized operations
+#### Case 3: The algorithm can't be expressed with vectorized operations
 
 Sometimes you _can't_ implement the algorithm with existing vectorized APIs.
 When this happens, the only solution is to implement a new vectorized API with low-level code.
