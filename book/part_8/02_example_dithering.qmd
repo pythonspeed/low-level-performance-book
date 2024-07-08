@@ -442,9 +442,8 @@ dither5(image)
 ## Reducing memory reads and writes
 
 We can do even better!
-We're doing a lot of reading and writing from `staging_current` and `staging_next`, and this isn't strictly necessary.
-If we can move some of the temporary integer values we're accumulating to variables on the stack, they will likely end up being stored in CPU registers.
-Reading and writing from registers is faster than reading and writing memory, even when the CPU is using a fast cache to speed up the latter.
+We're doing a lot of reading and writing from `staging_current` and `staging_next`, both of which are on the heap.
+If we can move some of the temporary integer values we're accumulating to simple variables on the stack, this will hopefully make it easier for the compiler to optimize our code.
 
 ```{python}
 @jit
