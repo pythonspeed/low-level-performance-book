@@ -307,7 +307,7 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions,branches,peak_memory
+%%compare_timing --measure=peak_memory
 dither2(image)
 dither3(image)
 ```
@@ -372,7 +372,7 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions,branches,peak_memory
+%%compare_timing --measure=peak_memory
 dither3(image)
 dither4(image)
 ```
@@ -434,7 +434,7 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions,branches,peak_memory
+%%compare_timing --measure=peak_memory
 dither4(image)
 dither5(image)
 ```
@@ -496,7 +496,7 @@ Here's how long it takes to run:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions,branches,peak_memory
+%%compare_timing --measure=peak_memory
 dither5(image)
 dither6(image)
 ```
@@ -507,7 +507,7 @@ Here's the results compared to all previous versions:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions,branches,peak_memory
+%%compare_timing --measure=peak_memory
 dither(image)
 dither2(image)
 dither3(image)
