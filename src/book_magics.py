@@ -22,7 +22,7 @@ import PIL.Image
 
 from numba import config as numba_config
 
-if False:#sys.platform == "linux":
+if sys.platform == "linux":
     from book_linux import get_measurements
 else:
     from book_common import measure_peak_memory
