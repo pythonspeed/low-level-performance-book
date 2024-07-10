@@ -67,7 +67,8 @@ def ns_per_iteration(line, globals):
 
 def _validate_ns_per_iteration():
     elapsed_ns = ns_per_iteration("sleep(0.001)", globals())
-    assert 900_000 < elapsed_ns < 1_100_000, elapsed_ns
+    # macOS seems bad at this...
+    assert 900_000 < elapsed_ns < 1_700_000, elapsed_ns
     elapsed_ns = ns_per_iteration("(lambda: None)()", globals())
     assert elapsed_ns < 1000, elapsed_ns
 
