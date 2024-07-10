@@ -3,26 +3,76 @@
 When you change your code in order to speed it up, you're always at risk of inadvertently changing its output in ways you don't want.
 The solution is testing, and while testing deserves a whole book of its own, a quick overview of testing options can be helpful.
 
-## Ensure the output hasn't changed
+## Ensure the output hasn't changed (or hasn't changed too much)
 
-### Use a reference implementation
+### Compare results to a reference implementation
+
+In most of this book, we started with a simple implementation and progressively sped it up.
+Along the way, we compared the results from the optimized version to the original version.
+
+You can do the same in your test suite:
+
+1. Move the reference implementation into your test suite.
+2. Write tests that ensure the output from the reference implementation is identical, or sufficiently similar, to the output of the sped-up implementation.
 
 ### Use snapshot testing
 
-Sometimes known as "golden master testing", "approval tests", and probably a number of other names.
+Snapshot testing is also known as "golden master testing", "approval tests", and probably a number of other names.
+The idea is you check in the expected output of some function, and then the test compares the actual calculated result to the checked in version.
+If the output changes, you manually validate the new output's correctness, then check it in.
 
-## Ensure the output hasn't changed too much
+There are many libraries that implement this pattern for Python.
+I've used [Syrupy](https://github.com/tophat/syrupy), which is a `pytest` plugin, but there are others.
 
 ## Test with a wide variety of data
 
+In our examples we've typically been testing with at most a handful of inputs.
+For real-world code, you'll want to use a much wider variety of test inputs.
+
 ### Test with real data
+
+Ideally your tests will be based on actual real data.
+Try to run your code on real data so that the behavior will be as realistic as possible.
 
 ### Test with simulated data
 
+If real data is limited, or otherwise can't be used, you can generate simulated data that is as similar as possible to real data.
+How you generate this data will be very domain-specific.
+
 ### Use the Hypothesis library to generate test inputs
 
-Hypothesis is a Python library for "property testing".
+[Hypothesis](https://hypothesis.readthedocs.io/) is a Python library for so-called property testing.
+Essentially it:
 
-### Metamorphic testing
+1. Generates a series of random data, based on constraints you set.
+2. Runs your assertions on that generated data.
+3. If a test fails, it tries to _simplify_ the data so you can get a simpler reproducer.
 
-Generating lots of test cases is great, but how do you know what the correct output of your algorithm 
+It's therefore pretty good at catching edge cases in your code, and it's also pretty code at giving you simpler bug reproducers.
+Here's a simple example of a `pytest` test that [uses Hypothesis to generate NumPy arrays](https://hypothesis.readthedocs.io/en/latest/numpy.html):
+
+```python
+from hypothesis.extra.numpy import arrays
+from hypothesis import given
+import numpy as np
+
+def my_sum(arr):
+    total = 0
+    for value in arr.ravel():
+        total += value
+    return total
+
+# Generate a 2×2 array of uint64s:
+@given(arr=arrays(np.uint64, (2, 2)))
+def test_my_sum(arr):
+    assert my_sum(arr) == arr.sum()
+```
+
+Despite `my_sum()` being seemingly correct, the test did in fact catch a difference in behavior:
+
+```
+arr = array([[18446744073709551613, 1],
+             [                   1, 1]],
+            dtype=uint64)
+FAILED assert 1.8446744073709552e+19 == 0
+```
