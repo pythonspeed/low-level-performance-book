@@ -73,7 +73,7 @@ MEASUREMENTS = {
 
 def get_measurements(
     measurement_keys: list[str], line: str, local_ns: dict[str, object]
-) -> list[int]:
+) -> list[int | str]:
     event_set = set()
     event_counts = {}  # map event name to count
     for m in measurement_keys:

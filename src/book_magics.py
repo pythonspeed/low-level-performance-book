@@ -22,8 +22,22 @@ import PIL.Image
 
 from numba import config as numba_config
 
-if sys.platform == "linux":
+if False:#sys.platform == "linux":
     from book_linux import get_measurements
+else:
+    from book_common import measure_peak_memory
+
+    def get_measurements(
+            measurement_keys: list[str], line: str, local_ns: dict[str, object]
+    ) -> list[int | str]:
+        result = []
+        for key in measurement_keys:
+            if key == "peak_memory":
+                result.append(measure_peak_memory(line, local_ns))
+            else:
+                result.append(f"N/A, Linux only")
+        return result
+
 
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
@@ -131,7 +145,7 @@ def compare_timing(line, cell, local_ns):
 
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
     for i in range(1, len(headers)):
-        table.set_style(i, Style(thousand_separator=","))
+        table.set_style(i, Style(thousand_separator=",", align="right"))
     display_table(table.dumps())
     numba_config.DISABLE_JIT = False
 
