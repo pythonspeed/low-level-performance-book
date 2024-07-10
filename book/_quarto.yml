@@ -37,24 +37,24 @@ book:
         - part_5/01_manual_optimization.qmd
         - part_5/02_using_integers_instead.qmd
         - part_5/03_fast_math.qmd
-    - part: "Compilers in practice"
-      chapters:
-        - part_6/01_undefined_behavior.qmd
-        - part_6/02_overflow.qmd
-        - part_6/03_more_about_simd.qmd
-        - part_6/04_writing_for_the_compiler.qmd
     - part: "Memory caches"
       chapters:
-        - part_7/00.qmd
-        - part_7/01_fit_in_cache.qmd
-        - part_7/02_linear_scan.qmd
-        - part_7/04_learn_implementation_details.qmd
-        - part_7/05_n_dimensional.qmd
+        - part_6/00.qmd
+        - part_6/01_fit_in_cache.qmd
+        - part_6/02_linear_scan.qmd
+        - part_6/04_learn_implementation_details.qmd
+        - part_6/05_n_dimensional.qmd
     - part: "More examples"
       chapters:
-        - part_8/01_example_rescale_contrast.qmd
-        - part_8/02_example_dithering.qmd
-        - part_8/03_example_memory_layout.qmd
+        - part_7/01_example_rescale_contrast.qmd
+        - part_7/02_example_dithering.qmd
+        - part_7/03_example_memory_layout.qmd
+    - part: "Compilers in practice"
+      chapters:
+        - part_8/01_undefined_behavior.qmd
+        - part_8/02_overflow.qmd
+        - part_8/03_more_about_simd.qmd
+        - part_8/04_writing_for_the_compiler.qmd
     - part: "Performance in practice"
       chapters:
         - part_9/01_when.qmd
