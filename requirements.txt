@@ -4,7 +4,7 @@ jupyter-cache
 pytablewriter==1.0.0
 scikit-image
 benchit
-py-perf-event
+py-perf-event; sys_platform == 'linux'
 pandas
 pyarrow
 line_profiler
