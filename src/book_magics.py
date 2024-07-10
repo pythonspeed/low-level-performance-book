@@ -167,6 +167,7 @@ def maybe_table(line, cell):
 
 
 def load_ipython_extension(ipython):
-    # Make sure turboboost is disabled; TODO add AMD, non-Linux?
-    with open("/sys/devices/system/cpu/intel_pstate/no_turbo") as f:
-        assert f.read().strip() == "1"
+    if sys.platform == "linux":
+        # Make sure turboboost is disabled; TODO add AMD, non-Linux?
+        with open("/sys/devices/system/cpu/intel_pstate/no_turbo") as f:
+            assert f.read().strip() == "1"
