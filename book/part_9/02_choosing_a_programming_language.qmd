@@ -4,20 +4,22 @@ If you've determined that computation is a performance bottleneck, and switching
 This is a very contextual decision, and your choices may be constrained in various ways that make the decision easier.
 For example, if you are:
 
-* ... exposing a C++ library to Python you'll be using C++ directly or indirectly, regardless of your opinion of the language.
+* ... exposing a C++ library to Python, you'll be using C++ directly or indirectly, regardless of your opinion of the language.
 * ... don't know any compiled languages, and don't have time to learn a new one, you'll probably want to use Numba or Cython.
-* ... contributing to an open source project, you'll need to use whatever languages they are comfortable accepting.
+* ... contributing a patch to an existing open source project, you'll need to use whatever languages the maintainers are comfortable accepting.
+
+Still, it's worth understanding the tradeoffs involved with different programming languages for situations that are less constrained.
 
 ## Numba
 
-Most of the examples in this book use Numba, and the same benefits apply for using it in your application.
+Most of the examples in this book use Numba, and the same benefits that made me choose it also apply when using it in your application.
 
 Benefits:
 
 * Python syntax.
 * Compilation happens when you first use the code, so distributing your compiled code is no different than distributing Python code.
 * Built-in support for NumPy.
-* Optional features like parallelism and CUDA (Nvidia GPU) support.
+* Optional features like parallelism and CUDA (NVidia GPU) support.
 
 Downsides:
 
@@ -40,15 +42,15 @@ Benefits:
 
 Downsides:
 
-* Extremely easy to shoot yourself in the foot with undefined behavior, memory corruption, and crashes.
-* Tiny standard library, so you'll lack any high-level datastructures.
+* Extremely easy to cause undefined behavior, memory corruption, and crashes.
+* Tiny standard library, so you'll lack any high-level data structures.
 * No standard package manager or standard build system for any C libraries you might want to use.
 * Too simple, it's a lot of work to get anything done.
 
 Packaging your code:
 
 * You'll want to use `setuptools` to build the extension.
-* If you're building anything complex with dependencies... good luck!
+* If you're building anything complex with dependencies, it's going to be annoying to painful.
 
 ## C++
 
@@ -63,7 +65,7 @@ Benefits:
 Downsides:
 
 * Complex language.
-* Very easy to shoot yourself in the foot with undefined behavior, memory corruption, and crashes.
+* Very easy to cause undefined behavior, memory corruption, and crashes.
 * No standard package manager or standard build system for any C++ libraries you might want to use.
 
 Packaging your code:
@@ -75,20 +77,21 @@ Packaging your code:
 ## [Cython](https://cython.readthedocs.io/)
 
 Cython implements most of Python's syntax, along with syntax extensions that let you mix in C or C++ functionality.
-Before you compile it, it gets translated to C or C++, and that's what actually gets compiled to machine code.
+Before you compile Cython, it gets translated to C or C++, and that's what actually gets compiled to machine code.
 You can use it to wrap C or C++ libraries, though I'm not personally a fan of using it for wrapping C++.
 
 Benefits:
 
 * Mostly just Python syntax, so it's easy to learn.
-* Access to C++ standard library for fast datastructures.
-* If you're using Jupyter notebooks, you can use [inline Cython](https://cython.readthedocs.io/en/latest/src/quickstart/build.html#using-the-jupyter-notebook) in your cells.
+* Access to C++ standard library for fast data structures.
+* If you're using Jupyter notebooks, you can use [inline Cython](https://cython.readthedocs.io/en/latest/src/quickstart/build.html#using-the-jupyter-notebook) in your cells and skip the packaging steps.
 
 Downsides:
 
-* Depending on your usage patterns, inherits C and C++'s shooting-yourself-in-the-foot problems with undefined behavior and memory corruption.
-* Inherits C and C++'s lack of package manager, somewhat mitigated by relying on Python's packaging system.
+* Depending on your usage patterns, inherits C and C++'s problems with undefined behavior and memory corruption.
+* Inherits C and C++'s lack of a package manager, somewhat mitigated by relying on Python's packaging system.
 * The two steps to build (translation then compilation) means compilation errors can sometimes be hard to debug, especially if you're targeting C++.
+* There aren't really a lot of Cython libraries, so you're reliant on C or C++ libraries, which is painful due to lack of a standardized package manager and build system.
 
 Packaging your code:
 
@@ -135,4 +138,3 @@ So make sure to compile your released code on an operating system that is the sa
 
 If you want to distribute a package that can be installed with `pip` or similar tools, you'll distribute a "wheel", a binary package tied to a specific platform, e.g. Linux on x86-64.
 A tool like [`cibuildwheel`](https://cibuildwheel.pypa.io/en/stable/) allows you to build your wheels in a way that makes them easy to distribute across older Linux, macOS, and Windows versions.
-
