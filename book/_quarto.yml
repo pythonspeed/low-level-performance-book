@@ -53,6 +53,7 @@ book:
       chapters:
         - part_8/01_undefined_behavior.qmd
         - part_8/02_overflow.qmd
+        #- part_8/02b_hardware_differences.qmd
         - part_8/03_more_about_simd.qmd
         - part_8/04_writing_for_the_compiler.qmd
     - part: "Performance in practice"
@@ -65,7 +66,7 @@ book:
         - part_9/05_document_your_code.qmd
         # optimization first, parallelism later
         # - part_9/05_keep_code_from_getting_slower.qmd
-        # - part_9/06_keep_learning.qmd # more things you can learn? assembly, alignment (https://www.bazhenov.me/posts/2024-02-performance-roulette/), cost of loading the code, more detailed CPU-specific architecture like µops, and much more
+        - part_9/07_next_steps.qmd
   appendices:
     - appendices/01_prerequisites.qmd
 #    - references.qmd
