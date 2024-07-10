@@ -1,8 +1,7 @@
-# Microbenchmarks
+# Use microbenchmarks to measure your code's performance
 
-TODO rewrite headings to imperative
-
-In much of this book we've relied on microbenchmarks to measure whether or not code is getting faster: we run the code a large number of times, and report how it took on average.
+In much of this book we've relied on microbenchmarks to measure whether or not code is getting faster: we run the code a large number of times, and report how long it took to run on average.
+There are pre-existing utilities and libraries for doing this:
 
 * Python has a [`timeit`](https://docs.python.org/3/library/timeit.html) module you can use for command-line or API-based microbenchmarking.
 * In Jupyter or IPython you can use the `%timeit` magic to measure how long something takes to run.
@@ -21,19 +20,19 @@ Here's an example of the Jupyter `%timeit` magic:
 Microbenchmarking is an attractive approach since it's seemingly quite simple, but it also has the potential for false or misleading results.
 In this chapter we'll go over some of the potential problems and how to avoid them.
 
-## Measuring the wrong thing
+## Benchmark the right thing
 
 No matter how accurate the result, if you measure the wrong thing you won't get useful information.
 
-### Measuring code that isn't a bottleneck
+### Focus on optimizing the main bottleneck
 
 If the code you are looking at only uses 2% of your program's run time, making it twice as fast will make your program 1% faster.
 That's not very helpful.
 So before you spend any time trying to optimize some code, you should make sure it's actually something worth optimizing.
 
-**Solution:** Before optimizing your code, use a profiler to figure out where the actual bottlenecks are.
+**What to do:** Before optimizing your code, use a profiler to figure out where the actual bottlenecks are.
 
-### Omitting Python overhead
+### Make sure to include Python overhead
 
 The presumption in this book is that your low-level code will eventually be called by Python.
 Assuming that is true, some of the time spent by your code will involve:
@@ -43,52 +42,58 @@ Assuming that is true, some of the time spent by your code will involve:
   For example, a Python list of strings (`list[str]`) might be converted into a Rust `Vec<String>`, and vice-versa.
   Passing a NumPy array will typically be so fast so as to not matter; converting between Python and Rust strings is much more expensive.
 
-If your function is fast enough, the overhead of calling from Python might drown out the run time of the function.
-If the arguments are expensive to convert, this is something you need to include in your measurements.
+If your underlying function is fast enough, the overhead of calling from Python might drown out the run time of the function.
+Optimizing your function is pointless at that point.
 
-**Solution:** As is the case for examples in this book, measure the performance of your code by calling it from Python, rather than purely measuring the speed of the low-level code without the Python interface.
-The interaction with Python can and will impact performance, and so should be measured alongside.
+**What to do:** If the arguments and result of your function are expensive to convert to/from Python, this is something you need to include in your measurements, because it will impact real-world performance.
+As is the case for examples in this book, consider measuring the performance of your code by calling it from Python, rather than purely measuring the speed of the low-level code without the Python interface.
 
-### Benchmarking unoptimized code
+### Avoid benchmarking code compiled for development
 
-TODO mention rust `develop`
+Many compilers support different compilation modes or profiles:
 
-### Too much memory causes swapping, overwhelming CPU
+* **Development or debug mode:** Lots more assertions and checks are added, no optimizations are applied by the compiler.
+  The code is much slower, but easier to debug.
+* **Release mode:** The code is compiled with optimizations, so it runs as fast as possible.
+  This is what you'll use in production or release to users.
 
-TODO
+If you benchmark code compiled in debug mode, you might vastly understate your code's performance.
+This is a common problem with Rust; `maturin develop` or `pip install -e .` will result in your code being compiled in Rust's much slower debug profile.
 
-### Platform-specific issues
+**What to do:** Make sure to compile your code in release mode, for example `pip install .` for Rust projects.
+
+### Be aware of platform-specific issues
 
 This is by its nature difficult to generalize, but here are some examples:
 
 * In this book we've mostly been using Numba for our examples, and by default Numba compiles its code the first time a function is called with specific types.
-  This can distort benchmarking!
-  You'll notice that all the examples in this book call a function at least once before doing any performance measurements.
+  This can significantly distort benchmarking!
+  You'll notice that all the examples in this book call a function at least once _before_ doing any performance measurements.
 * Code running on GPUs runs asynchronously, so `%%timeit` and the like will give misleading results.
-  GPU-based frameworks like CuPy therefore include [custom microbenchmarking functionality](https://docs.cupy.dev/en/stable/user_guide/performance.html**.
+  GPU-based frameworks like CuPy therefore include [custom microbenchmarking functionality](https://docs.cupy.dev/en/stable/user_guide/performance.html).
 
-## Inconsistent CPU behavior
+## Minimize noise from the CPU
 
 Running code on the CPU can take different amounts of time depending on a variety of factors.
 
-### Other processes
+### Minimize noise from other processes
 
 If your computer has 4 cores and you're saturating all of them by compiling some code in the background, your microbenchmark will give different results than if your CPU is idle.
 Other programs may also use enough memory or cache to impact your code's runtime performance.
 
-**Solution:** Make sure you're not running CPU intensive operations when benchmarking, so you have some idle CPU cores that can be used for performance measurements.
+**What to do:** Make sure you're not running CPU intensive operations when benchmarking, so you have some idle CPU cores that can be used for performance measurements.
 If you're measuring multi-core performance, shut down as many other programs as possible.
 If you're sensitive to memory availability, make sure other programs have left enough free memory for your benchmark.
 
 But also consider what your production run time environment will look like; perhaps there will be other processes running!
 
-### Turboboost
+### Disable "turboboost" on your CPU
 
 Many CPUs will temporarily run faster for a short period of time, at a speed they can't sustain over longer periods of time due to overheating.
-Intel calls this "turboboost**.
+Intel calls this "turboboost".
 These differences in speed can distort results, especially if you're running two benchmarks in close succession.
 
-**Solution:** Run benchmarks with turboboost disabled.
+**What to do:** Run benchmarks with turboboost disabled.
 On Intel CPUs on Linux you can temporarily disable turboboost like so:
 
 ```{shell-session}
@@ -101,35 +106,35 @@ On AMD CPUs you can do:
 $ echo "0" | sudo tee /sys/devices/system/cpu/cpufreq/boost
 ```
 
-### Power throttling
+### Make sure your CPU isn't throttled due to power usage
 
 If you unplug your laptop from power, it may reduce its maximum speed to conserve battery power.
 This is particularly true of x86-64 CPUs, which are much less power efficient than Apple's new chips.
 
-**Solution:** If you're using a laptop, always run benchmarks when plugged in.
+**What to do:** If you're using a laptop, always run benchmarks when plugged in.
 Or, use a desktop computer instead.
 
-### Temperature throttling
+### Make sure your CPU is throttled due to overheating
 
 A CPU may also be throttled to keep your computer from overheating.
 This tends to be more of a problem with laptops, since the form factor makes them harder to keep cool.
 
-**Solution:** If you're using a laptop, make sure it's set up with good airflow.
+**What to do:** If you're using a laptop, make sure it's set up with good airflow.
 Or better yet, use a desktop computer instead.
 
-## CPU state
+## Be aware of how CPU state can distort benchmarks
 
 Your CPUs behavior changes based on what code it previously ran!
 
-### Caches
+### Avoid misleading results due to cached data
 
-Recall that data fetched from RAM is cached in a series of faster caches (L1, L2, L3**.
+Recall that data fetched from RAM is cached in a series of faster caches (L1, L2, L3).
 When microbenchmarking, that means data retrieved in the first run may well be in the cache in future runs.
 If memory is a bottleneck, that means future runs will be faster, and if you don't expect data to be in the cache, that means the speed measurement will be wrong.
 
-**Solution:** Assuming your expected use case is larger-than-cache data, run microbenchmarks with sufficiently large data such that it doesn't fit in cache easily.
+**What to do:** Assuming your expected use case is larger-than-cache data, run microbenchmarks with sufficiently large data such that it doesn't fit in cache easily.
 
-### Branch predictor
+### Avoid misleading results due to the branch predictor
 
 The CPU records the code you run in order to predict what branches will be taken.
 Consider a situation where realistic data will result in hard-to-predict branching.
@@ -139,21 +144,21 @@ There are two failure modes:
   In the real world, with more data, that won't be possible.
 * If you benchmark with unrealistic, predictable data, your microbenchmarking won't record the cost of mispredicton.
 
-**Solution:** Test with a large amount of data, and make sure the benchmark data's branch predictability matches that of real-world data.
+**What to do:** Test with a large amount of data, and make sure the benchmark data's branch predictability matches that of real-world data.
 
-## Unrealistic development and measurement environment
+## Use a realistic measurement environment
 
 Your measurements may be correct for your current hardware, but not match the behavior you'll get in production.
 
-### Different hardware from production
+### Match the hardware setup used in production
 
-Your development computer can differ in production in a large number of ways: supported SIMD instructions, available RAM, cache sizes, and so on.
+Your development computer can differ in production in a large number of ways: CPU speed, supported SIMD instructions, available RAM, cache sizes, and so on.
 If you're developing on a modern ARM Mac and deploying to an x86-64 server, you're even using a completely CPU different architecture.
 While some optimizations will work decently on all modern CPUs, inevitably there will be differences.
 
-**Solution:** Try to match your development environment to production as much as possible.
+**What to do:** Try to match your development environment to production as much as possible.
 
-### Hyperthreading / SMT
+### Match the hyperthreading / SMT setup used in production
 
 "Hyperthreading" is Intel's name for symmetric multi-threading.
 The basic idea is that since your CPU core can already do many things in parallel (instruction-level parallelism), you can just have a core pretend to be two virtual cores, or four cores.
@@ -166,30 +171,102 @@ This can impact you in a variety of ways:
 * Your microbenchmark might indicate good speed because it gets to saturate that whole physical core.
   If you run a thread pool with a thread per virtual core, the resulting running code will run with half as much L1 and L2 caches for data, because it gets used by two virtual cores presumably processing different data.
 
-**Solution:** Try to make your development machine match production, including the lack or presence of SMT.
+**What to do:** Try to make your development machine match production, including the lack or presence of SMT.
+On PCs you can disable hyperthreading/SMT in the BIOS, which you can typically configure by pressing the right key during boot.
 
-### Different software versions
+### Use the same software versions as production
 
 Different versions of Python, Numba, NumPy all behave differently in terms of performance.
-As much as possible, try to ensure you're measuring with software versions that match real-world usage.
 
-## An overly-smart compiler
+**What to do:** As much as possible, try to ensure you're measuring with software versions that match real-world usage.
+
+## Don't get outsmarted by the compiler
 
 The compiler is smart—and that means you might not be measuring what you think you're measuring.
 
 Recall that if use constant calculations the compiler might notice, do the computation once, and just output the result.
 This can happen in less obvious way with function inlining, where a function takes parameters but the compiler notices that it's only being called with constants:
 
-**Solution:** Always benchmark with inputs that are passed in such that the compiler won't decide they're constants and optimize everything away.
+**What to do:** Always benchmark with inputs that are passed in such that the compiler won't decide they're constants and optimize everything away.
 When microbenchmarking Python extensions, the obvious solution is to pass these arguments in from Python.
-Some benchmarking frameworks also have ways to mark arguments as non-optimizable, like the `black_box()` function in Rust's Criterion benchmarking tool.
+Some benchmarking frameworks also have ways to mark arguments as non-optimizable, like [the `black_box()` function in Rust's Criterion benchmarking tool](https://bheisler.github.io/criterion.rs/book/getting_started.html).
 
-## Software sources of noise
+Here's an example:
 
-TODO Python hash seed, hyperfine as workaround
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+from numba import jit
+
+# This function will be benchmarked in a useful way if called directly:
+@jit
+def calc(a, b, c, d, e, f):
+    return ((a + b + c) ** d / e) + f
+
+# 😢 This function will be optimized by the compiler into just returning a
+# constant, so benchmarking it won't give us any information about the
+# underlying calc()'s speed:
+@jit
+def calc_fixed():
+    return calc(1, 2, 3, 7, 6.0, 5)
+
+# All both functions give the same result:
+assert calc_fixed() == calc(1, 2, 3, 7, 6.0, 5)
+```
+
+Here's how their speed compares:
+
+```{python}
+#| echo: false
+%%compare_timing
+
+calc(1, 2, 3, 7, 6.0, 5)
+calc_fixed()
+```
+
+`calc_fixed()` is giving us misleading results if our goal is to benchmark the wrapped `calc()`.
+Because of compiler optimizations, it's no different than a function that just returns a constant:
+
+```{python}
+@jit
+def constant():
+    return 1
+
+assert constant() == 1
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+
+calc_fixed()
+constant()
+```
+
+## Reduce noise caused by randomness in software
+
+Multiple runs of the same program can have different performance behavior due to built-in (or deliberate** randomness.
+For example, every run of Python has a randomized seed for hash functions, which impacts the performance of dictionaries and sets.
+Since dictionaries are pervasive in Python, different runs of the same code can have different performance.
+
+Importantly, running a function multiple times within the same process wouldn't overcome this source of noise.
+You'll see the performance differences only across different processes.
+
+**What to do:** You have two approaches to overcoming this sort of noise:
+
+1. Use a fixed seed for randomness.
+   For example, you can set Python's hash seed using the [`PYTHONHASHSEED`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED) environment variable; just set it to a fixed number.
+   In practice, this wont solve all sources of randomness, and it is also less realistic in that real programs will have different seeds on every run.
+2. Run benchmarks multiple times, and average the results.
+   You can use a program like [`hyperfine`](https://github.com/sharkdp/hyperfine) to do this, but that only measures the full process runtime, which is likely not what you want.
+   Or, you can write your own framework.
 
 ## Unknown sources of noise
 
 Beyond all the above identifiable reasons you might get different results, there are other reasons your code might take different amount of time to run.
 
-**Solution:** This is why microbenchmarking usually involves running the code multiple times, to help average out any uncontrolled noise.
+**What to do:** This is why microbenchmarking usually involves running the code multiple times, to help average out any uncontrolled noise.
+If the noise is tied to specific process runs, you'll need to run the benchmark multiple times.
