@@ -1,0 +1,37 @@
+# Next steps: Speeding up your code even more
+
+After reading this book, you should be at a good starting point to optimize single-threaded code.
+But what can you do if your code still isn't fast enough?
+
+## Learn more about low-level optimization
+
+This book is just the start at building your mental model of how CPUs work.
+There is much more you can learn if you want to optimize your code even more.
+Here are some books I can recommend as a starting point:
+
+* [_Computer Systems: A Programmer's Perspective, 3rd edition_](https://csapp.cs.cmu.edu/), by Bryant and O'Halloran.
+  This textbook covers how CPUs work, focusing on the parts that are relevant to you, someone who writes software.
+* [_Performance Analysis and Tuning on Modern CPUs_](https://book.easyperf.net/perf_book), by Denis Bakhalov.
+  This free book talks about critical tools for measuring performance, and how to interpret their results; I paid for the printed version.
+  The author is currently working on a second edition.
+  He also has a [free online course](https://github.com/dendibakh/perf-ninja).
+* [_Algorithms for Modern Hardware_](https://en.algorithmica.org/hpc/), by Sergey Slotin, is a free online book.
+
+All of these require at least a basic knowledge of the C programming language.
+
+## Use parallelism to take advantage of multiple CPU cores
+
+There is only so much performance you can eke out from one CPU core, and modern computers have many cores.
+So eventually you will want to take advantage of these cores to speed up your results.
+Here are some books you might find useful that cover performance from a broader perspective, including parallelism:
+
+* [_High Performance Python, 2nd edition_](https://www.oreilly.com/library/view/high-performance-python/9781492055013/), by Gorelick and Oszvald.
+  A third edition is in the works; I will likely be contributing a tiny section on Rust.
+* [_Fast Python_](https://www.manning.com/books/fast-python), by Antao.
+
+## Make your code faster!
+
+As you get better at optimizing code, you'll also get better at writing code that's fast from the start.
+So don't just read this book: you should also apply what you've learned, and start looking for slow code you can optimize.
+
+Finally, I'd love to hear from you—[send me an email](mailto:itamar@pythonspeed.com) and share your thoughts.
