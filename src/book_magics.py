@@ -1,3 +1,4 @@
+import sys
 import os
 from timeit import timeit
 from io import BytesIO
@@ -18,9 +19,11 @@ from pytablewriter import MarkdownTableWriter
 from pytablewriter.style import Style
 import numpy as np
 import PIL.Image
-from py_perf_event import measure, Hardware, CacheId, CacheOp, CacheResult, Cache, Raw
 
 from numba import config as numba_config
+
+if sys.platform == "linux":
+    from book_linux import get_measurements
 
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
@@ -58,121 +61,6 @@ def _validate_ns_per_iteration():
 _validate_ns_per_iteration()
 del _validate_ns_per_iteration
 
-MEASUREMENTS = {
-    "instructions": (
-        "CPU instructions",
-        [Hardware.INSTRUCTIONS],
-        lambda instructions: instructions,
-    ),
-    "memory_cache_miss": (
-        "L3 memory cache miss %",
-        [Hardware.CACHE_REFERENCES, Hardware.CACHE_MISSES],
-        lambda refs, misses: round((misses / refs) * 100, 1),
-    ),
-    "memory_cache_refs": (
-        "L3 memory cache references",
-        [Hardware.CACHE_REFERENCES],
-        lambda refs: refs,
-    ),
-    "l1_memory_cache_miss": (
-        "L1 memory cache miss %",
-        [
-            Cache(CacheId.L1D, CacheOp.READ, CacheResult.ACCESS),
-            Cache(CacheId.L1D, CacheOp.READ, CacheResult.MISS),
-        ],
-        lambda refs, misses: round((misses / refs) * 100, 1),
-    ),
-    "l1_memory_cache_refs": (
-        "L1 memory cache references",
-        [Cache(CacheId.L1D, CacheOp.READ, CacheResult.ACCESS)],
-        lambda refs: refs,
-    ),
-    "ll_memory_cache_miss": (
-        "LL memory cache miss %",
-        [
-            Cache(CacheId.LL, CacheOp.READ, CacheResult.ACCESS),
-            Cache(CacheId.LL, CacheOp.READ, CacheResult.MISS),
-        ],
-        lambda refs, misses: round((misses / refs) * 100, 1),
-    ),
-    "ll_memory_cache_refs": (
-        "LL memory cache references",
-        [Cache(CacheId.LL, CacheOp.READ, CacheResult.ACCESS)],
-        lambda refs: refs,
-    ),
-    "branch_mispredictions": (
-        "Branch misprediction %",
-        [Hardware.BRANCH_INSTRUCTIONS, Hardware.BRANCH_MISSES],
-        lambda ints, misses: round((misses / ints) * 100, 1),
-    ),
-    "branches": (
-        "Branch instructions",
-        [Hardware.BRANCH_INSTRUCTIONS],
-        lambda ints: ints,
-    ),
-    "simd_256bit": (
-        "256-bit SIMD instructions",
-        [
-            # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_double
-            Raw(0x10C7),
-            # perf stat -vv -a -e fp_arith_inst_retired.256b_packed_single
-            Raw(0x20C7),
-        ],
-        lambda double, single: double + single,
-    ),
-    "simd_128bit": (
-        "128-bit SIMD instructions",
-        [
-            # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_double
-            Raw(0x4C7),
-            # perf stat -vv -a -e fp_arith_inst_retired.128b_packed_single
-            Raw(0x8C7),
-        ],
-        lambda double, single: double + single,
-    ),
-    # This is handled specially, doesn't actually use perf counters
-    "peak_memory": (
-        "Peak allocated memory (bytes)",
-        [],  # not used
-        lambda: 1 / 0,  # shouldn't be used!
-    ),
-}
-
-
-def get_measurements(
-    measurement_keys: list[str], line: str, local_ns: dict[str, object]
-) -> list[int]:
-    event_set = set()
-    event_counts = {}  # map event name to count
-    for m in measurement_keys:
-        _, events, _ = MEASUREMENTS[m]
-        event_set |= set(events)
-
-    event_list = list(event_set)
-    for event, counter in zip(event_list, measure(event_list, exec, line, local_ns)):
-        event_counts[event] = counter
-
-    result = []
-    for m in measurement_keys:
-        _, events, post_process = MEASUREMENTS[m]
-        if m == "peak_memory":
-            # Handled specially:
-            value = measure_peak_memory(line, local_ns)
-        else:
-            value = post_process(*[event_counts[ev] for ev in events])
-        result.append(value)
-
-    return result
-
-
-def measure_peak_memory(line: str, local_ns: dict[str, object]) -> int:
-    """Measure peak memory (in bytes) using tracemalloc."""
-    tracemalloc.start()
-    exec(line, local_ns)
-    _, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-    return peak
-
 
 def display_table(markdown_table: str):
     """Display a Markdown table in Jupyter."""
@@ -187,6 +75,22 @@ def display_table(markdown_table: str):
         )
     else:
         display(Markdown(markdown_table))
+
+
+MEASUREMENT_TITLES = {
+    "instructions": "CPU instructions",
+    "memory_cache_miss": "L3 memory cache miss %",
+    "memory_cache_refs": "L3 memory cache references",
+    "l1_memory_cache_miss": "L1 memory cache miss %",
+    "l1_memory_cache_refs": "L1 memory cache references",
+    "ll_memory_cache_miss": "LL memory cache miss %",
+    "ll_memory_cache_refs": "LL memory cache references",
+    "branch_mispredictions": "Branch misprediction %",
+    "branches": "Branch instructions",
+    "simd_256bit": "256-bit SIMD instructions",
+    "simd_128bit": "128-bit SIMD instructions",
+    "peak_memory": "Peak allocated memory (bytes)",
+}
 
 
 @magic_arguments()
@@ -223,7 +127,7 @@ def compare_timing(line, cell, local_ns):
 
     headers = ["Code", f"Elapsed {units}"]
     for m in measurements:
-        headers.append(MEASUREMENTS[m][0])
+        headers.append(MEASUREMENT_TITLES[m])
 
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
     for i in range(1, len(headers)):
