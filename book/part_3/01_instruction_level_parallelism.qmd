@@ -334,18 +334,22 @@ def sum1(arr):
 _ = sum1(DATA)
 ```
 
-We can solve this by having two accumulators, and switching back and forth between them.
-At the end of the function we add the two accumulators to get the final sum:
+We can solve this by having multiple partial accumulators, that get data added in parallel.
+At the end of the function we add the accumulators to get the final sum:
 
 ```{python}
 @jit
 def sum2(arr):
     # 😎 Four accumulators instead of one:
     total1, total2, total3, total4 = 0, 0, 0, 0
-    for i in range(len(arr)):
+    for i in range(len(arr) // 4):
+        total1 += arr[i * 4]
+        total2 += arr[i * 4 + 1]
+        total3 += arr[i * 4 + 2]
+        total4 += arr[i * 4 + 3]
+    # Add the remaining items at the end:
+    for i in range(len(arr) - len(arr) % 4, len(arr)):
         total1 += arr[i]
-        # 😎 Swap the accumulators so the next iteration adds to the next one:
-        total4, total1, total2, total3 = total1, total2, total3, total4
     return total1 + total2 + total3 + total4
 
 assert sum1(DATA) == sum2(DATA)
@@ -371,6 +375,4 @@ If you were to run the above code with SIMD enabled, the `sum1()` function would
 That's because the compiler would figure out it can use SIMD in the first case, but not the second, and using SIMD is faster than instruction-level parallelism in this case, on my specific computer.
 
 This technique is still worth trying even if SIMD is enabled, as we'll see in an example in a later chapter.
-
-On a Mac M1 CPU this technique didn't speed things up.
 :::
