@@ -11,7 +11,9 @@ Second, by optimizing that code as much as possible.
 To help us identify hotspots we're going to use the Profila profiler:
 
 ```{python}
-%load_ext profila
+import sys
+if sys.platform == "linux":
+    %load_ext profila
 ```
 
 ## Example: Dithering an image from grayscale to black and white

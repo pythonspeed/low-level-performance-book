@@ -8,3 +8,4 @@ py-perf-event; sys_platform == 'linux'
 pandas
 pyarrow
 line_profiler
+profila

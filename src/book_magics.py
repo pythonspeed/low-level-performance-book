@@ -38,6 +38,9 @@ else:
                 result.append(f"N/A, Linux only")
         return result
 
+    @register_cell_magic
+    def profila(line, cell):
+        display(Markdown("`(Profiling currently only supported on Linux)`"))
 
 locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
