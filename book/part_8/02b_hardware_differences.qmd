@@ -1,0 +1,29 @@
+# Different CPUs will have different behavior
+
+One key question when optimizing your code is how portable the optimizations are:
+
+* Different CPUs have different performance characteristics.
+  An older model might have less instruction-level parallelism, or run some instructions more slowly than others.
+  Different models will also have different cache sizes.
+* Some CPUs even have completely different instruction sets: AMD and Intel CPUs run the x86-64 instruction set, but newer Macs and some cloud servers (like AWS Graviton) run the ARM instruction set instead.
+  That means the code the compiler emits will be rather different, which means at least some differences in how optimizations are applied.
+
+If you start optimizing code in ways that strongly rely on implementation details of the CPU, you will have differing outcomes across CPUs.
+However, the mental models in this book are pretty reflective of a broad range of CPU models, because they're tied to how CPUs are designed.
+So applying these techniques will usually result in faster code regardless the CPU model.
+
+## Benchmark on multiple CPU models
+
+Nonetheless, it can be useful to measure performance across different CPU models.
+
+The results in this book are from an Intel i7-12700K.
+As a basis for comparison, I also ran all the code in the book on a Mac M1.
+While they were both released around the same time, they come from two different companies, and use different instruction sets, x86-64 and ARM.
+A program that runs on x86-64 _cannot_ run on ARM, and vice versa, without some sort of software emulation layer.
+
+The big picture is that all the various techniques this book covers were beneficial across CPU models.
+
+The elapsed time for the code was different: sometimes faster on one CPU, sometimes faster on the other.
+And the relative improvements from optimizations also differed.
+But importantly, almost all the performance optimizations actually worked.
+The few exceptions where the code didn't get faster on the M1 are mentioned in the relevant chapters of the book.
