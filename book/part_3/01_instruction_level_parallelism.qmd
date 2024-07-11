@@ -340,13 +340,13 @@ At the end of the function we add the two accumulators to get the final sum:
 ```{python}
 @jit
 def sum2(arr):
-    # 😎 Two accumulators instead of one:
-    total1, total2 = 0, 0
+    # 😎 Four accumulators instead of one:
+    total1, total2, total3, total4 = 0, 0, 0, 0
     for i in range(len(arr)):
         total1 += arr[i]
-        # 😎 Swap the accumulators so the next iteration adds to the other one:
-        total2, total1 = total1, total2
-    return total1 + total2
+        # 😎 Swap the accumulators so the next iteration adds to the next one:
+        total4, total1, total2, total3 = total1, total2, total3, total4
+    return total1 + total2 + total3 + total4
 
 assert sum1(DATA) == sum2(DATA)
 ```
