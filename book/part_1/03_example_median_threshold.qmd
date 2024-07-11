@@ -126,7 +126,7 @@ skimage_median_local_threshold(IMAGE, 11, 13)
 median_local_threshold1(IMAGE, 11, 13)
 ```
 
-It's slower.
+Depending on your CPU, this might be slightly slower or slightly faster.
 But that's OK, we're just getting started.
 
 ## Adjust your algorithm to take advantage of your data type

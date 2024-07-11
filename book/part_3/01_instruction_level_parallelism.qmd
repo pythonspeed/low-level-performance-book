@@ -371,4 +371,6 @@ If you were to run the above code with SIMD enabled, the `sum1()` function would
 That's because the compiler would figure out it can use SIMD in the first case, but not the second, and using SIMD is faster than instruction-level parallelism in this case, on my specific computer.
 
 This technique is still worth trying even if SIMD is enabled, as we'll see in an example in a later chapter.
+
+On a Mac M1 CPU this technique didn't speed things up.
 :::

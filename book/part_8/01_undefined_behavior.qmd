@@ -42,7 +42,7 @@ print(in_array(25))
 print(in_array(6))
 ```
 
-The function `in_array()` _always_ returns `True`.
+On Linux, at least, the function `in_array()` _always_ returns `True`.
 What's happening is that the compiler notices we're reading from `external_array[4]`, which is an out-of-bounds read: since the array is of size 4, only entries `external_array[0]`, `external_array[1]`, `external_array[2]`, and `external_array[3]` exist.
 The compiler considers out-of-bounds reads to be impossible, so we have introduced undefined behavior.
 
@@ -50,6 +50,9 @@ Given out-of-bounds reads _do not exist_ as far as the C compiler is concerned, 
 That means the loop "must" exit before that point... so the code can be optimized into always and only returning `True`.
 
 Oops.
+
+On macOS, this didn't happen!
+And that's another problem with undefined behavior: it doesn't behave consistently, so just because the code _seems_ to work doesn't mean it actually works everywhere, or will continue to work in the future.
 
 ## Avoid undefined behavior
 

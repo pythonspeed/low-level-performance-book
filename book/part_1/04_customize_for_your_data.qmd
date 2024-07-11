@@ -158,6 +158,11 @@ median_local_threshold2(IMAGE, 11, 13)
 median_local_threshold2_approximate(IMAGE, 11, 13)
 ```
 
+::: {.callout-note}
+When I tested this on a Mac M1 CPU, the performance of the approximate algorithms wasn't any better than the original program.
+Some optimizations are less portable than others!
+:::
+
 ## Fine-tune parameters to maximize performance
 
 In addition to tweaking our algorithm, we can also tweak parameters.
