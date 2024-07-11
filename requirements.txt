@@ -9,3 +9,4 @@ pandas
 pyarrow
 line_profiler
 profila
+cython
