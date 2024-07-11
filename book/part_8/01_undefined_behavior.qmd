@@ -18,35 +18,15 @@ To demonstrate the intersection of undefined behavior and the compiler's optimiz
 Cython is a bit like Numba, in that it lets you compile a Python-like language to machine code, but unlike Numba it first gets converted to C or C++, and then that get compiled into machine code.
 The following is based on [an example by Paul J. Lucas](https://dev.to/pauljlucas/undefined-behavior-in-c-and-c-3a20).
 
-First, we'll start with this code example:
-
-```{python}
-#| error: true
-#| output-overflow: wrap
-%%cython
-# Indicate this array exists somewhere else, but don't actually create it.
-cdef extern int external_array[4];
-
-def in_array(int value):
-    cdef int i = 0
-    while i < 4:
-        if external_array[i] == value:
-            return True
-        i += 1
-    return False
-```
-
-This compiled code fails to load because `external_array` doesn't exist; we neglected to create it anywhere.
-So the `ImportError` is a reasonable outcome.
-
-Next, we'll tweak the code very slightly, converting `while i < 4` into `while i <= 4`.
+Consider the following code, which has a seemingly minor bug:
 
 ```{python}
 %%cython
-cdef extern int external_array[4];
+cdef int external_array[4];
 
 def in_array(int value):
     cdef int i = 0
+    # This is a bug, it should really be `i < 4`:
     while i <= 4:
         if external_array[i] == value:
             return True
@@ -54,8 +34,6 @@ def in_array(int value):
     return False
 ```
 
-We still haven't defined `external_array`, yet the compiled code imports.
-Apparently it no longer cares about `external_array`.
 What happens if we call this function?
 
 ```{python}
