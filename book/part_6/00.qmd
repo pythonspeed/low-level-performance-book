@@ -45,7 +45,7 @@ CPU                               --> L2 cache --> L3 cache --> RAM
 ```
 :::
 
-RAM is the slowest, L3 is a bit faster, L2 more so, and L1 is the fastest.
+RAM is the slowest (a reference is around 100ns), L3 is a bit faster, L2 more so, and L1 is the fastest (a reference is <1ns).
 Typically L1 is per CPU core, L2 may or may not be per core, and L3 is shared across cores.
 There are actually two L1 caches, one for instructions, i.e. the code you're running, and one for the data your program is using.
 
