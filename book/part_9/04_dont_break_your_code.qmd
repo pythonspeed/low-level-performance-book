@@ -2,6 +2,7 @@
 
 When you change your code in order to speed it up, you're always at risk of inadvertently changing its output in ways you don't want.
 The solution is testing, and while testing deserves a whole book of its own, a quick overview of testing options can be helpful.
+If you haven't written many tests before, Eric Ma has a good introductory talk on [testing for data scientists](https://ericmjl.github.io/talks/testing-for-data-scientists/).
 
 ## Ensure the output hasn't changed (or hasn't changed too much)
 
