@@ -1,4 +1,5 @@
+* Fix less-precise calculation chapter so it's faster on M1
+* Update bit about M1 being unhelpful, note that there were just two examples and they were easy to fix (and the optimizations didn't slow them down, they just didn't help)
 * Go over all code samples, make sure they're using minimal NumPyisms.
-* Move memory allocations into new chapter in compiled languages: if you're faster, thnigs that were previously fast enough can become bottlenecks _if they're in the inner loop_. Two kinds of memory, stack that just goes way when function returns, so don't need to keep track of it, can be created by compiler automatically, and memory that needs to persist across time (heap), where it calls some library or operating system function to allocate some memory. this takes not a huge amoutn of time, but it adds up if in the inner loop. learn langauge-specific rules about waht allocates on stack and waht allocates on heap. examples for numba. link to relevant rust docs.
 * Document existence of `py-perf-event`, `perf` command-line tool.
 * Hightlight changed code with https://github.com/shafayetShafee/line-highlight
