@@ -1,7 +1,13 @@
-# Document your code
+# Ensure your code is maintainable
 
 Code that has been optimized for speed can often be less readable, because it prioritizes the needs of the CPU or compiler rather than needs of the reader.
 This can be a problem if you later need to change your algorithm, debug problems, or try a different optimization approach.
+
+## Consider if an optimization is worth its maintenance cost
+
+If an optimization makes your code 5% faster, but makes it impossible to understand how your code works, is that worth doing?
+In some situations, those 5% will be critical.
+Most of the time, it's better to stick with the easier-to-understand code.
 
 ## Provide detailed documentation of your algorithm
 
