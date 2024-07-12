@@ -19,14 +19,13 @@ The following example code matches the basic high-level structure of many data p
 ```{python}
 import pandas as pd
 
-def read_data():
-    # Birth name and date for people born in Missouri between 1980 and 1989:
-    return pd.read_csv(
-        "https://archive.org/download/Missouri_Birth_Index_-_1980-1989/Reclaim_The_Records_-_Missouri_Birth_Index_-_1980-1989.csv"
-    )
+def read_data(file_or_url):
+    return pd.read_csv(file_or_url)
 
 def process_data(input_df):
-    # Return the distribution of the first letter of the first name:
+    # Return the distribution of the first letter of the first name; if you're
+    # unfamiliar with Pandas that's fine, you don't need to understand this
+    # particular code.
     first_letter = input_df["FIRST NAME"].dropna().apply(
         lambda s: s[0]
     )
@@ -35,24 +34,33 @@ def process_data(input_df):
 def generate_report(output):
     output.to_csv("result.csv")
 
-def full_pipeline():
-    input_df = read_data()
+def full_pipeline(file_or_url):
+    input_df = read_data(file_or_url)
     result = process_data(input_df)
     generate_report(result)
 ```
 
-We can then profile our top-level function to see where it's spending the most time.
-We'll use [`line_profiler`](https://pypi.org/project/line-profiler/) to profile our code, as it's probably the simplest profiler you can use:
+We can then profile our code to see where it's spending the most time.
+We'll use [`line_profiler`](https://pypi.org/project/line-profiler/) to profile our code, as it's probably the simplest profiler you can use.
+You can use `line_profiler` on the command-line, or inside a Jupyter notebook or equivalent:
 
 ```{python}
+# Load the line_profiler extension into a Jupyter notebook:
 %load_ext line_profiler
-%lprun -f full_pipeline full_pipeline()
+
+# Birth name and date for people born in Missouri between 1980 and 1989:
+url = "https://archive.org/download/Missouri_Birth_Index_-_1980-1989/Reclaim_The_Records_-_Missouri_Birth_Index_-_1980-1989.csv"
+
+# Run the expression full_pipeline(url), and show profiled time for the
+# full_pipeline and process_data functions:
+%lprun -f full_pipeline -f process_data full_pipeline(url)
 ```
 
-As you can see, reading in the CSV is the main bottleneck, using up 99% of the time.
+As you can see from looking at the output for `full_pipeline()`, reading in the CSV is the main bottleneck, using up 99% of the time.
 This time will be some combination of bandwidth (downloading the file) and computation (parsing the CSV).
 Some profilers—like the [Sciagraph profiler](https://sciagraph.com) I created—can tell you whether code was spending it's time waiting or doing computation.
 Lacking that information, you'll need to figure this out from some combination of context, detailed profiling, and experiments.
+
 In any case, the fact that loading the data uses the vast majority of the time means there is no point in trying to optimize `process_data()`, at least for now.
 If we wanted faster results, we'd need to figure out a faster way to load the data.
 

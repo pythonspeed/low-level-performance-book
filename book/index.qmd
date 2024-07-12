@@ -7,8 +7,13 @@ Instead, this book is specifically written for scientists, data scientists, and 
 Even with that limited focus, there are still many potential reasons your software might be slow.
 Your bottleneck might be computation, or network latency, or disk bandwidth.
 Once again, this book won't cover all of these.
-This book focuses on one particular subset of the performance problem: computation.
+There are other books that cover performance from a much broader perspective than this one:
 
+* [_High Performance Python, 2nd edition_](https://www.oreilly.com/library/view/high-performance-python/9781492055013/), by Gorelick and Oszvald.
+  A third edition is in the works; I will likely be contributing a tiny section on Rust.
+* [_Fast Python_](https://www.manning.com/books/fast-python), by Antao.
+
+This book focuses on one particular subset of the performance problem: computation.
 In particular, in most of this book I'm assuming that:
 
 1. You've already profiled your code to find the key bottleneck.
@@ -33,10 +38,11 @@ In that case, the common advice you will get is:
 1. Re-write your code in a compiled language.
 2. Then, take advantage of parallelism, using multiple CPU cores.
 
+Unfortunately, there's a key step missing in the middle of this process, a step that is the main focus of this book.
+
 ## The missing step: optimization
 
-There's a key step missing in the middle of this process, a step that is the main focus of this book.
-Here's a better plan for speeding up your code:
+Here's a better plan for speeding up your computational code:
 
 1. Re-write your code in a compiled language.
 2. **Optimize your code.**
@@ -52,13 +58,15 @@ If, however, you can optimize your code first and make it 10× faster, you only 
 That means you've dropped the financial cost of computing by 90%.
 It also means you can stick to running on a single machine, which means much simpler software.
 
+In short, a little time spent on optimization can result in major time and financial savings.
+
 ## Reading the book
 
 Most of the examples in this book will use the Numba language and compiler, because it is easy to install and uses the same syntax as Python.
 However, this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
 I will discuss the functionality of these other languages where relevant.
 
-If you like starting with the big picture, you might want to [jump to the last part of the book](part_9/01_when.qmd) and then come back to the beginning later.
+If you like starting with the big picture, you might want to [jump to the last part of the book](part_9/01_when.qmd) and then jump back to the beginning of the book.
 Otherwise, let's leap right in to speeding up your computation.
 
 [^cpython]: Technically, it's not the language that's slow, it's the default implementation. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that can do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features.

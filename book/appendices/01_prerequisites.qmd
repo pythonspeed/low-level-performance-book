@@ -51,11 +51,12 @@ Externally NumPy won't differentiate between those views and arrays that are con
 ## A quick intro to Numba
 
 The concepts in this book should apply to C, C++, Rust, and other low-level languages.
-However, to make it easy to follow the code, the examples will all use Numba.
+The choice of language is addressed in a later chapter towards the end of the book.
+However, to make it easy to follow the code, most of the examples in this book will use Numba.
 
 Numba is a programming language that implements a subset of Python, but compiles to machine code.
 And as we'll see, it's very easy to integrate into any Python environment.
-That makes it an excellent language for teaching about low-level programming, since you don't need to learn a new programming language or a new development environment.
+That makes it an excellent language for teaching low-level programming, since you don't need to learn a new programming language or a new development environment.
 
 **Keep in mind that this is not a book about Numba:**
 

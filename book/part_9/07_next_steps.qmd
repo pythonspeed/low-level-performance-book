@@ -23,7 +23,7 @@ All of these require at least a basic knowledge of the C programming language.
 
 There is only so much performance you can eke out from one CPU core, and modern computers have many cores.
 So eventually you will want to take advantage of these cores to speed up your results.
-Here are some books you might find useful that cover performance from a broader perspective, including parallelism:
+Two of the broader performance books previously recommended elsewhere in this book also cover parallelism:
 
 * [_High Performance Python, 2nd edition_](https://www.oreilly.com/library/view/high-performance-python/9781492055013/), by Gorelick and Oszvald.
   A third edition is in the works; I will likely be contributing a tiny section on Rust.
