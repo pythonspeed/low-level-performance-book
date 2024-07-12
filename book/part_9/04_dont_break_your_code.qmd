@@ -18,6 +18,21 @@ You can do the same in your test suite:
 
 Whether the result is sufficient similar is domain specific; you'll need to determine that based on your understanding of the data and requirements.
 
+Here's how a simple test might look, runnable with [`pytest`](https://docs.pytest.org/):
+
+```python
+from mylib import optimized_algorithm
+
+TEST_DATA = [...]
+
+def reference_algorithm(arr):
+    # ...
+
+def test_optimized_algorithm():
+    for arr in TEST_DATA:
+        assert reference_algorithm(arr) == optimized_algorithm(arr)
+```
+
 ### Use snapshot testing
 
 Snapshot testing is also known as "golden master testing", "approval tests", and probably a number of other names.
@@ -71,7 +86,8 @@ def test_my_sum(arr):
     assert my_sum(arr) == arr.sum()
 ```
 
-Despite `my_sum()` being seemingly correct, the test did in fact catch a difference in behavior:
+Despite `my_sum()` being seemingly correct, the test did catch a difference in behavior (and no, I did not introduce a bug on purpose!).
+Here's the shortened output from `pytest`:
 
 ```
 arr = array([[18446744073709551613, 1],
