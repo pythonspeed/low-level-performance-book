@@ -133,8 +133,11 @@ Lacking personal experience or more research, I can't really speak to the tradeo
 
 Whatever you choose, with the exception of Numba (and Cython if you're only using Jupyter notebooks), you will need to compile the code before your Python extension can be imported.
 There are potential compatibility issues when distributing binary packages from one computer to another.
-For example, if you compile on Ubuntu 24.04, the resulting wheel likely won't work on versions of Linux released before April 2024.
+For example, if you compile on Ubuntu 24.04, the resulting wheel likely won't work on versions of Linux released before 2024.
 So make sure to compile your released code on an operating system that is the same or older than the one where you will deploy your code.
 
-If you want to distribute a package that can be installed with `pip` or similar tools, you'll distribute a "wheel", a binary package tied to a specific platform, e.g. Linux on x86-64.
-A tool like [`cibuildwheel`](https://cibuildwheel.pypa.io/en/stable/) allows you to build your wheels in a way that makes them easy to distribute across older Linux, macOS, and Windows versions.
+If you want to distribute a package that can be installed with `pip` or similar tools, you'll distribute a "wheel", a binary package tied to a specific platform, e.g. Linux on x86-64, or macOS on ARM.
+For example, NumPy distributes [a variety of pre-compiled wheels](https://pypi.org/project/numpy/#files) for different platforms.
+When you `pip install numpy`, `pip` chooses the appropriate package to download, so you don't have to compile NumPy yourself.
+
+If you're building wheels for your open source project, a tool like [`cibuildwheel`](https://cibuildwheel.pypa.io/en/stable/) allows you to build your wheels in a way that makes them easy to distribute across older Linux, macOS, and Windows versions.
