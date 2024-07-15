@@ -1,6 +1,6 @@
 # Identify the bottleneck in your code before you optimize it
 
-In most of this book we focus on optimizing code, especially compiled code.
+In most of this book we focus on optimizing computational code, and in particular compiled code.
 But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in optimizing computation.
 So before start optimizing your code—the topic of the rest of this book—it's important to understand that other bottlenecks exist, and to do the work to identify which specific bottleneck is impacting your code.
 
@@ -14,7 +14,8 @@ So before start optimizing your code—the topic of the rest of this book—it's
 The starting point to optimizing your code is figuring out why it's slow.
 By using one of the many performance profilers for Python—Scalene, Py-Spy, Austin, PyInstrument, VizTracer, and many more—you can identify which parts of your code are taking the most time.
 
-The following example code matches the basic high-level structure of many data processing programs:
+The following example code matches the basic high-level structure of many data processing programs.
+If you are not familiar with Pandas, that's fine, it's the high-level part that matters:
 
 ```{python}
 import pandas as pd
@@ -40,7 +41,7 @@ def full_pipeline(file_or_url):
     generate_report(result)
 ```
 
-We can then profile our code to see where it's spending the most time.
+We can profile this code to see where it's spending the most time.
 We'll use [`line_profiler`](https://pypi.org/project/line-profiler/) to profile our code, as it's probably the simplest profiler you can use.
 You can use `line_profiler` on the command-line, or inside a Jupyter notebook or equivalent:
 
@@ -109,65 +110,3 @@ In these situations, the operating system will move some memory out of RAM and o
 If you swap out data you aren't currently using, this won't be noticeable.
 But if you are continuously reading and writing in-memory data that doesn't fit in RAM, it will be continuously moved back and forth from disk.
 Beyond a certain point your whole computer will grind to a halt as it spends all its time trying to move data back and forth between disk and RAM.
-
-## Solve computational bottlenecks with vectorized operations
-
-Even if the bottleneck in your program is computation, there might be ways you can fix it just by tweaking your Python code.
-Elsewhere in the book we cover making your code more efficient, but there are some library-specific issues you might also encounter.
-
-Libraries like NumPy, SciPy, Pandas and others can process data very quickly by doing batch processing in functions implemented in a low-level language like C or Fortran.
-This is known as "vectorization" (a different meaning than "vectorization" when used to discuss SIMD!).
-
-In general, avoid using `for` loops and other similar constructs like list comprehensions on large NumPy arrays.
-If you have such a loop in your code, switching to a vectorized API can give you a significant speed-up, without having to switch away from Python.
-For example:
-
-```{python}
-import numpy as np
-
-# Notice this is a normal Python function, not a compiled Numba function:
-def sum_with_for_loop(arr):
-    total = 0
-    for value in arr:
-        total += value
-    return total
-
-def sum_vectorized(arr):
-    return arr.sum()
-
-ARR = np.ones((1_000, 1_000), dtype=np.int64)
-```
-
-If we time the two functions, the `for` loop is much slower:
-
-```{python}
-#| echo: false
-%%compare_timing
-sum_with_for_loop(ARR)
-sum_vectorized(ARR)
-```
-
-### Identify situations when vectorized operations are not enough
-
-Sometimes vectorization is not sufficient, and you really do need to abandon Python and switch to lower-level compiled code.
-
-#### Case 1: The vectorized implementation uses too much memory
-
-Vectorized APIs operate on complete arrays.
-That means when you create temporary intermediate values, they will also have to be arrays.
-The result is that you often have gigantic temporary arrays using massive amounts of memory.
-
-You can reduce this massive memory usage overhead by doing the operation in chunks or batches, so the temporary arrays are smaller.
-Or, you can switch to a lower-level language and then use a `for` loop to iterate over individual values is fast enough.
-This means temporary values can be tiny, instead of gigantic, saving you lots of memory.
-
-#### Case 2: The vectorized implementation is too slow
-
-Sometimes the vectorized implementation is just too slow.
-If you want an optimized version, you're going to have to implement it with lower-level code, where you have more control over how the code runs.
-
-#### Case 3: The algorithm can't be expressed with vectorized operations
-
-Sometimes you _can't_ implement the algorithm with existing vectorized APIs.
-When this happens, the only solution is to implement a new vectorized API with low-level code.
-This is why libraries like SciPy have so much low-level compiled code: the building blocks in NumPy aren't always sufficient.

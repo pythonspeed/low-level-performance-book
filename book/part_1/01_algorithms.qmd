@@ -1,6 +1,6 @@
 # Use scalable algorithms and data structures
 
-As explained in the introduction, this book focuses on situations where you've already identified which parts of the code are slow, broadly speaking, and where you've determined the performance bottleneck is computation.
+In the rest of the book I'm going to assume you've already identified which parts of the code are slow, broadly speaking, and that you've determined the performance bottleneck is computation.
 Given those assumptions, there are two high-level reasons the code might be slow:
 
 1. Which algorithm and data structures you chose to use.
@@ -28,18 +28,7 @@ That last case is a warning: if your algorithm scales badly enough, larger input
 Let's consider a specific example: we'll compare a quadratic algorithm and a linear algorithm, both of which solve the same problem.
 Quadratic algorithms are a good example because they're easy to write accidentally, to the point that there is [a blog devoted purely to showcasing examples](https://accidentallyquadratic.tumblr.com/).
 
-Before we can show the example, we need to briefly discuss the technology stack we'll be using for examples in this book, starting with the NumPy library.
-For more details on the technologies used, see the appendix.
-NumPy's core data structure is the `ndarray`, which are N-dimensional arrays.
-An `ndarray` is a bit like a standard Python list, except that an `ndarray` is:
-
-1. Fixed in size: you can't append entries.
-2. Only contains items of a single data type or "dtype", e.g. 32-bit unsigned integers.
-   This allows `ndarray`s to be accessed efficiently from compiled languages, unlike Python lists.
-3. Potentially N-dimensional, e.g. it might describe a 3D volume.
-
-Let's implement an algorithm that operates on a pair on `ndarray`s.
-Specifically, we'll implement a function that filters one array down to only those items that are present in a second array.
+Specifically, we'll implement a function that filters one NumPy array down to only those items that are present in a second NumPy array.
 We'll assume both arrays have approximately the same length.
 
 ```{python}
@@ -140,27 +129,7 @@ To learn more about Big-O notation, you can read:
 
 ## A faster language won't make an algorithm scale
 
-So far we've been using Python, which is pretty slow; next we'll try an implementation of the same $O(n·m)$ algorithm in a compiled language.
-In particular, we will compile the code using [Numba](https://numba.pydata.org/).
-Numba is a programming language that implements a subset of Python, compiles to machine code, and has native support for NumPy arrays.
-Keep in mind that this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
-
-Numba is easy to install and simple to use: you can install the `numba` package with `pip`/`conda`/your package manager of choice.
-To make a function faster, you decorate it with `@numba.jit`.
-The first time you call this function with a set of arguments with specific types, Numba will generate machine code customized for those particular types.
-Subsequent runs will use the pre-compiled version and hopefully run much more quickly.
-
-::: {.callout-important}
-### How to read code examples in this book
-
-In many of the book's chapters I will end up rewriting a function step-by-step in order to speed it up.
-That means some of the code will change, and some will stay the same.
-To make it easier to notice what has changed:
-
-* Scan the code for comments, which I have added anywhere I change the code or where you need to notice an important point.
-* Code without comments should be the same as previous versions of a function.
-* Comments starting with a 😎 indicate a performance speedup.
-:::
+So far we've been using Python, which is pretty slow; next we'll try an implementation of the same $O(n·m)$ algorithm in a compiled language, Numba:
 
 ```{python}
 from numba import jit

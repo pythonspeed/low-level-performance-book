@@ -89,29 +89,26 @@ This algorithm is a bit of a hack:
 
 So if we change the results slightly, as long as we still think the results look OK, that's perfectly fine.
 
-So let's change the histogram algorithm to use 64 buckets instead of 256.
+So let's change the histogram algorithm to use 32 buckets instead of 256.
 That should speed up the threshold calculation, and while as a _median_ calculation it will be less accurate, as a _threshold_ calculation it may still be sufficient.
 
 ```{python}
 @jit
 def approximate_histogram_median(img):
-    # 😎 Use a smaller number of buckets:
-    histogram = np.zeros((64,), dtype=np.uint32)
+    histogram = np.zeros((256,), dtype=np.uint32)
+    img = img.ravel()
+    for i in range(0, img.shape[0], 3):
+        value = img[i]
+        histogram[value] += 1
 
-    for y in range(img.shape[0]):
-        for x in range(img.shape[1]):
-            value = img[y, x]
-            # Convert the 0-255 value into one of 64 buckets:
-            histogram[value // 4] += 1
-
-    visited_pixels = img.shape[0] * img.shape[1] // 2
-    for l in range(64):
+    visited_pixels = img.shape[0] // (2 * 3)
+    for l in range(255):
         visited_pixels -= histogram[l]
         if visited_pixels < 0:
             break
 
     # Convert back to 0-255 range:
-    return l * 4
+    return l
 
 
 @jit
@@ -157,11 +154,6 @@ And here's the performance of our new implementation:
 median_local_threshold2(IMAGE, 11, 13)
 median_local_threshold2_approximate(IMAGE, 11, 13)
 ```
-
-::: {.callout-note}
-When I tested this on a Mac M1 CPU, the performance of the approximate algorithms wasn't any better than the original program.
-Some optimizations are less portable than others!
-:::
 
 ## Fine-tune parameters to maximize performance
 

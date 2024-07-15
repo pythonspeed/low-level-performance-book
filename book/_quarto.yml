@@ -9,7 +9,9 @@ book:
     - index.qmd
     - part: "General performance"
       chapters:
-        - part_1/00_algorithms.qmd
+        - part_1/00_profiler.qmd
+        - part_1/00b_vectorized_operations.qmd
+        - part_1/01_algorithms.qmd
         - part_1/02_generic_optimization.qmd
         - part_1/03_example_median_threshold.qmd
         - part_1/04_customize_for_your_data.qmd
@@ -46,7 +48,6 @@ book:
         - part_6/05_n_dimensional.qmd
     - part: "More examples"
       chapters:
-        - part_7/01_example_rescale_contrast.qmd
         - part_7/02_example_dithering.qmd
         - part_7/03_example_memory_layout.qmd
     - part: "Compilers in practice"
@@ -58,7 +59,6 @@ book:
         - part_8/04_writing_for_the_compiler.qmd
     - part: "Performance in practice"
       chapters:
-        - part_9/01_when.qmd
         - part_9/02_choosing_a_programming_language.qmd
         - part_9/02b_bulk_objects.qmd
         - part_9/03_microbenchmarking.qmd
