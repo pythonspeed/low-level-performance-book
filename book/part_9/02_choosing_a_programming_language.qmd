@@ -100,6 +100,7 @@ Packaging your code:
 ## [Rust](https://www.rust-lang.org/)
 
 Designed as a replacement for C++, without C++'s problems: a language that can run extremely fast, do both low-level and high-level programming, but without C++'s memory-safety and thread-safety problems.
+Beyond the usual books, here's [an introduction to Rust that focuses on numeric computing](https://grayscott-with-rust-grasland-5e6591fc7054976525da4f6c87122ea76c.pages.in2p3.fr/).
 
 Benefits:
 
