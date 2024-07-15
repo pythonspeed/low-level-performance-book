@@ -1,9 +1,10 @@
-# Switch to compiled code
+# Compiled code is different
 
-So far the optimizations we've covered are language-agnostic: you can apply them whether you're writing Python, Rust, or JavaScript.
-But if you're currently writing Python, eventually you will encounter a situation where your code runs too slowly, and you'll need to switch to a faster, compiled language.
+So far we've treated Numba, and by extension other compiled languages, as a magic wand: wave it over your code, and your code runs faster.
+Next we'll learn a bit more about how they work, so you can understand what they can do for you, and when they'll fail.
 
 Examples of compiled languages include C, C++, Rust, Fortran, and Numba.
+Cython is another compiled language you can use, with an extra stage of processing: first it is translated into C or C++, and then the C/C++ code is compiled to machine code.
 For all of these:
 
 1. Before the code can be run, the code is converted ("compiled") to machine code using a tool called a "compiler".
@@ -11,7 +12,5 @@ For all of these:
    By generating machine code, the compiled output can run directly on the CPU, without any additional software-based translations.
 2. In most cases, the compiler knows each variable's specific type at compile time.
    It might be a 64-bit integer, it might be something more complex, but this information is available to the compiler.
-
-Cython is another compiled language you can use, with an extra stage of processing: first it is translated into C or C++, and then the C/C++ code is compiled to machine code.
 
 Over the next few chapters, we'll see how compilation generates code that can run quickly, and how that impacts the way you write your code.
