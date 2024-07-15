@@ -497,6 +497,89 @@ median_local_threshold3(IMAGE, 11, 13)
 median_local_threshold4(IMAGE, 11, 13)
 ```
 
+## Trade precision and/or accuracy for speed
+
+Another potential optimization tied to the specifics of your particular data is relaxing the precision or even accuracy of your code.
+In many cases, a performance optimization that changes results slightly may be acceptable and even desirable:
+
+* The results you're calculating may be more "precise" than the error caused by your input data.
+  If that extra precision is slowing your code down, you can reduce your precision and still got results that are faster and still just as accurate.
+  A generic library has no way of knowing what level of precision is acceptable, so it can't make this sort of compromise.
+* In other cases, less accurate results may also be acceptable.
+  For example, the monetary cost of inaccuracy may be much lower than the monetary cost savings from a faster run time.
+
+So far we've been trying to calculate the median (mostly) accurately.
+Next, we'll change the histogram algorithm to use 32 buckets instead of 256.
+While it will be less accurate as a _median_ calculation, as a _threshold_ calculation it may still be sufficient.
+
+```{python}
+@jit
+def median_local_threshold5(img, neighborhood_size, offset):
+    assert neighborhood_size % 2 == 1
+    radius = (neighborhood_size - 1) // 2
+    result = np.empty(img.shape, dtype=np.uint8)
+    # 😎 Smaller number of buckets:
+    histogram = np.empty((32,), dtype=np.uint32)
+    median = 0
+
+    for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
+
+        histogram[:] = 0
+        for neighbor_y in range(min_y, max_y):
+            for neighbor_x in range(0, radius):
+                value = img[neighbor_y, neighbor_x]
+                # Convert 0-255 into 0-31 to match the buckets:
+                histogram[value // 8] += 1
+
+        for j in range(img.shape[1]):
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+
+            if min_x > 0:
+                for y in range(min_y, max_y):
+                    histogram[img[y, min_x - 1] // 8] -= 1
+
+            if max_x < img.shape[1]:
+                for y in range(min_y, max_y):
+                    histogram[img[y, max_x - 1] // 8] += 1
+
+            half_neighborhood_size = ((max_y - min_y) * (max_x - min_x)) // 2
+            the_range = range(32) if median < 127 else range(31, -1, -1)
+            for l in the_range:
+                half_neighborhood_size -= histogram[l]
+                if half_neighborhood_size < 0:
+                    # Convert the median from 0-31 buckets to values of range
+                    # 0-255:
+                    median = l * 8
+                    break
+
+            if img[i, j] > median - offset:
+                result[i, j] = 255
+            else:
+                result[i, j] = 0
+    return result
+
+NUMBA_RESULT5 = median_local_threshold5(IMAGE, 11, 13)
+```
+
+Here's the new image; it doesn't look much different, and may well be acceptable:
+
+```{python}
+#| echo: false
+%display_image NUMBA_RESULT5
+```
+
+At the same time, the code runs twice as fast:
+
+```{python}
+#| echo: false
+%%compare_timing
+median_local_threshold4(IMAGE, 11, 13)
+median_local_threshold5(IMAGE, 11, 13)
+```
+
 ## The big picture
 
 Here's a performance comparison of all the versions of the code:
@@ -510,6 +593,7 @@ median_local_threshold1(IMAGE, 11, 13)
 median_local_threshold2(IMAGE, 11, 13)
 median_local_threshold3(IMAGE, 11, 13)
 median_local_threshold4(IMAGE, 11, 13)
+median_local_threshold5(IMAGE, 11, 13)
 ```
 
 Let's go over the steps we went through:
@@ -521,5 +605,6 @@ Let's go over the steps we went through:
 4. **Adaptively tweak the algorithm at runtime:** as we run on an actual image, we use what we've learned up to this point to hopefully run faster later on.
    The decision from which side of the histogram to start is arbirary in general.
    But in this _specific_ algorithm, the overlapping pixel neighborhoods mean we can make a reasonable guess.
+5. **Reduce the precision of the result:** this requires understanding the kind of data you're getting, and the kind of output you find acceptable.
 
 This process demonstrates part of why generic libraries may be slower than custom code you write for your particular use case and your particular data.
