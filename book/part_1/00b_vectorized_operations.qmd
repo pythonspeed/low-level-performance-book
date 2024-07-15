@@ -219,13 +219,12 @@ Subsequent runs will use the pre-compiled version and hopefully run much more qu
 from numba import jit
 
 # 😎 By decorating the function with @jit, it will get compiled to machine code
-# the first time it is called. Subsequent calls should be much faster:
+# the first time it is called. Subsequent calls should be much faster. The
+# function's code is identical to python_rescale_intensity().
 @jit
 def compiled_rescale_intensity(img, min_value, max_value):
     shifted_max = max_value - min_value
-    # Create an empty array for the result:
     result = np.empty(img.shape, dtype=np.uint8)
-    # Iterate over every pixel in the image:
     for y in range(img.shape[0]):
         for x in range(img.shape[1]):
             old_value = img[y, x]
@@ -235,7 +234,6 @@ def compiled_rescale_intensity(img, min_value, max_value):
                 shifted = old_value - min_value
             shifted = min(shifted, shifted_max)
             scaled = (shifted / shifted_max) * 255
-            # Write the scaled value to the result array:
             result[y, x] = np.uint8(np.round(scaled))
     return result
 

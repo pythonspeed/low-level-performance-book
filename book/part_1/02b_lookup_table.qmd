@@ -1,0 +1,93 @@
+# Use a lookup table
+
+A lookup table is an extreme case of getting rid of repetitive code: you calculate a value _once_, and that's it.
+To demonstrate how this works, we'll return to an example from a previous chapter, rescaling an image for better contrast.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+Here's our previous Numba-based solution:
+
+```{python}
+from numba import jit
+import numpy as np
+from skimage import io
+
+IMAGE = io.imread("../images/lowcontrast.jpg")
+
+@jit
+def compiled_rescale_intensity(img, min_value, max_value):
+    shifted_max = max_value - min_value
+    result = np.empty(img.shape, dtype=np.uint8)
+    for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
+            old_value = img[y, x]
+            if old_value < min_value:
+                shifted = 0
+            else:
+                shifted = old_value - min_value
+            shifted = min(shifted, shifted_max)
+            scaled = (shifted / shifted_max) * 255
+            result[y, x] = np.uint8(np.round(scaled))
+    return result
+```
+
+## Replace repetitive calculations with a lookup table
+
+Can we speed up this code?
+There's a number of steps used to calculate the new value, perhaps we could optimize that calculation?
+
+In fact, optimizing the calculation is a distraction.
+The key to faster code in this case is remembering that the fastest code is code that doesn't run at all.
+
+Notice that our function takes a value between 0 and 255 and turns it into another value between 0 and 255.
+For a given `min_value` and `max_value`, _that relationship is fixed_.
+If you encounter a pixel with value 17, the rescaled value will be exactly the same as the last time you encountered 17.
+And yet, in our existing implementation, we will do the same exact calculation with the same exact results, over and over and over again.
+
+Instead of repeatedly doing the same calculation, we can create a lookup table once.
+The lookup table only needs to hold 256 `uint8`s, one for each potential pixel value, so it'll be small.
+And because we're accessing it in a tight loop, it will stay in the CPU's L1 cache, so reading from it should be fast.
+Here's what this looks like:
+
+```{python}
+@jit
+def lut_rescale_intensity(img, min_value, max_value):
+    shifted_max = max_value - min_value
+
+    # 😎 Create a lookup table mapping from original value to rescaled value.
+    # We only need to do 256 calculations:
+    rescaled = np.empty((256,), dtype=np.uint8)
+    for i in range(256):
+        if i < min_value:
+            shifted = 0
+        else:
+            shifted = i - min_value
+        shifted = min(shifted, shifted_max)
+        scaled = (shifted / shifted_max) * 255
+        rescaled[i] = np.uint8(np.round(scaled))
+
+    # 😎 For each pixel in the image, update it using the corresponding value
+    # in the lookup table, a very cheap operation:
+    result = np.empty(img.shape, dtype=np.uint8)
+    for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
+            result[y, x] = rescaled[img[y, x]]
+    return result
+
+assert np.array_equal(
+    compiled_rescale_intensity(IMAGE, 30, 190),
+    lut_rescale_intensity(IMAGE, 30, 190)
+)
+```
+
+Here's the speed of our new version:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=peak_memory
+compiled_rescale_intensity(IMAGE, 30, 190)
+lut_rescale_intensity(IMAGE, 30, 190)
+```

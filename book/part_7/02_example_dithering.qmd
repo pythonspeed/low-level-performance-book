@@ -8,13 +8,13 @@ So how do you implement a fast version of these sort of algorithms?
 First, by using low-level code.
 Second, by optimizing that code as much as possible.
 
-To help us identify hotspots we're going to use the Profila profiler:
+To help us identify hotspots we're going to use the Profila profiler for Numba:
 
 ```{python}
-import sys
-if sys.platform == "linux":
-    %load_ext profila
+%load_ext profila
 ```
+
+Note that Profila can distort performance somewhat, so you also want to run your code without it to make sure you've actually successfully optimized your code.
 
 ## Example: Dithering an image from grayscale to black and white
 
