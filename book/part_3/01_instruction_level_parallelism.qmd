@@ -320,7 +320,7 @@ If we sum the values in an array, in every iteration of the loop we add values t
 That variable acts as a data dependency, and prevents instruction-level parallelism:
 
 ```{python}
-DATA = np.arange(0, 1_000_000, dtype=np.uint64)
+DATA = np.arange(0, 1_000_001, dtype=np.uint64)
 
 @jit
 def sum1(arr):
@@ -347,7 +347,8 @@ def sum2(arr):
         total2 += arr[i * 4 + 1]
         total3 += arr[i * 4 + 2]
         total4 += arr[i * 4 + 3]
-    # Add the remaining items at the end:
+    # Add the remaining items at the end in case the length is not a multiple
+    # of 4:
     for i in range(len(arr) - len(arr) % 4, len(arr)):
         total1 += arr[i]
     return total1 + total2 + total3 + total4
@@ -373,7 +374,32 @@ sum2(DATA)
 ::: {.callout-note}
 We'll discuss SIMD in the next chapter.
 If you were to run the above code with SIMD enabled, the `sum1()` function might be faster than `sum2()`, or the same speed.
-That's because the compiler would figure out it can use SIMD in the first case, getting parallelism a different way.
-
 This technique is still worth trying even if SIMD is enabled, as we'll see in an example in a later chapter.
 :::
+
+## Use higher-level abstractions when available
+
+The rewritten code in the examples above is harder to read, and handling the final items at the end is always tricky and prone to off-by-one bugs.
+The resulting code is faster, yes, but that comes at the cost of maintainability.
+
+In some compiled languages, this sort of refactoring can be done by a higher-level library, speeding up the code while still preserving readability.
+In Rust, the [`iterator_ilp`](https://docs.rs/iterator_ilp) crate implements APIs that are designed to take advantage of instruction-level parallelism.
+As an equivalent to our `sum1()/sum2()` example above, here's a normal sum function:
+
+```rust
+fn rust_sum1(arr: Vec<u64>) -> u64 {
+    arr.iter().sum()
+}
+```
+
+And here how you would generates code that is the equivalent of the 4 accumulators we used in the `sum2()` example above:
+
+```rust
+use iterator_ilp::IteratorILP;
+
+fn rust_sum2(arr: Vec<u64>) -> u64 {
+    arr.iter().ilp_sum::<4>()
+}
+```
+
+This is both more readable and less error-prone than the rest of the sped-up examples in this chapter.
