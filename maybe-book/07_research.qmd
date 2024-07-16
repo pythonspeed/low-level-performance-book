@@ -1,0 +1,72 @@
+# Research
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+from skimage.data import page
+import numpy as np
+
+IMAGE = page()
+assert IMAGE.dtype == np.uint8
+```
+
+```{python}
+from numba import jit
+from numba.typed import List
+
+@jit(boundscheck=True)
+def dp_approximate_filter(img, neighborhood_size, offset):
+    assert neighborhood_size % 2 == 1
+    radius = (neighborhood_size - 1) // 2
+    result = np.empty(img.shape, dtype=np.uint8)
+    col_medians = List()
+
+    for i in range(img.shape[0]):
+        min_y = max(i - radius, 0)
+        max_y = min(i + radius + 1, img.shape[0])
+
+        # Populate histogram as if we started one pixel to the left:
+        del col_medians[:]
+        for neighbor_x in range(radius):
+            col_medians.append(np.median(img[min_y:max_y, neighbor_x]))
+
+        for j in range(img.shape[1]):
+            min_x = max(j - radius, 0)
+            max_x = min(j + radius + 1, img.shape[1])
+
+            # Substract left-most column we don't want anymore:
+            if min_x > 0:
+                del col_medians[0]
+
+            # Add new right-most column:
+            if max_x < img.shape[1]:
+                col_medians.append(np.median(img[min_y:max_y, max_x - 1]))
+
+            # Calculate median of medians:
+            temp_arr = np.empty((len(col_medians),), dtype=np.uint8)
+            for k in range(len(col_medians)):
+                temp_arr[k] = col_medians[k]
+            threshold = np.median(temp_arr)
+
+            if img[i, j] > threshold - offset:
+                result[i, j] = 255
+            else:
+                result[i, j] = 0
+    return result
+
+THRESHOLDED = dp_approximate_filter(IMAGE, 11, 13)
+```
+
+```{python}
+#| echo: false
+%display_image THRESHOLDED
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+dp_approximate_filter(IMAGE, 11, 13)
+```

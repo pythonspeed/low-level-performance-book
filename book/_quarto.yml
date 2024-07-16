@@ -15,6 +15,7 @@ book:
         - part_1/02_generic_optimization.qmd
         - part_1/02b_lookup_table.qmd
         - part_1/03_example_median_threshold.qmd
+        #- part_1/07_research.qmd - mention Huang, DP algorithm
     - part: "Compiler optimizations"
       chapters:
         - part_2/00.qmd
