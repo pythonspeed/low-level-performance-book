@@ -1,7 +1,6 @@
 # Remove data dependencies to enable instruction-level parallelism
 
 Your CPU is capable of transparently running multiple instructions at the same time on the same core, making your code run that much faster... but only if your code structure enables it.
-In order to better demonstrate the effects of this CPU feature, we will disable SIMD code generation in the code examples in this chapter; we'll talk about what SIMD means and what it does in the next chapter.
 
 ## Data dependencies are a bottleneck for instruction-level parallelism
 
@@ -94,12 +93,10 @@ To see the speed impact of ILP, let's look at an example: generating an array of
 For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
 
 ```{python}
-# Import the dependencies we'll need:
 import numpy as np
 from numba import uint32, uint64
 
-# 64-bit linear congruent generator; we'll use the top 32-bits only, in order
-# to maximize the cycle length and therefore perceived randomness.
+# 64-bit linear congruent generator used to generate a 32-bit pseudo-random number.
 @jit("uint32(uint32)")
 def lcg(seed):
     temp = uint64(seed) * 2862933555777941757 + 3037000493
@@ -384,7 +381,7 @@ The resulting code is faster, yes, but that comes at the cost of maintainability
 
 In some compiled languages, this sort of refactoring can be done by a higher-level library, speeding up the code while still preserving readability.
 In Rust, the [`iterator_ilp`](https://docs.rs/iterator_ilp) crate implements APIs that are designed to take advantage of instruction-level parallelism.
-As an equivalent to our `sum1()/sum2()` example above, here's a normal sum function:
+As an equivalent to our `sum1()/sum2()` example above, here's a normal sum function written in Rust:
 
 ```rust
 fn rust_sum1(arr: Vec<u64>) -> u64 {
@@ -392,7 +389,7 @@ fn rust_sum1(arr: Vec<u64>) -> u64 {
 }
 ```
 
-And here how you would generates code that is the equivalent of the 4 accumulators we used in the `sum2()` example above:
+And here how you would write Rust code utilizing `iterator_ilp` to achieve the equivalent of the 4 accumulators we used in the `sum2()` example above:
 
 ```rust
 use iterator_ilp::IteratorILP;
@@ -402,4 +399,4 @@ fn rust_sum2(arr: Vec<u64>) -> u64 {
 }
 ```
 
-This is both more readable and less error-prone than the rest of the sped-up examples in this chapter.
+This is more readable and less error-prone than the Numba examples in this chapter.
