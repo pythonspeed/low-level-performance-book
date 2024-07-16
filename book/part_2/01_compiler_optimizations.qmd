@@ -148,7 +148,7 @@ volume_liters_manual_inlining(17.0, 23.0, 52.0)
 ```
 How do we know whether the function will be inlined?
 By default, compilers will use compiler and language-specific heuristics to decide whether or not to inline, often tied to function size.
-Function as trivial as `in_to_cm()` and `cm3_to_liters()` within the same file are likely to be inlined in pretty much any compiler.
+Functions as trivial as `in_to_cm()` and `cm3_to_liters()` within the same file are likely to be inlined in pretty much any compiler.
 To override the compiler's heuristics, most compiled languages allow you to add hints to functions, telling the compiler that it should (or shouldn't) inline that function.[^numba]
 
 [^numba]: Numba has an inlining hint, but it's not relevant for performance optimization, as it's intended for a different part of the compilation process.

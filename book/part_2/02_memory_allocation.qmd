@@ -7,7 +7,7 @@ When you store data in memory, compiled languages have two different places they
   When the function exits, that memory is automatically freed, and can no longer be accessed again.
   Any data stored on the stack must therefore be copied out before the function returns.
 * **The heap.**
-  A running program can use operating system libraries to request chunks of memory of a given size.
+  A running program can use operating system libraries to request chunks of memory of a given size; this is known as "allocating" the memory.
   This memory can then be passed between functions, and persist across time, without any copying.
 
 Different languages have different ways of deciding whether data is on the stack or the heap.
@@ -95,8 +95,8 @@ But in general, avoiding unnecessary memory writes and reads from data on the he
 ## Avoid unnecessary heap memory allocations in the inner loop
 
 Creating and cleaning up data on the stack is, to a first approximation, free: the performance cost is minimal to non-existent.
-On the other hand, creating data on the heap typically involves calling some external function to _allocate_ that memory; perhaps a Python API, perhaps an operating system API.
-And then, when you're done with memory on the heap, you need to call another API to _free_ that memory.
+On the other hand, creating data on the heap typically involves calling some external function to allocate that memory; perhaps a Python API, perhaps an operating system API.
+And then, when you're done with memory on the heap, you need to call another API to deallocate (sometimes called "free") that memory.
 
 We've already talked about how creating arrays in Numba uses the heap.
 Array creation can also happen implicitly, given the way NumPy works and that Numba emulates NumPy.
@@ -163,7 +163,7 @@ allocate_in_loop(DATA)
 no_allocate_in_loop(DATA)
 ```
 
-# Understand what gets stored on the stack and heap
+## Understand what gets stored on the stack and heap
 
 Different programming languages will have different rules about what ends up on the heap and what ends up on the stack.
 In pretty much all of them:

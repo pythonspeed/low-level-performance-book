@@ -2,7 +2,7 @@
 
 In most of this book we focus on optimizing computational code, and in particular compiled code.
 But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in optimizing computation.
-So before start optimizing your code—the topic of the rest of this book—it's important to understand that other bottlenecks exist, and to do the work to identify which specific bottleneck is impacting your code.
+So before you start optimizing your code, it's important to understand that other bottlenecks exist, and to do the work to identify which specific bottleneck is impacting your code.
 
 ```{python}
 #| echo: false
@@ -11,7 +11,6 @@ So before start optimizing your code—the topic of the rest of this book—it's
 
 ## Identify bottlenecks with a profiler
 
-The starting point to optimizing your code is figuring out why it's slow.
 By using one of the many performance profilers for Python—Scalene, Py-Spy, Austin, PyInstrument, VizTracer, and many more—you can identify which parts of your code are taking the most time.
 
 The following example code matches the basic high-level structure of many data processing programs.
@@ -58,20 +57,21 @@ url = "https://archive.org/download/Missouri_Birth_Index_-_1980-1989/Reclaim_The
 ```
 
 As you can see from looking at the output for `full_pipeline()`, reading in the CSV is the main bottleneck, using up 99% of the time.
-This time will be some combination of bandwidth (downloading the file) and computation (parsing the CSV).
+This presumably is some combination of bandwidth (downloading the file) and computation (parsing the CSV).
 Some profilers—like the [Sciagraph profiler](https://sciagraph.com) I created—can tell you whether code was spending it's time waiting or doing computation.
 Lacking that information, you'll need to figure this out from some combination of context, detailed profiling, and experiments.
 
-In any case, the fact that loading the data uses the vast majority of the time means there is no point in trying to optimize `process_data()`, at least for now.
+The profiling also suggests which parts of `process_data()` are slower.
+However, since loading the data uses the vast majority of the time there is no point in trying to optimize `process_data()`, at least initially.
 If we wanted faster results, we'd need to figure out a faster way to load the data.
 
 Keep in mind that profilers can distort the results somewhat, so low overhead is an important feature in a profiler.
 For this sort of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
 
-## Keep in mind non-computational performance bottlenecks
+## Avoid non-computational performance bottlenecks
 
-As is the case in the example above, computation isn't always your code's main bottleneck.
-Here are some examples of reasons your code might be slow that have nothing to do with how fast your code is:
+As in the example above, computation isn't always your code's main bottleneck.
+Here are some examples of non-computational bottlenecks:
 
 ### Waiting for a remote service
 
@@ -83,30 +83,22 @@ Instead, you should be focusing your efforts on figuring on speeding up the data
 
 Your program may end up spending much of its time reading and writing data over the network.
 This can be due to bandwidth limitations: you can download at 10MB/sec, and you're downloading a 5000MB file.
+Compression can help reduce bandwidth bottlenecks.
 
 Or, the bottleneck may be due to latency, the time it takes to send a message to the remote server.
-Imagine a network where it takes 10 milliseconds to send and then get a response from a server, and your bandwidth maxes out at 100MB/second.
-You want to download 100,000 files of 1KB each.
-
-* If you're downloading these files sequentially, one by one, and the latency of network messages is 10 milliseconds, it will take you 1,000 seconds to download all the files.
-  As a result, the bandwidth you use will only be 0.1MB/second.
-* If you can send a single request to download all 100,000 at once, network latency becomes irrelevant, and bandwidth becomes the bottleneck.
-  That means you will download the file at 100MB/second, in only 1 second: that's 1000× faster!
+If you're downloading 100,000 1KB files sequentially, with a latency of 10ms, it will take you at best 1,000 seconds to download them all, even with infinite bandwidth.
+It will be faster to download them in parallel, or better yet in a large batch.
 
 ### Reading and writing from disk
 
 Like the network, reading and writing from disk can suffer from slowness caused by both bandwidth and latency.
-Spinning hard drives have very high latency.
-More modern SSDs and NVMe disks have very high bandwidth and low latency, so they cause less performance problems.
-Nonetheless, bottlenecks can still be caused by reading large amounts of data or using bad access patterns.
-Compressing the data on disk can help reduce bandwidth issues, by reducing how much data you need to read.
+Spinning hard drives in particular have very high latency; more modern SSDs and NVMe disks do better.
+Compressing the data on disk can help reduce bandwidth issues, and reading in batches can reduce latency issues.
 
 ### Swapping
 
-What happens when your data doesn't fit in RAM?
-For example, your computer may have 64GB of RAM (i.e. memory), but you have 120GB of data you've loaded into your running program.
-
-In these situations, the operating system will move some memory out of RAM and on to disk; this is known as swapping.
+If your data doesn't fit in RAM, the operating system will move some data out of RAM and on to disk; this is known as swapping.
 If you swap out data you aren't currently using, this won't be noticeable.
+
 But if you are continuously reading and writing in-memory data that doesn't fit in RAM, it will be continuously moved back and forth from disk.
-Beyond a certain point your whole computer will grind to a halt as it spends all its time trying to move data back and forth between disk and RAM.
+Beyond a certain point your whole computer will grind to a halt as it spends all its time swapping.

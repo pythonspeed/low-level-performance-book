@@ -7,7 +7,7 @@ And that means opportunities to speed up your code, by customizing your calculat
 ## Example: Median-based local thresholding
 
 Let's say we have an image, a photo of some text from a book.
-We want to turn it into an image with only two colors, black and white.
+We want to turn it into an image with only two colors, black and white, perhaps as a preliminary to running it though an OCR library that can turn an image into text.
 We'll use an example image from [scikit-image](https://scikit-image.org/), an excellent image processing library:
 
 ```{python}
@@ -607,4 +607,4 @@ Let's go over the steps we went through:
    But in this _specific_ algorithm, the overlapping pixel neighborhoods mean we can make a reasonable guess.
 5. **Reduce the precision of the result:** this requires understanding the kind of data you're getting, and the kind of output you find acceptable.
 
-This process demonstrates part of why generic libraries may be slower than custom code you write for your particular use case and your particular data.
+By tweaking your custom code for your particular use case and your particular data, you can often run much faster than generic libraries.

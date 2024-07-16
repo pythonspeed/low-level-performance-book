@@ -4,7 +4,7 @@ Compilers can't read your mind; they can only read your code.
 And one key requirement for the compiler's optimization passes is that your code continues to have the _exact_ same behavior.
 **To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
 
-As a result, in cases where the optimization might change your code's behavior, tthe compiler won't apply seemingly obvious optimizations.
+As a result, in cases where the optimization might change your code's behavior, the compiler won't apply seemingly obvious optimizations.
 In this chapter we'll cover one of the problems that can prevent the compiler from optimizing your code: the potential for aliasing.
 
 ## Pointers and aliasing
@@ -12,12 +12,13 @@ In this chapter we'll cover one of the problems that can prevent the compiler fr
 We first need to cover a couple of definitions:
 
 * A "pointer" is a piece of data that points at a memory address.
+  When you allocate memory on the heap, the result is a pointer, or some wrapper around a pointer.
   For example, in Numba every NumPy array or view has a pointer that points at the location in memory where the array's underlying data is kept.
 * "Aliasing" means having multiple pointers referencing the same memory address at the same time.
 
 When you slice a NumPy array, for example, by default the data doesn't get copied.
 Instead, you get a view object that has a pointer that points at the same memory as the original array.
-Now you have two pointers to the same memory address: one from the original array, and one from the view.
+Now you have two pointers to the same memory address: one in the original array, and one in the view.
 
 ```{python}
 #| echo: false

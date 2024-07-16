@@ -64,8 +64,8 @@ def numpy_rescale_naive(img, min_value, max_value):
     clipped = img.clip(min_value, max_value)
     # Shift the image so min_value becomes zero:
     shifted = clipped - min_value
-    # Scale the image so it becomes a floating array with values between 0.0
-    # and 1.0:
+    # Scale the image so it becomes a floating point rray with values between
+    # 0.0 and 1.0:
     scaled = shifted / (max_value - min_value)
     # Scale the image so it's between 0.0 and 255.0:
     scaled = scaled * 255
@@ -84,7 +84,7 @@ The result looks like this:
 
 In this case the image just looks better, but in many image processing pipelines adjusting contrast is a required early step.
 
-One problem with the above implementation is that it uses huge amounts of memory.
+One problem with the above implementation is that it uses disproportionate amounts of memory.
 Because libraries like NumPy operate on whole arrays, temporary values also have to be whole arrays, which can lead to high memory usage.
 Here's how much memory the original image uses:
 
@@ -149,7 +149,7 @@ numpy_rescale_naive(IMAGE, 30, 190)
 numpy_rescale_optimized(IMAGE, 30, 190)
 ```
 
-This is a bit better, but we're still using way more memory than we ought to.
+This uses less memory, and is faster too, but we're still using way more memory than we ought to.
 
 ## Use `for` loops to reduce memory usage
 
@@ -191,15 +191,15 @@ numpy_rescale_optimized(IMAGE, 30, 190)
 python_rescale_intensity(IMAGE, 30, 190)
 ```
 
-Good news, this uses much less memory.
-Bad news, it's _extremely_ slow.
+On the one hand, this uses much less memory.
+On the other hand, it's _extremely_ slow.
 
 In general, you should avoid using pure Python `for` loops and similar constructs like list comprehensions on large NumPy arrays.
 Python just isn't fast enough.
 
 ## Use a compiled language to get fast `for` loops
 
-Here's our choice so far:
+Here's our choices so far:
 
 1. Use vectorized operations, and suffer from high memory usage.
 2. Use a Python `for` loop, with less memory usage but abysmal speed.
@@ -210,10 +210,14 @@ In particular, we will compile the code using [Numba](https://numba.pydata.org/)
 Numba is a programming language that implements a subset of Python, compiles to machine code, and has native support for NumPy arrays.
 Keep in mind that this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
 
-Numba is easy to install and simple to use: you can install the `numba` package with `pip`/`conda`/your package manager of choice.
-To make a function faster, you decorate it with `@numba.jit`.
-The first time you call this function with a set of arguments with specific types, Numba will generate machine code customized for those particular types.
-Subsequent runs will use the pre-compiled version and hopefully run much more quickly.
+Numba is easy to install and simple to use:
+
+* You can install the `pip install numba`, or the equivalent with `conda` or your package manager of choice.
+* To make a function faster, you decorate it with `@numba.jit`.
+  The first time you call this function with a set of arguments with specific types, Numba will generate machine code customized for those particular types.
+  Subsequent runs will use the pre-compiled version and typically run much more quickly.
+
+Here's our example, using Numba:
 
 ```{python}
 from numba import jit
@@ -237,6 +241,9 @@ def compiled_rescale_intensity(img, min_value, max_value):
             result[y, x] = np.uint8(np.round(scaled))
     return result
 
+# We make sure to call th function at least once before benchmarking it, so
+# that the compilation time isn't included in the benchmark. Plus, it's useful
+# to ensure the calculation result is still the same.
 assert np.array_equal(
     ORIGINAL_RESCALED,
     compiled_rescale_intensity(IMAGE, 30, 190)
@@ -255,28 +262,28 @@ compiled_rescale_intensity(IMAGE, 30, 190)
 
 The compiled function runs quickly—in fact it's faster than the NumPy version—and it also uses far less memory.
 
-## Identify situations when vectorized operations are not enough
+## Identify situations where vectorized operations are not enough
 
 When should you abandon batch APIs like those provided by NumPy, and switch to a compiled language?
 There are three common cases where this is helpful; we've already seen the first in our examples above.
 
 ### Case 1: The vectorized implementation uses too much memory
 
-Vectorized APIs operate on complete arrays.
-That means when you create temporary intermediate values, they will also have to be arrays.
-The result is that you often have gigantic temporary arrays using massive amounts of memory.
+We've already seen this one in the example above.
+Since vectorized APIs operate on complete arrays, temporary intermediate values will also have to be arrays.
+This wastes limited memory.
 
-You can reduce this massive memory usage overhead by doing the operation in chunks or batches, so the temporary arrays are smaller.
-Or, you can switch to a lower-level language and then use a `for` loop to iterate over individual values is fast enough.
-This means temporary values can be tiny, instead of gigantic, saving you lots of memory.
+You can reduce this overhead by doing the operation in chunks or batches, so the temporary arrays are smaller.
+Or, you can switch to a compiled language and then use a `for` loop to iterate over individual values.
 
 ### Case 2: The vectorized implementation is too slow
 
 Sometimes the vectorized implementation is just too slow.
 If you want an optimized version, you're going to have to implement it with lower-level code, where you have more control over how the code runs.
+In a later chapter we'll optimize the Numba function above so it runs even faster.
 
 ### Case 3: The algorithm can't be expressed with vectorized operations
 
 Sometimes you _can't_ implement the algorithm with existing vectorized APIs.
-When this happens, the only solution is to implement a new vectorized API with low-level code.
-This is why libraries like SciPy and scikit-image have so much low-level compiled code: the building blocks in NumPy aren't always sufficient.
+When this happens, the only solution is to switch to compiled code.
+This is why libraries like SciPy and scikit-image that build on NumPy have so much compiled code of their own: the building blocks in NumPy aren't always sufficient.

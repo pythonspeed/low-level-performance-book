@@ -21,8 +21,7 @@ In particular, I'm assuming that you have:
 3. Discovered the bottleneck is computation, i.e. the amount of CPU time the code uses.
    If the bottleneck was something else, like network latency, this book won't help.
 
-I do a quick review of this process, and the bigger picture of performance, at the end of the book; if you're not familiar with the process, you may wish to [start by reading that section first](part_9/01_when.qmd), and then return to the beginning of the book.
-The two books mentioned above should also be helpful.
+I do a quick review of this process, and the bigger picture of performance, in the first chapter of the book.
 
 Assuming your performance bottleneck is computation, how do you speed it up?
 
@@ -31,16 +30,16 @@ Assuming your performance bottleneck is computation, how do you speed it up?
 Python[^cpython] is notoriously slow, but often used to handle large-scale data processing.
 In order to do so in a reasonable amount of time, the solution has traditionally involved writing Python extensions in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
 
-There are many pre-existing compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
-If those libraries are fast enough for you, no need to read the rest of this book!
-
+There are many pre-written compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
+Typically they work by operating on batches of data—an array, or a dataframe.
 Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
-In that case, the common advice you will get is:
+
+In that case, the common advice you'll get is:
 
 1. Re-write your code in a compiled language.
 2. Then, take advantage of parallelism, using multiple CPU cores.
 
-Unfortunately, there's a key step missing in the middle of this process, a step that is the main focus of this book.
+Unfortunately, there's a key step missing in the middle of this process.
 
 ## The missing step: optimization
 
@@ -48,28 +47,21 @@ There's a better plan for speeding up your computational code:
 
 1. Re-write your code in a compiled language.
 2. **Optimize your code.**
-   This is what we'll focus on in this book.
+   This is the bulk of what we'll focus on in this book.
 3. Then, take advantage of parallelism, using multiple CPU cores.
 
 Why not jump straight to parallelism?
+It's true that optimization takes some of your time; you certainly don't want to waste time optimizing code that isn't a bottleneck.
+However:
 
-Imagine you've done step 1, and you still need to make your code 100× faster.
-If you're going to rely on parallelism, you will need to use 100 CPU cores, which can be very expensive, whether you're running in the cloud or buying a local machine.
-You might also need to switch to a solution that involves multiple machines, which makes your software that much more complex.
+* Parallelism increases speed by increasing your financial costs.
+  If my current computer is not fast enough and I want to run 10× faster locally using parallelism, I'd probably have to spend US$15,000 to buy a top of the line workstation.
+  If I can optimize my code to run 10× faster—and this is often possible—I get that speedup without spending any money.
+* Faster code is fundamentally better: you can iterate faster on improvements and bug fixes, you can run more experiments, you can handle more users.
+  By utilizing both optimization and parallelism, you get the speed benefits of both.
+* Finally, as you improve your optimization skills, you will start writing faster code from the start, with no extra time spent.
 
-If, however, you can optimize your code first and make it 10× faster, you only need to use 10 CPU cores to reach that final 100× speedup.
-That means you've dropped the financial cost of computing by 90%.
-It also means you can stick to running on a single machine, which means much simpler software.
-
-In short, a little time spent on optimization can result in major time and financial savings.
-
-## Reading the book
-
-Most of the examples in this book will use the Numba language and compiler, because it is easy to install and uses the same syntax as Python.
-However, this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
-I will discuss the functionality of these other languages where relevant.
-
-If you like starting with the big picture, you might want to [jump to the last part of the book](part_9/01_when.qmd) and then jump back to the beginning of the book.
-Otherwise, let's leap right in to speeding up your computation.
+Ready to optimize your code?
+Let's get started!
 
 [^cpython]: Technically, it's not the language that's slow, it's the default implementation. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that can do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features.

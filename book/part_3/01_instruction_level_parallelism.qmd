@@ -10,7 +10,13 @@ Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
 We don't care how the CPU executes the resulting code: so long as we get the correct result, faster is better.
 
 ```{python}
-#| eval: false
+# Tell Numba to disable SIMD, so it doesn't hide other effects; we'll talk
+# about SIMD in the next chapter.
+import os
+os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
+os.environ["NUMBA_SLP_VECTORIZE"] = "0"
+
+from numba import jit
 from math import sqrt
 
 @jit
@@ -82,21 +88,15 @@ For one thing, a calculation can't be run if its inputs aren't yet available:
 
 We can say that these are "data dependencies" that prevent instruction-level parallelism, and therefore reduce the code's potential runtime speed.
 
-## Example #1: Removing data dependencies from a recursive algorithm
+## Example #1: Removing data dependencies with interleaving
 
 To see the speed impact of ILP, let's look at an example: generating an array of random numbers.
 For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
 
 ```{python}
-# Tell Numba to disable SIMD, so it doesn't hide other effects; we'll talk
-# about SIMD in the next chapter.
-import os
-os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
-os.environ["NUMBA_SLP_VECTORIZE"] = "0"
-
 # Import the dependencies we'll need:
 import numpy as np
-from numba import jit, uint32, uint64
+from numba import uint32, uint64
 
 # 64-bit linear congruent generator; we'll use the top 32-bits only, in order
 # to maximize the cycle length and therefore perceived randomness.

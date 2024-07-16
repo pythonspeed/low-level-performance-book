@@ -1,7 +1,6 @@
 # Use scalable algorithms and data structures
 
-In the rest of the book I'm going to assume you've already identified which parts of the code are slow, broadly speaking, and that you've determined the performance bottleneck is computation.
-Given those assumptions, there are two high-level reasons the code might be slow:
+If you've determined the performance bottleneck in your program is computation, there are two high-level reasons the code might be slow:
 
 1. Which algorithm and data structures you chose to use.
 2. How you _implemented_ the algorithm and any relevant data structures.
@@ -30,10 +29,12 @@ Quadratic algorithms are a good example because they're easy to write accidental
 
 Specifically, we'll implement a function that filters one NumPy array down to only those items that are present in a second NumPy array.
 We'll assume both arrays have approximately the same length.
+The initial example is written in Python, so we can expect it to be pretty slow.
 
 ```{python}
 import numpy as np
 
+# Notice this is written in Python, it's not compiled!
 def quadratic_filter_python(arr1, arr2):
     # Create a new array that is the same size and has the same
     # type as the first input array:
@@ -75,7 +76,8 @@ In other cases, the code examples choose to use easier-to-read APIs rather than 
 How long does this take to run for different input sizes?
 
 ```{python}
-# Create an array with values from 0 to 999:
+# arange() is similar Python's range(), e.g. this next call create an array
+# with values from 0 to 99:
 SMALL_DATA = np.arange(0, 100, dtype=np.uint64)
 SMALL_DATA2 = np.arange(3, 103, dtype=np.uint64)
 LARGER_DATA = np.arange(0, 3_000, dtype=np.uint64)
@@ -96,7 +98,7 @@ Why is that?
 
 `quadratic_filter_python()` might run slower or faster on different computers, and below we'll reimplement the same algorithm in a compiled language.
 But in this chapter we're focusing on how an algorithm's performance scales with the size of the input.
-And across any different hardware environments and implementations, the scalability won't change, because the scalability is tied to the algorithm, not the implementation.
+And across any different hardware environments and implementations, the scalability won't change in a fundamental way, because most of the scalability is tied to the algorithm, not the implementation.
 
 Big-O notation is a way to express that scalability mathematically.
 Specifically, $O()$ implies an upper bound; the function will scale this badly, and no worse.
@@ -113,7 +115,7 @@ And now we can say the algorithm is $O(n·m)$.
 $O(n·m)$ means the run time of a specific implementation will at worst be proportional to $n·m$.
 If we double $n$ (i.e. `len(arr1)`), the run time will at worst double; if we double $m$ (i.e. `len(arr2)`), the run time will at worst double:
 
-$$O(n·m) \implies ImplRuntime(n, m) \propto n·m$$
+$$O(n·m) \implies ImplementationRunTime(n, m) \propto n·m$$
 
 In the real world, with a specific implementation, things are more complicated, but this simplified model does give us a good sense of an algorithm's scalability.
 

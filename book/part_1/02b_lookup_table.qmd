@@ -48,9 +48,10 @@ If you encounter a pixel with value 17, the rescaled value will be exactly the s
 And yet, in our existing implementation, we will do the same exact calculation with the same exact results, over and over and over again.
 
 Instead of repeatedly doing the same calculation, we can create a lookup table once.
-The lookup table only needs to hold 256 `uint8`s, one for each potential pixel value, so it'll be small.
-And because we're accessing it in a tight loop, it will stay in the CPU's L1 cache, so reading from it should be fast.
+The lookup table only needs to hold 256 `uint8`s, one for each potential pixel value, so it'll use only a small amount of memory[^cpucache].
 Here's what this looks like:
+
+[^cpucache]: In later chapters we'll see that keeping frequently accessed memory small can speed up your code, thanks to CPU memory caches. If the lookup table is too big, the cost of memory accesses might undo the benefits of reduced calculations.
 
 ```{python}
 @jit
