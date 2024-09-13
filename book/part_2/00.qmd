@@ -5,12 +5,40 @@ Next we'll learn a bit more about how these languages work, so you can understan
 
 Examples of compiled languages include C, C++, Rust, Fortran, and Numba.
 Cython is another compiled language you can use, with an extra stage of processing: first it is translated into C or C++, and then the C/C++ code is compiled to machine code.
-For all of these:
+All of these languages, as typically implemented anyway, share the following properties:
 
-1. Before the code can be run, the code is converted ("compiled") to machine code using a tool called a "compiler".
+1. **Compilation to machine code:** Before the code can be run, the code is converted ("compiled") to machine code using a tool called a "compiler".
    Machine code is the set of binary instructions your CPU runs.
    By generating machine code, the compiled output can run directly on the CPU, without any additional software-based translations.
-2. In most cases, the compiler knows each variable's specific type at compile time.
+2. **Optimization as part of compilation:** Typically, before compilation to machine code, the compiler optimizes the code by transforming it in ways that will make it faster.
+   We'll see some examples in the next chapter.
+3. **Static typing:** In most cases, the compiler knows each variable's specific type at compile time.
    It might be a 64-bit integer, it might be something more complex, but this information is available to the compiler.
 
-Over the next few chapters, we'll see how compilation generates code that can run quickly, and how that impacts the way you write your code.
+Knowing the types of variables can help the compiler generate efficient machine code.
+For example, your CPU has a machine code instruction for adding two 64-bit integers, so if the compiler knows that's what being added, it can generate that directly.
+Compare this to Python, where integers can be arbitrarily large.
+
+Depending on the compiled language, the types of variables might always be explicit, for example in C:
+
+```c
+int add(int a, int b) {
+  return a + b;
+}
+```
+
+In Numba, the types are discovered from the inputs and by rules that determine what the default types are when there is ambiguity:
+
+```{python}
+import numpy as np
+from numba import jit
+
+@jit
+def add(a, b):
+    return a + b
+
+add(np.int32(1), np.int16(2))
+
+# Tell Numba to print out the types being used in its calculation:
+add.inspect_types()
+```
