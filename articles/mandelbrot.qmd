@@ -1,0 +1,100 @@
+```{python}
+#| echo: false
+import sys
+sys.path.append("../src")
+%load_ext book_magics
+```
+
+
+```{python}
+import numpy as np
+from numba import jit
+
+def impl(height, width, x, y):
+    c = x + y*1j
+    fractal = np.full(c.shape, 20, dtype=np.int32)
+    for h in range(height):
+        for w in range(width):
+            z = c[h, w]
+            for i in range(20):
+                z = z**2 + c[h, w]
+                if z.real**2 + z.imag**2 > 4:   # <--- only difference from pure Python
+                    fractal[h, w] = i
+                    break
+    return fractal
+
+numba_impl = jit(impl)
+numba_fastmath_impl = jit(fastmath=True)(impl)
+
+def numba_mandelbrot(height, width):
+    y, x = np.ogrid[-1:0:height*1j, -1.5:0:width*1j]
+    return numba_impl(height, width, x, y)
+
+def numba_fastmath_mandelbrot(height, width):
+    y, x = np.ogrid[-1:0:height*1j, -1.5:0:width*1j]
+    return numba_fastmath_impl(height, width, x, y)
+
+result1 = numba_mandelbrot(200, 300)
+_ = numba_fastmath_mandelbrot(200, 300)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=branch_mispredictions
+numba_mandelbrot(200, 300)
+numba_fastmath_mandelbrot(200, 300)
+```
+
+```{python}
+print("Mean number of iterations", result1.mean())
+```
+
+```{python}
+@jit(fastmath=True)
+def impl2(height, width, x, y):
+    c = x + y*1j
+    fractal = np.empty(c.shape, dtype=np.int32)
+    for h in range(height):
+        w0 = 0
+        w1 = 1
+        z0 = increment0 = c[h, w0]
+        z1 = increment1 = c[h, w1]
+        i0 = 0
+        i1 = 0
+        while True:
+            z0 = z0**2 + increment0
+            z1 = z1**2 + increment1
+            if z0.real**2 + z0.imag**2 > 4 or i0 == 20:
+                fractal[h, w0] = i0
+                w0 += 2
+                z0 = increment0 = c[h, w0]
+                i0 = 0
+            else:
+                i0 += 1
+            if z1.real**2 + z1.imag**2 > 4 or i1 == 20:
+                fractal[h, w1] = i1
+                w1 += 2
+                z1 = increment1 = c[h, w1]
+                i1 = 0
+            else:
+                i1 += 1
+
+            if w0 >= width and w1 >= width:
+                break
+
+    return fractal
+
+def experiment(height, width):
+    y, x = np.ogrid[-1:0:height*1j, -1.5:0:width*1j]
+    return impl2(height, width, x, y)
+
+result2 = experiment(200, 300)
+print(np.abs(result1 - result2).sum())
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branch_mispredictions
+numba_fastmath_mandelbrot(200, 300)
+experiment(200, 300)
+```
