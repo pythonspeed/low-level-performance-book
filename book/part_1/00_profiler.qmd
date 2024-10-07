@@ -102,3 +102,11 @@ If you swap out data you aren't currently using, this won't be noticeable.
 
 But if you are continuously reading and writing in-memory data that doesn't fit in RAM, it will be continuously moved back and forth from disk.
 Beyond a certain point your whole computer will grind to a halt as it spends all its time swapping.
+
+## Additional reading
+
+There are other books that cover performance from a much broader perspective than this one:
+
+* [_High Performance Python, 2nd edition_](https://www.oreilly.com/library/view/high-performance-python/9781492055013/), by Gorelick and Oszvald.
+  A third edition is in the works; I will likely be contributing a tiny section on Rust.
+* [_Fast Python_](https://www.manning.com/books/fast-python), by Antao.
