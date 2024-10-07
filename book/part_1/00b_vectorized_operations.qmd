@@ -1,4 +1,4 @@
-# Consider using batch ("vectorized") operations
+# Know when to switch from existing libraries to compiled code
 
 In many cases, you can speed up computational code with existing libraries.
 Libraries like NumPy, SciPy, Pandas and others can process data very quickly by doing batch processing in functions implemented in a low-level language like C or Fortran.
@@ -6,18 +6,21 @@ These are operations that operate on whole arrays at once.
 In the Python world this is known as "vectorization" (we'll discuss a different meaning for "vectorization" in a later chapter, when we cover SIMD).
 The benefit of these libraries that you don't have to implement everything yourself, and can rely on a library of already-fast operations.
 
+In this chapter we'll see how they're used, and then see the benefits of switching to compiled code you write yourself.
+
 ## Introducing NumPy
 
 Before we can move on to the example, it's worth briefly discussing the technology stack we'll be using for examples in this book, starting with the NumPy library.
 For more details on the technologies used, [see the appendix](../appendices/01_prerequisites.qmd).
+The basic principles you'll learn aren't NumPy-specific, it's just a useful example of a library that lets you efficiently share data between Python and low-level compiled languages.
 
-NumPy's core data structure is the `ndarray`, which are N-dimensional arrays.
+NumPy's core data structure is the `ndarray`, an N-dimensional array.
 An `ndarray` is a bit like a standard Python list, except that an `ndarray` is:
 
 1. Fixed in size: you can't append entries.
 2. Only contains items of a single data type or "dtype", e.g. 32-bit unsigned integers.
    This allows `ndarray`s to be accessed efficiently from compiled languages, unlike Python lists.
-3. Potentially N-dimensional, e.g. it might describe a 3D volume.
+3. Potentially N-dimensional, for example it might describe a 3D volume.
 
 You can access NumPy arrays in three ways:
 
@@ -49,7 +52,7 @@ The original image looks like this:
 %display_image IMAGE
 ```
 
-We want to stretch the values between 30 and 190 to be between 0 and 255, thus increasing the contrast.
+We want to stretch the values between 15 and 190 to be between 0 and 255, thus increasing the contrast.
 
 ## NumPy vectorized operations operate on full arrays
 
@@ -72,7 +75,7 @@ def numpy_rescale_naive(img, min_value, max_value):
     # Round to whole numbers and convert back to uint8:
     return np.round(scaled).astype(np.uint8)
 
-ORIGINAL_RESCALED = numpy_rescale_naive(IMAGE, 30, 190)
+ORIGINAL_RESCALED = numpy_rescale_naive(IMAGE, 15, 190)
 ```
 
 The result looks like this:
@@ -89,7 +92,7 @@ Because libraries like NumPy operate on whole arrays, temporary values also have
 Here's how much memory the original image uses:
 
 ```{python}
-print("Memory used by by image, in bytes:", IMAGE.nbytes)
+print("Memory used by image, in bytes:", IMAGE.nbytes)
 ```
 
 And here's peak memory usage from our implementation:
@@ -97,7 +100,7 @@ And here's peak memory usage from our implementation:
 ```{python}
 #| echo: false
 %%compare_timing --measure=peak_memory
-numpy_rescale_naive(IMAGE, 30, 190)
+numpy_rescale_naive(IMAGE, 15, 190)
 ```
 
 That's almost 20× the memory used by the initial image!
@@ -123,8 +126,8 @@ def numpy_rescale_optimized(img, min_value, max_value):
     return shifted
 
 assert np.array_equal(
-    numpy_rescale_naive(IMAGE, 30, 190),
-    numpy_rescale_optimized(IMAGE, 30, 190)
+    numpy_rescale_naive(IMAGE, 15, 190),
+    numpy_rescale_optimized(IMAGE, 15, 190)
 )
 ```
 
@@ -145,8 +148,8 @@ Here's the performance and memory usage of the new API:
 ```{python}
 #| echo: false
 %%compare_timing --measure=peak_memory
-numpy_rescale_naive(IMAGE, 30, 190)
-numpy_rescale_optimized(IMAGE, 30, 190)
+numpy_rescale_naive(IMAGE, 15, 190)
+numpy_rescale_optimized(IMAGE, 15, 190)
 ```
 
 This uses less memory, and is faster too, but we're still using way more memory than we ought to.
@@ -178,7 +181,7 @@ def python_rescale_intensity(img, min_value, max_value):
 
 assert np.array_equal(
     ORIGINAL_RESCALED,
-    python_rescale_intensity(IMAGE, 30, 190)
+    python_rescale_intensity(IMAGE, 15, 190)
 )
 ```
 
@@ -187,8 +190,8 @@ Here's how it performs:
 ```{python}
 #| echo: false
 %%compare_timing --measure=peak_memory
-numpy_rescale_optimized(IMAGE, 30, 190)
-python_rescale_intensity(IMAGE, 30, 190)
+numpy_rescale_optimized(IMAGE, 15, 190)
+python_rescale_intensity(IMAGE, 15, 190)
 ```
 
 On the one hand, this uses much less memory.
@@ -246,7 +249,7 @@ def compiled_rescale_intensity(img, min_value, max_value):
 # to ensure the calculation result is still the same.
 assert np.array_equal(
     ORIGINAL_RESCALED,
-    compiled_rescale_intensity(IMAGE, 30, 190)
+    compiled_rescale_intensity(IMAGE, 15, 190)
 )
 ```
 
@@ -255,9 +258,9 @@ And now we can compare our three different versions:
 ```{python}
 #| echo: false
 %%compare_timing --measure=peak_memory
-numpy_rescale_optimized(IMAGE, 30, 190)
-python_rescale_intensity(IMAGE, 30, 190)
-compiled_rescale_intensity(IMAGE, 30, 190)
+numpy_rescale_optimized(IMAGE, 15, 190)
+python_rescale_intensity(IMAGE, 15, 190)
+compiled_rescale_intensity(IMAGE, 15, 190)
 ```
 
 The compiled function runs quickly—in fact it's faster than the NumPy version—and it also uses far less memory.
@@ -265,7 +268,7 @@ The compiled function runs quickly—in fact it's faster than the NumPy version�
 ## Identify situations where vectorized operations are not enough
 
 When should you abandon batch APIs like those provided by NumPy, and switch to a compiled language?
-There are three common cases where this is helpful; we've already seen the first in our examples above.
+There are three common cases where this is helpful:
 
 ### Case 1: The vectorized implementation uses too much memory
 
