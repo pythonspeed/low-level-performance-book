@@ -116,6 +116,7 @@ MEASUREMENT_TITLES = {
 @needs_local_scope
 @register_cell_magic
 def compare_timing(line, cell, local_ns):
+    # TODO test that DISABLE_JIT actually does something...
     numba_config.DISABLE_JIT = True
 
     arguments = parse_argstring(compare_timing, line)
