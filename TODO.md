@@ -3,3 +3,4 @@
 * Hightlight changed code with https://github.com/shafayetShafee/line-highlight
 * Something about deciding when it's worth it to optimize, re business goals
 * Add link to more projects mentioned inline, e.g. `cibuildwheel`.
+* Mark winning entries in performance with 🥇
