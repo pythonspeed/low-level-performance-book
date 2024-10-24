@@ -56,8 +56,6 @@ def batched_mandelbrot(height, width, x, y):
     fractal = np.zeros(c.shape, dtype=np.int32)
     current_rs = np.zeros((8,), dtype=np.float64)
     current_is = np.zeros((8,), dtype=np.float64)
-    rrs = np.zeros((8,), dtype=np.float64)
-    iis = np.zeros((8,), dtype=np.float64)
     start_rs = np.zeros((8,), dtype=np.float64)
     start_is = np.zeros((8,), dtype=np.float64)
     mask = np.zeros((8,), dtype=np.float64)
@@ -66,26 +64,29 @@ def batched_mandelbrot(height, width, x, y):
             start = c[h, w * 8: (w + 1) * 8]
             for j in range(8):
                 current_rs[j] = start[j].real
+            for j in range(8):
                 current_is[j] = start[j].imag
+            for j in range(8):
                 start_rs[j] = start[j].real
+            for j in range(8):
                 start_is[j] = start[j].imag
             for j in range(8):
                 mask[j] = False
             for _ in range(20):
                 for j in range(8):
-                    rrs[j] = current_rs[j] ** 2
-                    iis[j] = current_is[j] ** 2
+                    ri = current_rs[j] * current_is[j]
+                    rr = current_rs[j] ** 2
+                    ii = current_is[j] ** 2
+                    current_rs[j] = start_rs[j] + (rr - ii)
+                    current_is[j] = start_is[j] + (ri + ri)
+
                 for j in range(8):
-                    mask[j] = 1.0 if (rrs[j] + iis[j]) > 4 else mask[j]
+                    mask[j] = 1.0 if (current_rs[j] ** 2 + current_is[j] ** 2) > 4 else mask[j]
                 if mask.sum() == 8:
                     break
                 for j in range(8):
-                    fractal[h, w * 8 + j] += 1 - mask[j]
+                    fractal[h, w * 8 + j] += 1.0 - mask[j]
 
-                for j in range(8):
-                    ri = current_rs[j] * current_is[j]
-                    current_rs[j] = start_rs[j] + (rrs[j] - iis[j])
-                    current_is[j] = start_is[j] + ri + ri
 
     return fractal
 
@@ -103,7 +104,7 @@ def numba_fastmath_mandelbrot2(height, width):
 result2 = numba_mandelbrot2(200, 400)
 print(result1[0, :16])
 print(result2[0, :16])
-#assert np.array_equal(result1, result2)
+assert np.array_equal(result1, result2)
 
 _ = numba_fastmath_mandelbrot2(200, 400)
 ```
