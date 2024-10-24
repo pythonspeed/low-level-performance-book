@@ -7,6 +7,10 @@ sys.path.append("../src")
 
 
 ```{python}
+# Enable extra auto-vectorization:
+import os
+os.environ["NUMBA_SLP_VECTORIZE"] = "1"
+
 import numpy as np
 from numba import jit
 
@@ -34,67 +38,79 @@ def numba_fastmath_mandelbrot(height, width):
     y, x = np.ogrid[-1:0:height*1j, -1.5:0:width*1j]
     return numba_fastmath_impl(height, width, x, y)
 
-result1 = numba_mandelbrot(200, 300)
-_ = numba_fastmath_mandelbrot(200, 300)
+result1 = numba_mandelbrot(200, 400)
+_ = numba_fastmath_mandelbrot(200, 400)
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=branch_mispredictions
-numba_mandelbrot(200, 300)
-numba_fastmath_mandelbrot(200, 300)
+%%compare_timing --measure=instructions
+numba_mandelbrot(200, 400)
+numba_fastmath_mandelbrot(200, 400)
 ```
 
 ```{python}
-print("Mean number of iterations", result1.mean())
-```
-
-```{python}
-@jit(fastmath=True)
-def impl2(height, width, x, y):
+def batched_mandelbrot(height, width, x, y):
+    assert width % 8 == 0
     c = x + y*1j
-    fractal = np.empty(c.shape, dtype=np.int32)
+    fractal = np.zeros(c.shape, dtype=np.int32)
+    current_rs = np.zeros((8,), dtype=np.float64)
+    current_is = np.zeros((8,), dtype=np.float64)
+    rrs = np.zeros((8,), dtype=np.float64)
+    iis = np.zeros((8,), dtype=np.float64)
+    start_rs = np.zeros((8,), dtype=np.float64)
+    start_is = np.zeros((8,), dtype=np.float64)
+    mask = np.zeros((8,), dtype=np.float64)
     for h in range(height):
-        w0 = 0
-        w1 = 1
-        z0 = increment0 = c[h, w0]
-        z1 = increment1 = c[h, w1]
-        i0 = 0
-        i1 = 0
-        while True:
-            z0 = z0**2 + increment0
-            z1 = z1**2 + increment1
-            if z0.real**2 + z0.imag**2 > 4 or i0 == 20:
-                fractal[h, w0] = i0
-                w0 += 2
-                z0 = increment0 = c[h, w0]
-                i0 = 0
-            else:
-                i0 += 1
-            if z1.real**2 + z1.imag**2 > 4 or i1 == 20:
-                fractal[h, w1] = i1
-                w1 += 2
-                z1 = increment1 = c[h, w1]
-                i1 = 0
-            else:
-                i1 += 1
+        for w in range(width // 8):
+            start = c[h, w * 8: (w + 1) * 8]
+            for j in range(8):
+                current_rs[j] = start[j].real
+                current_is[j] = start[j].imag
+                start_rs[j] = start[j].real
+                start_is[j] = start[j].imag
+            for j in range(8):
+                mask[j] = False
+            for _ in range(20):
+                for j in range(8):
+                    rrs[j] = current_rs[j] ** 2
+                    iis[j] = current_is[j] ** 2
+                for j in range(8):
+                    mask[j] = 1.0 if (rrs[j] + iis[j]) > 4 else mask[j]
+                if mask.sum() == 8:
+                    break
+                for j in range(8):
+                    fractal[h, w * 8 + j] += 1 - mask[j]
 
-            if w0 >= width and w1 >= width:
-                break
+                for j in range(8):
+                    ri = current_rs[j] * current_is[j]
+                    current_rs[j] = start_rs[j] + (rrs[j] - iis[j])
+                    current_is[j] = start_is[j] + ri + ri
 
     return fractal
 
-def experiment(height, width):
-    y, x = np.ogrid[-1:0:height*1j, -1.5:0:width*1j]
-    return impl2(height, width, x, y)
+numba_batched_mandelbrot = jit(batched_mandelbrot)
+numba_batched_fastmath = jit(fastmath=True)(batched_mandelbrot)
 
-result2 = experiment(200, 300)
-print(np.abs(result1 - result2).sum())
+def numba_mandelbrot2(height, width):
+    y, x = np.ogrid[-1:0:height*1j, -1.5:0:width*1j]
+    return numba_batched_mandelbrot(height, width, x, y)
+
+def numba_fastmath_mandelbrot2(height, width):
+    y, x = np.ogrid[-1:0:height*1j, -1.5:0:width*1j]
+    return numba_batched_fastmath(height, width, x, y)
+
+result2 = numba_mandelbrot2(200, 400)
+print(result1[0, :16])
+print(result2[0, :16])
+#assert np.array_equal(result1, result2)
+
+_ = numba_fastmath_mandelbrot2(200, 400)
 ```
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions,branch_mispredictions
-numba_fastmath_mandelbrot(200, 300)
-experiment(200, 300)
+%%compare_timing --measure=instructions
+numba_mandelbrot2(200, 400)
+numba_fastmath_mandelbrot2(200, 400)
 ```
