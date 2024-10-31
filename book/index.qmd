@@ -6,9 +6,10 @@ Now what?
 In many ways this depends on what kind of software you're writing: web applications, video games, and scientific computing all have different bottlenecks.
 This book is specifically written for scientists, data scientists, and software developers who use Python to do numeric computing or data processing.
 
-Even with that limited focus, there are still many potential reasons your software might be slow.
-This book limits itself to one particular subset of the performance problem: computation, the work your CPU does to calculate results.
-But to make sure this is relevant to your particular situation, I provide a quick review of the bigger picture of performance in the first chapter of the book, together with references to additional resources.
+There are also many potential reasons your software might be slow.
+This book limits itself to one particularly pervasive performance bottleneck: computation.
+That is, the work your CPU does to calculate results, as well as related bottlenecks like memory.
+I provide a quick review of the bigger picture of performance in the first chapter of the book, together with references to additional resources.
 
 Assuming your performance bottleneck is computation, how do you speed it up?
 
