@@ -66,7 +66,7 @@ However, since loading the data uses the vast majority of the time there is no p
 If we wanted faster results, we'd need to figure out a faster way to load the data.
 
 Keep in mind that profilers can distort the results somewhat, so low overhead is an important feature in a profiler.
-For this sort of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
+If you want this style of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
 
 ## Avoid non-computational performance bottlenecks
 
