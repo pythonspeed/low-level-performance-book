@@ -63,19 +63,21 @@ from numba import jit
 # 😎 Remember that by using the @jit decorator, our Python code gets compiled
 # to fast machine code.
 @jit
-def find_primes(length):
-    is_prime = np.ones((length,), dtype=np.bool_)
+def find_primes(up_to_value):
+    # Create an array of booleans, with default value being True:
+    is_prime = np.ones((up_to_value,), dtype=np.bool_)
+    # 0 and 1 are not prime:
     is_prime[0] = False
     is_prime[1] = False
 
     # For every number starting with 2:
-    for i in range(2, length):
+    for i in range(2, up_to_value):
         # If we're already checked this number, we're done:
         if not is_prime[i]:
             continue
         # Otherwise, mark all multiples of i as not prime, since they're
-        # multiples.
-        for j in range(i*2, length, i):
+        # multiples, e.g. 4, 6, 8 are multiples of 2 so not prime.
+        for j in range(i*2, up_to_value, i):
             is_prime[j] = False
 
     return is_prime
@@ -85,24 +87,24 @@ PRIMES = find_primes(1_000_000)
 
 Can we make this code any faster?
 One thing to notice is that we're checking certain numbers twice.
-When we rule out multiples of 5, we're ruling out `5 * 2 = 10` and `5 * 3 = 15` and `5 * 4 = 20` even though we've already ruled them out in previous rounds.
-For example, `2 * 5 = 10` would have been previously ruled out as a multiple of 2.
+When we rule out multiples of 5, we're ruling out `5 * 2 = 10` and `5 * 3 = 15` and `5 * 4 = 20`.
+But we've already ruled them out in previous rounds, since for example `2 * 5 = 10` would have been previously ruled out as a multiple of 2.
 
 That means we can tweak our `j` loop to start at a later point (`i * i` instead of `i * 2`) to prevent doing duplicate work:
 
 ```{python}
 @jit
-def find_primes_2(length):
-    is_prime = np.ones((length,), dtype=np.bool_)
+def find_primes_2(up_to_value):
+    is_prime = np.ones((up_to_value,), dtype=np.bool_)
     is_prime[0] = False
     is_prime[1] = False
 
-    for i in range(2, length):
+    for i in range(2, up_to_value):
         if not is_prime[i]:
             continue
         # 😎 Anything smaller than i*i was already processed in an earlier
         # iteration, so no need to redo it.
-        for j in range(i * i, length, i):
+        for j in range(i * i, up_to_value, i):
             is_prime[j] = False
 
     return is_prime
@@ -124,24 +126,24 @@ find_primes_2(1_000_000)
 Continuing the same example, in our loop above we do an `if is_prime[i]: continue` check on all even values of `i`.
 That includes even numbers like 8 or 212, even though we know that any even number larger than 2 isn't prime.
 Instead of doing this check in every single iteration, we can split processing into two loops, one for odd numbers and one for even numbers.
-The total number of iterations doesn't change, it's still `length`, but each iteration does less work:
+The total number of iterations doesn't change, it's still `up_to_value`, but each iteration does less work:
 
 ```{python}
 @jit
-def find_primes_3(length):
-    is_prime = np.ones((length,), dtype=np.bool_)
+def find_primes_3(up_to_value):
+    is_prime = np.ones((up_to_value,), dtype=np.bool_)
     is_prime[0] = False
     is_prime[1] = False
 
     # 😎 Unconditionally rule out all even numbers larger than 2:
-    for i in range(4, length, 2):
+    for i in range(4, up_to_value, 2):
         is_prime[i] = False
 
     # 😎 Now only check odd numbers:
-    for i in range(3, length, 2):
+    for i in range(3, up_to_value, 2):
         if not is_prime[i]:
             continue
-        for j in range(i*i, length, i):
+        for j in range(i*i, up_to_value, i):
             is_prime[j] = False
 
     return is_prime
@@ -160,7 +162,7 @@ find_primes_3(1_000_000)
 
 Now that we're only iterating over odd numbers in the second loop, we apply another optimization in the inner-most `for j` loop.
 Let's say we're ruling out multiples of 3.
-We rule out the sequence `9`, `12`, `15`, `18`, and so on up to `length`.
+We rule out the sequence `9`, `12`, `15`, `18`, and so on up to `up_to_value`.
 Notice that every second number is even, because we're adding up pairs of odd numbers.
 And those even numbers have already been marked as non-prime.
 
@@ -168,20 +170,20 @@ So we can optimize the code even further by only checking every second multiple:
 
 ```{python}
 @jit
-def find_primes_4(length):
-    is_prime = np.ones((length,), dtype=np.bool_)
+def find_primes_4(up_to_value):
+    is_prime = np.ones((up_to_value,), dtype=np.bool_)
     is_prime[0] = False
     is_prime[1] = False
 
-    for i in range(4, length, 2):
+    for i in range(4, up_to_value, 2):
         is_prime[i] = False
 
-    for i in range(3, length, 2):
+    for i in range(3, up_to_value, 2):
         if not is_prime[i]:
             continue
         # 😎 Only mark multiples that are odd (skipping ahead 2 * i in each
         # iteration), since even numbers have already been handled:
-        for j in range(i*i, length, 2 * i):
+        for j in range(i*i, up_to_value, 2 * i):
             is_prime[j] = False
 
     return is_prime

@@ -62,7 +62,9 @@ def lut_rescale_intensity(img, min_value, max_value):
     shifted_max = max_value - min_value
 
     # 😎 Create a lookup table mapping from original value to rescaled value.
-    # We only need to do 256 calculations:
+    # We only need to do 256 calculations. We could perhaps optimize this
+    # further, but assuming the image is large enough, the runtime will be
+    # dominated by the next section, not this one.
     rescaled = np.empty((256,), dtype=np.uint8)
     for old_value in range(256):
         if old_value < min_value:
@@ -78,8 +80,9 @@ def lut_rescale_intensity(img, min_value, max_value):
     # 😎 For each pixel in the image, update it using the corresponding value
     # in the lookup table, a very cheap operation:
     result = np.empty(img.shape, dtype=np.uint8)
-    for y in range(img.shape[0]):
-        for x in range(img.shape[1]):
+    height, width = img.shape
+    for y in range(height):
+        for x in range(width):
             result[y, x] = rescaled[img[y, x]]
     return result
 
