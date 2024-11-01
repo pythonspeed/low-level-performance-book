@@ -172,8 +172,8 @@ def numpy_rescale_optimized(img, min_value, max_value):
     # 😎 Round in place:
     np.round(scaled, out=scaled)
 
-    # 😎 While we now have whole number results, want the returned array to be
-    # uint8, and `scaled` is float64. So we copy the data into `temp_arr`,
+    # 😎 While we now have whole number results, we want the returned array to
+    # be uint8, and `scaled` is float64. So we copy the data into `temp_arr`,
     # which has the right type:
     temp_arr[:] = scaled
     return temp_arr
