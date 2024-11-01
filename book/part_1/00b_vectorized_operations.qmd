@@ -15,12 +15,14 @@ For more details on the technologies used, [see the appendix](../appendices/01_p
 The basic principles you'll learn aren't NumPy-specific, it's just a useful example of a library that lets you efficiently share data between Python and low-level compiled languages.
 
 NumPy's core data structure is the `ndarray`, an N-dimensional array.
-An `ndarray` is a bit like a standard Python list, except that an `ndarray` is:
+An `ndarray` is a bit like a standard Python list, but with some key differences:
 
-1. Fixed in size: you can't append entries.
-2. Only contains items of a single data type or "dtype", e.g. 32-bit unsigned integers.
-   This allows `ndarray`s to be accessed efficiently from compiled languages, unlike Python lists.
-3. Potentially N-dimensional, for example it might describe a 3D volume.
+|                                      | Python `list`      | NumPy `ndarray`               |
+|--------------------------------------|--------------------|-------------------------------|
+| Can change size?                     | Yes, `l.append(1)` | No, fixed size                |
+| Can contain multiple types?          | Yes, `[12, "abc"]` | No, fixed data type ("dtype") |
+| How many dimensions?                 | Just 1             | Can be 1D, 2D, 3D, etc.       |
+| Fast access from compiled languages? | No 😢              | Yes 😎                        |
 
 You can access NumPy arrays in three ways:
 
@@ -57,21 +59,53 @@ We want to stretch the values between 15 and 190 to be between 0 and 255, thus i
 ## NumPy vectorized operations operate on full arrays
 
 By operating on a whole array, and bypassing the slowness of Python, batch or "vectorized" operations in NumPy and similar libraries can run quickly.
-Here's a naive implementation of contrast rescaling using NumPy batch operations:
+These operations are written in a fast, compiled programming language, taking advantage of their ability to efficiently access NumPy arrays.
+
+The syntax for these operations looks like you're operating on a single value, but it's actually operating on a whole array:
 
 ```{python}
 import numpy as np
 
+# A one-dimensional array of length 3, containing 64-bit signed integers:
+arr = np.array([1, 2, 3], dtype=np.int64)
+
+# Add 100 to every item in the array:
+new_arr = arr + 100
+
+# The result is a new array, with same dtype:
+assert isinstance(new_arr, np.ndarray)
+assert new_arr.dtype == np.int64
+print(new_arr)
+```
+
+We can also do in-place operations, mutating an existing array:
+
+```{python}
+new_arr -= 50
+print(new_arr)
+```
+
+We can use NumPy batch operations to implement contrast rescaling:
+
+```{python}
 def numpy_rescale_naive(img, min_value, max_value):
-    # Limit the image to values between min_value and max_value:
+    assert isinstance(img, np.ndarray)
+    assert img.dtype == np.uint8
+
+    # Limit the image to values between min_value and max_value, creating a new
+    # uint8 array:
     clipped = img.clip(min_value, max_value)
-    # Shift the image so min_value becomes zero:
+    assert clipped.dtype == np.uint8
+
+    # Shift the image so min_value becomes zero, creating a new uint8 array:
     shifted = clipped - min_value
-    # Scale the image so it becomes a floating point rray with values between
-    # 0.0 and 1.0:
-    scaled = shifted / (max_value - min_value)
-    # Scale the image so it's between 0.0 and 255.0:
-    scaled = scaled * 255
+    assert shifted.dtype == np.uint8
+
+    # Scale the image, creating a new floating point array with values between
+    # 0.0 and 255.0:
+    scaled = shifted * (255 / (max_value - min_value))
+    assert scaled.dtype == np.float64
+
     # Round to whole numbers and convert back to uint8:
     return np.round(scaled).astype(np.uint8)
 
@@ -85,7 +119,8 @@ The result looks like this:
 %display_image ORIGINAL_RESCALED
 ```
 
-In this case the image just looks better, but in many image processing pipelines adjusting contrast is a required early step.
+In this case the image just looks better; notice the three figures in the background "pop" more in the second photo.
+But in many automated image processing pipelines adjusting contrast is a required early step.
 
 One problem with the above implementation is that it uses disproportionate amounts of memory.
 Because libraries like NumPy operate on whole arrays, temporary values also have to be whole arrays, which can lead to high memory usage.
@@ -103,24 +138,30 @@ And here's peak memory usage from our implementation:
 numpy_rescale_naive(IMAGE, 15, 190)
 ```
 
-That's almost 20× the memory used by the initial image!
+That's 19× the memory used by the initial image!
 If we start processing large images, and/or many images in parallel, this overhead will become an expensive bottleneck.
 
 ## Avoid temporary arrays to reduce memory usage
 
-We can reduce memory usage by reducing how many temporary arrays we create, trying to do operations in-place, reusing existing arrays instead of creating new ones for every single operation:
+We can reduce memory usage by reducing how many temporary arrays we create.
+In particular, by using in-place mutating operations, we can reuse existing arrays instead of creating new ones for every single operation:
 
 ```{python}
 def numpy_rescale_optimized(img, min_value, max_value):
     shifted = img.clip(min_value, max_value)
+    assert shifted.dtype == np.uint8
+
     # 😎 Shift in place:
     shifted -= min_value
-    # 😢 Still need a temporary floating point array:
-    scaled = shifted / (max_value - min_value)
-    # 😎 But at least we can do this in place:
-    scaled *= 255
+
+    # 😢 Because we're getting a float64 array here, we can't reuse the
+    # `shifted` array:
+    scaled = shifted * (255 / (max_value - min_value))
+    assert scaled.dtype == np.float64
+
     # 😎 Round in place:
     np.round(scaled, out=scaled)
+
     # 😎 Re-use an array we already created:
     shifted[:] = scaled
     return shifted
