@@ -12,8 +12,8 @@ But in this chapter we'll focus on the first decision, the choice of algorithm.
 Because an algorithm can have multiple implementations, we can't really measure its speed.
 Instead, we can consider how it scales with its input size.
 For example, if we switch from processing a 1,000-base DNA sequence to a 1,000,000-base sequence, the algorithm will almost certainly take longer to run.
-The question is, how much longer?
 
+The key question is, how much longer?
 Depending on the algorithm's scalability, it might take 3× as long to run, or 1,000× as long, or even 1,000,000× as long.
 That last case is a warning: if your algorithm scales badly enough, larger inputs will may make your code so slow that you will not vastly better implementation speedups to make a meaningful difference in run time.
 
@@ -68,9 +68,7 @@ def quadratic_filter_python(arr1, arr2):
 
 ::: {.callout-note}
 You may be wondering why I'm doing `for i in range(len(arr1))` and not `for item in arr1:`.
-The reason involves maximizing Numba performance to work around current limitations in the Numba compiler; I talk about this in a later chapter.
-
-In other cases, the code examples choose to use easier-to-read APIs rather than more idiomatic NumPy APIs, in order to minimize how much knowledge you need to know to understand the code.
+The reason involves maximizing Numba performance, to work around current limitations in the Numba compiler; I talk about this in a later chapter.
 :::
 
 How long does this take to run for different input sizes?
