@@ -6,3 +6,4 @@
 * Add link to more projects mentioned inline, e.g. `cibuildwheel`.
 * Mark winning entries in performance with 🥇
 * Make sure sad emojis are consistent
+* Alt text for all charts/images
