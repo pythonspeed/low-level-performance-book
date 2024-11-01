@@ -12,7 +12,9 @@ In this chapter we'll see how they're used, and then see the benefits of switchi
 
 Before we can move on to the example, it's worth briefly discussing the technology stack we'll be using for examples in this book, starting with the NumPy library.
 For more details on the technologies used, [see the appendix](../appendices/01_prerequisites.qmd).
+
 The basic principles you'll learn aren't NumPy-specific, it's just a useful example of a library that lets you efficiently share data between Python and low-level compiled languages.
+The same principles will apply to other data processing libraries, for example Pandas and Polars, even if the underlying datastructures are somewhat different.
 
 NumPy's core data structure is the `ndarray`, an N-dimensional array.
 An `ndarray` is a bit like a standard Python list, but with some key differences:
@@ -24,7 +26,7 @@ An `ndarray` is a bit like a standard Python list, but with some key differences
 | How many dimensions?                 | Just 1             | Can be 1D, 2D, 3D, etc.       |
 | Fast access from compiled languages? | No 😢              | Yes 😎                        |
 
-You can access NumPy arrays in three ways:
+You can access NumPy arrays in three ways, as we'll see in the following example:
 
 1. Batch ("vectorized") APIs used from Python.
 2. Normal `for` loops in Python.
@@ -60,8 +62,9 @@ We want to stretch the values between 15 and 190 to be between 0 and 255, thus i
 
 By operating on a whole array, and bypassing the slowness of Python, batch or "vectorized" operations in NumPy and similar libraries can run quickly.
 These operations are written in a fast, compiled programming language, taking advantage of their ability to efficiently access NumPy arrays.
+Other data processing Python libraries, for example Pandas and Polars, also operate in the same way: typically you're running operations written in a compiled language that operate on the whole datastructures (DataFrames or their columns for these two libraries).
 
-The syntax for these operations looks like you're operating on a single value, but it's actually operating on a whole array:
+In NumPy's case, the syntax for these operations looks like you're operating on a single value, but it's actually operating on a whole array:
 
 ```{python}
 import numpy as np
