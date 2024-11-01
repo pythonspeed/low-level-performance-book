@@ -483,8 +483,10 @@ def median_local_threshold4(img, neighborhood_size, offset):
             half_neighborhood_size = ((max_y - min_y) * (max_x - min_x)) // 2
             # 😎 Find the the median from the updated histogram, choosing the
             # starting side based on the previous median; we can go from small
-            # bucket to big bucket, or in reverse:
-            the_range = range(256) if median < 127 else range(255, -1, -1)
+            # bucket to big bucket, or in reverse. Unfortunately Numba doesn't
+            # support reversed(range(256)), which would be easier to understand
+            # than range(255, -1, -1).
+            the_range = range(256) if median < 128 else range(255, -1, -1)
             for l in the_range:
                 half_neighborhood_size -= histogram[l]
                 if half_neighborhood_size < 0:
@@ -617,13 +619,14 @@ median_local_threshold5(IMAGE, 11, 13)
 
 Let's go over the steps we went through:
 
-1. **Switch to a compiled language:** this gives us more control.
-2. **Reimplement the algorithm taking advantage of constrained requirements:** our median only needed to handle `uint8`, so a histogram was a reasonable solution.
-3. **Reuse previous calculations' results, instead of repeating the same work:** our histogram for the neighborhood of a pixel is quite similar to that of the previous pixel.
+1. **Switch to a compiled language:** This gives us more control.
+2. **Reimplement the algorithm taking advantage of constrained requirements:** Our median only needed to handle `uint8`, so a histogram was a reasonable solution.
+3. **Reuse previous calculations' results, instead of repeating the same work:** Our histogram for the neighborhood of a pixel is quite similar to that of the previous pixel.
    This means we can reuse some of the calculations, saving some work.
-4. **Adaptively tweak the algorithm at runtime:** as we run on an actual image, we use what we've learned up to this point to hopefully run faster later on.
+4. **Adaptively tweak the algorithm at runtime:** As we run on an actual image, we use what we've learned up to this point to hopefully run faster later on.
    The decision from which side of the histogram to start is arbirary in general.
    But in this _specific_ algorithm, the overlapping pixel neighborhoods mean we can make a reasonable guess.
-5. **Reduce the precision of the result:** this requires understanding the structure and distribution of the data you're inputting, and the precision of output you find acceptable.
+5. **Reduce the precision of the result:** This requires understanding the structure and distribution of the data you're inputting, and the precision of output you find acceptable.
+6. **Test against a wide range of data:** Especially when you're customizing your algorithm for particular inputs, you need to make sure you're testing against a sufficiently broad set of likely inputs.
 
 By tweaking your custom code for your particular use case and your particular data, you can often run much faster than generic libraries.
