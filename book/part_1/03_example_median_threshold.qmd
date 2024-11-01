@@ -32,16 +32,19 @@ Here's what it looks like (it's licensed under [this license](https://github.com
 The task we're trying to do—turning darker areas into black, and lighter areas into white—is called thresholding.
 Since the image is different in different regions, with some darker and some lighter, we'll get the best results if we use local thresholding, where the threshold is calculated from the pixel's neighborhood.
 
+::: {.callout-important}
+The code in this chapter is going to be more complex than previous chapters, in part because more subtle optimizations require more complex code.
+However, in this particular chapter understanding every detail isn't critical; the important thing is learning the high-level principles I'm applying.
+:::
+
 Simplifying somewhat, for each pixel in the image we will:
 
 1. Calculate the median of the surrounding neighborhood.
 2. Subtract a magic constant from the calculated median to calculate our local threshold.
 3. If the pixel's value is bigger than the threshold, the result is white, otherwise it's black.
 
-scikit-image includes an implementation of this algorithm.
-Here's how we use it:
-
 ```{python}
+#| echo: false
 from skimage.filters import threshold_local
 
 def skimage_median_local_threshold(img, neighborhood_size, offset):
@@ -55,14 +58,21 @@ def skimage_median_local_threshold(img, neighborhood_size, offset):
     # Convert to 0 and 255 (i.e. black and white):
     result *= 255
     return result
+```
 
+scikit-image includes an implementation of this algorithm, [`skimage.filters.threshold_local`](https://scikit-image.org/docs/stable/auto_examples/applications/plot_thresholding_guide.html).
+It requires a little wrapping to make it work, which I've omitted since it's not really relevant.
+All you need to know is that I've created a wrapper function called `skimage_median_local_threshold()`.
+We can use it to threshold an image:
+
+```{python}
 # The neighborhood size and offset value were determined "empirically", i.e.
-# they're manually tuning the algorithm to work well with our specific example
-# image.
+# they're manually picked so that the algorithm works well with our specific
+# example image.
 SKIMAGE_RESULT = skimage_median_local_threshold(IMAGE, 11, 13)
 ```
 
-And here's what the results look like:
+If we run it, here's what the results look like:
 
 ```{python}
 #| echo: false
@@ -74,7 +84,7 @@ Let's see if we can make this faster!
 ## Use a compiled language for more flexibility
 
 We'll start by switching to Numba.
-Here's an initial implementation of the algorithm; it's not quite identical to the original, for example the way edge pixels are handled, but it's close enough for our purposes:
+Here's an initial implementation of the algorithm; it's not quite identical to the original, for example the way edge pixels are handled, but as we'll see it's close enough for our purposes:
 
 ```{python}
 from numba import jit
@@ -87,15 +97,16 @@ def median_local_threshold1(img, neighborhood_size, offset):
     result = np.empty(img.shape, dtype=np.uint8)
 
     # For every pixel:
-    for i in range(img.shape[0]):
+    height, width = img.shape
+    for i in range(height):
         # Calculate the Y borders of the neighborhood:
         min_y = max(i - radius, 0)
-        max_y = min(i + radius + 1, img.shape[0])
-        for j in range(img.shape[1]):
+        max_y = min(i + radius + 1, height)
+        for j in range(width):
             # Calculate the X borders of the neighborhood:
             min_x = max(j - radius, 0)
-            max_x = min(j + radius + 1, img.shape[1])
-            # Calculate the median:
+            max_x = min(j + radius + 1, width)
+            # Calculate the median for the neighborhood:
             median = np.median(img[min_y:max_y, min_x:max_x])
             # Set the image to black or white, depending how it relates to the
             # threshold:
@@ -110,7 +121,7 @@ def median_local_threshold1(img, neighborhood_size, offset):
 NUMBA_RESULT1 = median_local_threshold1(IMAGE, 11, 13)
 ```
 
-Here's the resulting image; it looks similar enough that for our purposes:
+Here's the resulting image:
 
 ```{python}
 #| echo: false
@@ -127,7 +138,8 @@ median_local_threshold1(IMAGE, 11, 13)
 ```
 
 Depending on your CPU, this might be slightly slower or slightly faster.
-But that's OK, we're just getting started.
+It's certainly not an improvement.
+But that's OK, we're just getting started!
 
 ## Adjust your algorithm to take advantage of your data type
 
@@ -143,8 +155,9 @@ And even if it is, having our own implementation will allow for a second round o
 We're going to implement a histogram-based median, based on the fact we're using 8-bit images that only have a limited range of potential values.
 Here's the basic algorithm for a histogram-based median:
 
+* Create a histogram with one bucket per possible pixel value; since we know our image is 8-bit, we only need 256 buckets.
 * Iterate over each pixel in the chosen neighborhood.
-* Each pixel's value will increase a corresponding bucket in the histogram; since we know our image is 8-bit, we only need 256 buckets.
+* Each pixel's value will increase the count in the corresponding bucket in the histogram.
   For example, if a pixel has brightness value of 17, the count in bucket 17 will get incremented.
   Once we're done constructing the histogram, if for example the 17th bucket has a value of 32, that means 32 pixels had a brightness of 17.
 * Then, we add up the size of each bucket in the histogram, from smallest to largest, until we hit 50% of the pixels we inspected, i.e. half the size of the neighborhood in pixels.
@@ -174,8 +187,8 @@ def plot_neighborhood_histogram(y, x):
 plot_neighborhood_histogram(100, 100)
 ```
 
-If we look at this histogram, we can estimate just by eye that the point where half the pixels are on one side and half on the other, which is to say the median, will be somewhere between 140 and 160.
-And indeed:
+Looking at this histogram, I can estimate by eye that the point where half the pixels are on one side and half on the other, which is to say the median, will be somewhere between 140 and 160.
+We can calculate it to validate that:
 
 ```{python}
 print("Median value of this neighborhood:", np.median(IMAGE[95:105, 95:105]))
@@ -193,15 +206,16 @@ def histogram_median(img):
 
     # Populate the histogram, counting how many of each value are in
     # the neighborhood we're inspecting:
-    for y in range(img.shape[0]):
-        for x in range(img.shape[1]):
+    height, width = img.shape
+    for y in range(height):
+        for x in range(width):
             value = img[y, x]
             histogram[value] += 1
 
     # Use the histogram to find the median; keep adding buckets until
     # we've hit 50% of the pixels. The corresponding bucket is the
     # median.
-    half_neighborhood_size = img.shape[0] * img.shape[1] // 2
+    half_neighborhood_size = height * width // 2
     for l in range(256):
         half_neighborhood_size -= histogram[l]
         if half_neighborhood_size < 0:
@@ -215,12 +229,13 @@ def median_local_threshold2(img, neighborhood_size, offset):
     radius = (neighborhood_size - 1) // 2
     result = np.empty(img.shape, dtype=np.uint8)
 
-    for i in range(img.shape[0]):
+    height, width = img.shape
+    for i in range(height):
         min_y = max(i - radius, 0)
-        max_y = min(i + radius + 1, img.shape[0])
-        for j in range(img.shape[1]):
+        max_y = min(i + radius + 1, height)
+        for j in range(width):
             min_x = max(j - radius, 0)
-            max_x = min(j + radius + 1, img.shape[1])
+            max_x = min(j + radius + 1, width)
 
             # Get the neighborhood of the pixel:
             neighborhood = img[min_y:max_y, min_x:max_x]
@@ -335,7 +350,7 @@ If we superimpose them, we can see there's an overlap, the `X`:
 ......
 ```
 
-Given the histogram for the first pixel, if we remove the values marked with `\` and add the ones marked with `/`, we've calculated the exact histogram for the second pixel.
+Given the histogram for the first pixel, if we subtract the values marked with `\` and add the ones marked with `/`, we've calculated the exact histogram for the second pixel.
 So for a 3×3 neighborhood, instead of processing 3 columns we process 2, a minor improvement.
 For a 11×11 neighborhood, we will go from processing 11 columns to 2 columns, a much more significant improvement.
 
@@ -349,9 +364,10 @@ def median_local_threshold3(img, neighborhood_size, offset):
     result = np.empty(img.shape, dtype=np.uint8)
     histogram = np.empty((256,), dtype=np.uint32)
 
-    for i in range(img.shape[0]):
+    height, width = img.shape
+    for i in range(height):
         min_y = max(i - radius, 0)
-        max_y = min(i + radius + 1, img.shape[0])
+        max_y = min(i + radius + 1, height)
 
         # Populate histogram as if we started one pixel to the left:
         histogram[:] = 0
@@ -360,9 +376,9 @@ def median_local_threshold3(img, neighborhood_size, offset):
                 value = img[neighbor_y, neighbor_x]
                 histogram[value] += 1
 
-        for j in range(img.shape[1]):
+        for j in range(width):
             min_x = max(j - radius, 0)
-            max_x = min(j + radius + 1, img.shape[1])
+            max_x = min(j + radius + 1, width)
 
             # 😎 Instead of recalculating histogram from scratch, re-use the
             # previous pixel's histogram.
@@ -373,7 +389,7 @@ def median_local_threshold3(img, neighborhood_size, offset):
                     histogram[img[y, min_x - 1]] -= 1
 
             # Add new right-most column:
-            if max_x < img.shape[1]:
+            if max_x < width:
                 for y in range(min_y, max_y):
                     histogram[img[y, max_x - 1]] += 1
 
@@ -440,9 +456,10 @@ def median_local_threshold4(img, neighborhood_size, offset):
     # 😎 We're going to preserve previous median values across pixels:
     median = 0
 
-    for i in range(img.shape[0]):
+    height, width = img.shape
+    for i in range(height):
         min_y = max(i - radius, 0)
-        max_y = min(i + radius + 1, img.shape[0])
+        max_y = min(i + radius + 1, height)
 
         histogram[:] = 0
         for neighbor_y in range(min_y, max_y):
@@ -450,15 +467,15 @@ def median_local_threshold4(img, neighborhood_size, offset):
                 value = img[neighbor_y, neighbor_x]
                 histogram[value] += 1
 
-        for j in range(img.shape[1]):
+        for j in range(width):
             min_x = max(j - radius, 0)
-            max_x = min(j + radius + 1, img.shape[1])
+            max_x = min(j + radius + 1, width)
 
             if min_x > 0:
                 for y in range(min_y, max_y):
                     histogram[img[y, min_x - 1]] -= 1
 
-            if max_x < img.shape[1]:
+            if max_x < width:
                 for y in range(min_y, max_y):
                     histogram[img[y, max_x - 1]] += 1
 
@@ -522,9 +539,10 @@ def median_local_threshold5(img, neighborhood_size, offset):
     histogram = np.empty((32,), dtype=np.uint32)
     median = 0
 
-    for i in range(img.shape[0]):
+    height, width = img.shape
+    for i in range(height):
         min_y = max(i - radius, 0)
-        max_y = min(i + radius + 1, img.shape[0])
+        max_y = min(i + radius + 1, height)
 
         histogram[:] = 0
         for neighbor_y in range(min_y, max_y):
@@ -533,15 +551,15 @@ def median_local_threshold5(img, neighborhood_size, offset):
                 # Convert 0-255 into 0-31 to match the buckets:
                 histogram[value // 8] += 1
 
-        for j in range(img.shape[1]):
+        for j in range(width):
             min_x = max(j - radius, 0)
-            max_x = min(j + radius + 1, img.shape[1])
+            max_x = min(j + radius + 1, width)
 
             if min_x > 0:
                 for y in range(min_y, max_y):
                     histogram[img[y, min_x - 1] // 8] -= 1
 
-            if max_x < img.shape[1]:
+            if max_x < width:
                 for y in range(min_y, max_y):
                     histogram[img[y, max_x - 1] // 8] += 1
 
@@ -600,11 +618,11 @@ Let's go over the steps we went through:
 
 1. **Switch to a compiled language:** this gives us more control.
 2. **Reimplement the algorithm taking advantage of constrained requirements:** our median only needed to handle `uint8`, so a histogram was a reasonable solution.
-3. **Reuse previous calculations to prevent repetition:** our histogram for the neighborhood of a pixel is quite similar to that of the previous pixel.
-   This means we can reuse some of the calculations.
+3. **Reuse previous calculations' results, instead of repeating the same work:** our histogram for the neighborhood of a pixel is quite similar to that of the previous pixel.
+   This means we can reuse some of the calculations, saving some work.
 4. **Adaptively tweak the algorithm at runtime:** as we run on an actual image, we use what we've learned up to this point to hopefully run faster later on.
    The decision from which side of the histogram to start is arbirary in general.
    But in this _specific_ algorithm, the overlapping pixel neighborhoods mean we can make a reasonable guess.
-5. **Reduce the precision of the result:** this requires understanding the kind of data you're getting, and the kind of output you find acceptable.
+5. **Reduce the precision of the result:** this requires understanding the structure and distribution of the data you're inputting, and the precision of output you find acceptable.
 
 By tweaking your custom code for your particular use case and your particular data, you can often run much faster than generic libraries.
