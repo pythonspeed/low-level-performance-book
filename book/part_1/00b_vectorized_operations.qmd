@@ -72,7 +72,7 @@ arr = np.array([1, 2, 3], dtype=np.int64)
 # Add 100 to every item in the array:
 new_arr = arr + 100
 
-# The result is a new array, with same dtype:
+# The result is a new array, with the same dtype:
 assert isinstance(new_arr, np.ndarray)
 assert new_arr.dtype == np.int64
 print(new_arr)
@@ -85,13 +85,23 @@ new_arr -= 50
 print(new_arr)
 ```
 
+The `IMAGE` we loaded earlier is also an `ndarray`:
+
+```{python}
+# It's an array:
+assert isinstance(IMAGE, np.ndarray)
+# Its type is uint8:
+assert IMAGE.dtype == np.uint8
+# It is two-dimensional, with a height of 450 and a width of 600:
+assert IMAGE.shape == (450, 600)
+# We can access individual pixels if we want, e.g. y = 17, x = 23:
+print(IMAGE[17, 23])
+```
+
 We can use NumPy batch operations to implement contrast rescaling:
 
 ```{python}
 def numpy_rescale_naive(img, min_value, max_value):
-    assert isinstance(img, np.ndarray)
-    assert img.dtype == np.uint8
-
     # Limit the image to values between min_value and max_value, creating a new
     # uint8 array:
     clipped = img.clip(min_value, max_value)
@@ -148,23 +158,25 @@ In particular, by using in-place mutating operations, we can reuse existing arra
 
 ```{python}
 def numpy_rescale_optimized(img, min_value, max_value):
-    shifted = img.clip(min_value, max_value)
-    assert shifted.dtype == np.uint8
+    temp_arr = img.clip(min_value, max_value)
+    assert temp_arr.dtype == np.uint8
 
     # 😎 Shift in place:
-    shifted -= min_value
+    temp_arr -= min_value
 
     # 😢 Because we're getting a float64 array here, we can't reuse the
-    # `shifted` array:
-    scaled = shifted * (255 / (max_value - min_value))
+    # `temp_arr` array:
+    scaled = temp_arr * (255 / (max_value - min_value))
     assert scaled.dtype == np.float64
 
     # 😎 Round in place:
     np.round(scaled, out=scaled)
 
-    # 😎 Re-use an array we already created:
-    shifted[:] = scaled
-    return shifted
+    # 😎 While we now have whole number results, want the returned array to be
+    # uint8, and `scaled` is float64. So we copy the data into `temp_arr`,
+    # which has the right type:
+    temp_arr[:] = scaled
+    return temp_arr
 
 assert np.array_equal(
     numpy_rescale_naive(IMAGE, 15, 190),
@@ -206,16 +218,25 @@ def python_rescale_intensity(img, min_value, max_value):
     shifted_max = max_value - min_value
     # Create an empty array for the result:
     result = np.empty(img.shape, dtype=np.uint8)
+
     # Iterate over every pixel in the image:
-    for y in range(img.shape[0]):
-        for x in range(img.shape[1]):
+    height, width = img.shape
+    for y in range(height):
+        for x in range(width):
+            # old_value is between 0 and 255 (inclusive) since input is a uint8
+            # array:
             old_value = img[y, x]
+            # Clip:
             if old_value < min_value:
-                shifted = 0
+                # Make sure we don't create negative values:
+                clipped = min_value
+            elif old_value > max_value:
+                clipped = max_value
             else:
-                shifted = old_value - min_value
-            shifted = min(shifted, shifted_max)
-            scaled = (shifted / shifted_max) * 255
+                clipped = old_value
+            shifted = clipped - min_value
+            scaled = shifted * (255 / shifted_max)
+
             # Write the scaled value to the result array:
             result[y, x] = np.uint8(np.round(scaled))
     return result
@@ -273,19 +294,29 @@ from numba import jit
 def compiled_rescale_intensity(img, min_value, max_value):
     shifted_max = max_value - min_value
     result = np.empty(img.shape, dtype=np.uint8)
-    for y in range(img.shape[0]):
-        for x in range(img.shape[1]):
+
+    height, width = img.shape
+    for y in range(height):
+        for x in range(width):
+            # old_value is between 0 and 255 (inclusive) since input is a uint8
+            # array:
             old_value = img[y, x]
+            # Clip:
             if old_value < min_value:
-                shifted = 0
+                # Make sure we don't create negative values:
+                clipped = min_value
+            elif old_value > max_value:
+                clipped = max_value
             else:
-                shifted = old_value - min_value
-            shifted = min(shifted, shifted_max)
-            scaled = (shifted / shifted_max) * 255
+                clipped = old_value
+            shifted = clipped - min_value
+            scaled = shifted * (255 / shifted_max)
+
             result[y, x] = np.uint8(np.round(scaled))
+
     return result
 
-# We make sure to call th function at least once before benchmarking it, so
+# We make sure to call the function at least once before benchmarking it, so
 # that the compilation time isn't included in the benchmark. Plus, it's useful
 # to ensure the calculation result is still the same.
 assert np.array_equal(
