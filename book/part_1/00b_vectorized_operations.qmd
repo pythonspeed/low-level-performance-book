@@ -13,8 +13,11 @@ In this chapter we'll see how they're used, and then see the benefits of switchi
 Before we can move on to the example, it's worth briefly discussing the technology stack we'll be using for examples in this book, starting with the NumPy library.
 For more details on the technologies used, [see the appendix](../appendices/01_prerequisites.qmd).
 
+::: {.callout-important}
+### This isn't a book about NumPy
 The basic principles you'll learn aren't NumPy-specific, it's just a useful example of a library that lets you efficiently share data between Python and low-level compiled languages.
 The same principles will apply to other data processing libraries, for example Pandas and Polars, even if the underlying datastructures are somewhat different.
+:::
 
 NumPy's core data structure is the `ndarray`, an N-dimensional array.
 An `ndarray` is a bit like a standard Python list, but with some key differences:
@@ -276,7 +279,12 @@ By switching to a compiled language, we can get the benefits of both: fast execu
 
 In particular, we will compile the code using [Numba](https://numba.pydata.org/).
 Numba is a programming language that implements a subset of Python, compiles to machine code, and has native support for NumPy arrays.
-Keep in mind that this is not a book about Numba: the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
+
+::: {.callout-important}
+### This isn't a book about Numba
+Most of the examples in this book use Numba.
+However, the concepts the book covers also apply to C, C++, Cython, Rust, and other low-level languages.
+:::
 
 Numba is easy to install and simple to use:
 
