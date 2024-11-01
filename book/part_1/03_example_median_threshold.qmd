@@ -40,6 +40,7 @@ However, in this particular chapter understanding every detail isn't critical; t
 Simplifying somewhat, for each pixel in the image we will:
 
 1. Calculate the median of the surrounding neighborhood.
+   (Calculating the mean would be faster, but might not deal as well with an unbalanced distribution of brightness.)
 2. Subtract a magic constant from the calculated median to calculate our local threshold.
 3. If the pixel's value is bigger than the threshold, the result is white, otherwise it's black.
 
@@ -174,8 +175,8 @@ def plot_neighborhood_histogram(y, x):
     # Build a 256-bucket histogram, based on the values of the pixels in the
     # specified 11×11 neighborhood:
     histogram = np.zeros((256,), dtype=np.uint32)
-    for i in range(y - 5, y + 5):
-        for j in range(x - 5, x + 5):
+    for i in range(y - 5, y + 6):
+        for j in range(x - 5, x + 6):
             histogram[IMAGE[i, j]] += 1
 
     # Draw a barchart of the histogram:
