@@ -71,7 +71,7 @@ For Numba you do this by choosing the "NumPy error model", which means:
 
 * Integer division by zero returns zero, which is perhaps not what you'd expect.
   Plus, it doesn't actually help much with speeding up integer division.
-  The Cython equivalent (`cdivision`) probably does help performance for integer division, but has a large number of semantic impacts so [read the documentation carefully](https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives).
+  (The Cython equivalent (`cdivision`) probably does help performance for integer division, but has a large number of semantic impacts so [read the documentation carefully](https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives).)
 * Floating point division by zero gives `inf`, `NaN`, or `-inf` depending on whether it's dividing a positive number, zero, or a negative number.
 
 Here's how we enable this mode:
@@ -91,7 +91,7 @@ assert np.array_equal(
 ) 
 ```
 
-And now that the branch is gone, division successfully auto-vectorizes:
+And now that the branch is gone, division is faster:
 
 ```{python}
 #| echo: false
