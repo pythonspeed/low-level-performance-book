@@ -7,3 +7,5 @@
 * Mark winning entries in performance with 🥇
 * Make sure sad emojis are consistent
 * Alt text for all charts/images
+* Maybe move microbenchmarking, or some of it, earlier, so people trying to reproduce don't get confusing results?
+* Moving average can use same trick as median filter (subtract from start, add to end).

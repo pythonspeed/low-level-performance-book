@@ -13,8 +13,11 @@ There are two possible behaviors:
 * **Undefined behavior:** This can range from segfaults to corrupted data to completely arbitrary behavior.
 
 You really want to get an error, not undefined behavior.
-But that means that every time you read or write a value at a given index, the code need to check if that index is within bounds.
-And that is an extra branch being inserted into your code.
+That means the compiler needs to check every location in the code where you read and write a given index.
+In some cases the compiler will be able to detect your code is doing the wrong thing.
+But most of the time it will add some extra code that checks _at runtime_ if the index is within bounds.
+
+That is an extra branch being inserted into your code, and running every time you do a memory read or write.
 It's a predictable branch, since only buggy code will do out-of-bounds reads or writes, but it will slow down your code.
 
 Bounds checking behavior depends on the language you're using:
@@ -97,137 +100,4 @@ As such, there's a strong argument to be made for always leaving bounds-checking
 
 In some cases you can leave bounds checking on, but provide enough information to the compiler that it will remove the bounds checks as part of its optimization passes.
 This gives you the best of both worlds: the safety guarantees of bounds checking, without the performance cost.
-I first learned about this strategy from [this excellent article about applying it to Rust](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e).
-
-The general approach is to figure out idioms that are transparent enough to the compiler that it can prove to itself that the bounds will never be violated, or alternatively you can use asserts that give it more information.
-The actual mechanism will be language-specific, and often compiler-specific.
-
-To reduce duplication of code, we'll write a little utility to generate two `@jit` versions of the same function, with and without bounds checking:
-
-```{python}
-# Return two @jitted functions, with and without bounds checking:
-def with_and_without_boundscheck(f):
-    with_bc = jit(boundscheck=True)(f)
-    without_bc = jit(boundscheck=False)(f)
-    return (with_bc, without_bc)
-```
-
-Next, let's consider a trivial example: summing an array.
-We'll use the standard technique we've been using for iteration, a `for` loop over a `range(len(arr))`, and compare runtime with and without bounds checking:
-
-```{python}
-DATA = np.arange(0, 1_000_000, dtype=np.uint64)
-
-def sum1(arr):
-    total = 0
-    for i in range(len(arr)):
-        total += arr[i]
-    return total
-
-sum_bc, sum_no_bc = with_and_without_boundscheck(sum1)
-assert sum_bc(DATA) == sum_no_bc(DATA)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions,branches
-sum_bc(DATA)
-sum_no_bc(DATA)
-```
-
-Clearly this idiom is not enough to convince the compiler to optimize bounds checks away.
-
-Another thing we can try is `for value in arr:`, since this seems like it ought to avoid bounds checking altogether.
-
-```{python}
-DATA = np.arange(0, 1_000_000, dtype=np.uint64)
-
-def sum2(arr):
-    total = 0
-    for value in arr:
-        total += value
-    return total
-
-sum2_bc, sum2_no_bc = with_and_without_boundscheck(sum2)
-assert sum2_bc(DATA) == sum2_no_bc(DATA)
-```
-
-And as expected, bounds checking doesn't _add_ much cost... but unfortunately our function is much slower even with bounds checking disabled.
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions,branches
-sum2_bc(DATA)
-sum2_no_bc(DATA)
-```
-
-So it seems like we want to keep the `arr[i]`, because some experimentation suggests it [makes it easier for auto-vectorization to happen](https://github.com/numba/numba/issues/9210), while still doing `for value in arr:`.
-
-Here's what I came up with:
-
-```{python}
-def sum3(arr):
-    total = 0
-    for i, _ in enumerate(arr):
-        total += arr[i]
-    return total
-
-sum3_bc, sum3_no_bc = with_and_without_boundscheck(sum3)
-assert sum3_bc(DATA) == sum3_no_bc(DATA)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions,branches
-sum3_bc(DATA)
-sum3_no_bc(DATA)
-```
-
-Success! Both versions are almost the same speed, which means we can leave bounds checking on and still get the safety benefits without a large performance hit.
-
-With a little experimentation, I was able to apply the technique to the moving average function above.
-The new version has a much more modest performance impact from bounds checking, and even better, it's faster!
-
-```{python}
-def moving_average_2(timeseries):
-    result = np.empty(timeseries.shape, dtype=np.float64)
-    for i, _ in enumerate(timeseries):
-        total = 0
-        # 😎 Get a slice of timeseries, so we can apply the
-        # while loop technique here as well.
-        window = timeseries[max(i - 6, 0):i + 1]
-        # 😎 Loop in a way that allows Numba to optimize away legal bound
-        # checks:
-        for j, _ in enumerate(window):
-            total += window[j]
-        result[i] = total / 7
-        i += 1
-    return result
-
-moving_average_2_bc, moving_average_2_no_bc = with_and_without_boundscheck(
-    moving_average_2
-)
-
-assert np.array_equal(
-    moving_average_no_bc(DATA),
-    moving_average_2_bc(DATA)
-)
-assert np.array_equal(
-    moving_average_no_bc(DATA),
-    moving_average_2_no_bc(DATA)
-)
-```
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions,branches
-moving_average_no_bc(DATA)
-moving_average_2_bc(DATA)
-moving_average_2_no_bc(DATA)
-```
-
-As you can see, you can write code that leaves bounds checking on, without paying a performance cost.
-You do suffer from a bit of a readability cost, and this technique is very dependent on your compiler version.
-A new, sufficiently different version of Numba might make this idiom slower, or more positively might enable the same benefit with normal loops.
-
-If you're writing Rust, which always has bounds checking on, using the [Rust-specific version of this technique](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e) is a great way to speed up your code.
+This strategy is complex enough to merit its own chapter.

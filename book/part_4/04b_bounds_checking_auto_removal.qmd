@@ -1,0 +1,203 @@
+# Help the compiler optimize bounds checking out of existence
+
+With this technique, we abandon the notion that the compiler is an opaque box we can't peer into.
+Instead, we figure out idioms that are transparent enough to the compiler that it can prove to itself that reads and writes never go out of bounds.
+That means any bounds checks can be optimized away, or perhaps never even added to the code.
+The actual mechanism will be language-specific, and likely compiler-specific as well.
+
+## Tune your code for your compiler's quirks
+
+Before moving on to bounds checks, it's worth talking about compiler-specific code, using Numba as an example.
+Your compiler is not magic: it will have bugs, limitations, and quirks.
+If you want to maximize your code's speed, you might need to take them into account.
+This is of course _very_ specific to your language, compiler, and version of compiler, so these sort of optimizations can be very brittle.
+Like tuning your code for a specific CPU model, consider them as a last resource.
+
+To demonstrate, let's look at a limitation in Numba's options for looping.
+We're going to look at the performance impacts of two different ways of looping over an array:
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import jit
+
+@jit
+def sum_direct_for(arr):
+    total = 0
+    for value in arr:
+        total += value
+    return total
+
+@jit
+def sum_indexing(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+
+DATA = np.arange(0, 1_000_000, dtype=np.uint64)
+assert sum_direct_for(DATA) == sum_indexing(DATA)
+```
+
+If we compare these two functions, the second is much faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+sum_direct_for(DATA)
+sum_indexing(DATA)
+```
+
+I filed [a bug against Numba about this](https://github.com/numba/numba/issues/9210).
+Hopefully it will be fixed one day, at which point you'll be able to use either idiom and get the same performance.
+
+## Help the compiler optimize bounds check out of existence
+
+Having learned some of the idiosyncrasies of the Numba compiler, we can try to write Numba that eliminates bounds checks.
+To reduce duplication of code, we'll write a little utility to generate two `@jit` versions of the same function, with and without bounds checking:
+
+```{python}
+# Return two @jitted functions, with and without bounds checking:
+def with_and_without_boundscheck(f):
+    with_bc = jit(boundscheck=True)(f)
+    without_bc = jit(boundscheck=False)(f)
+    return (with_bc, without_bc)
+```
+
+Next, let's consider a trivial example: summing an array.
+We'll use the faster technique we've been using for iteration, a `for` loop over a `range(len(arr))`, and compare runtime with and without bounds checking:
+
+```{python}
+DATA = np.arange(0, 1_000_000, dtype=np.uint64)
+
+def sum1(arr):
+    total = 0
+    for i in range(len(arr)):
+        total += arr[i]
+    return total
+
+sum_bc, sum_no_bc = with_and_without_boundscheck(sum1)
+assert sum_bc(DATA) == sum_no_bc(DATA)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branches
+sum_bc(DATA)
+sum_no_bc(DATA)
+```
+
+Clearly this idiom is not enough to convince the compiler to optimize bounds checks away.
+
+Another thing we can try is `for value in arr:`, since this seems like it ought to avoid bounds checking altogether.
+Of course, we discovered above that it's slower due to limitations in Numba.
+
+```{python}
+DATA = np.arange(0, 1_000_000, dtype=np.uint64)
+
+def sum2(arr):
+    total = 0
+    for value in arr:
+        total += value
+    return total
+
+sum2_bc, sum2_no_bc = with_and_without_boundscheck(sum2)
+assert sum2_bc(DATA) == sum2_no_bc(DATA)
+```
+
+And as expected, bounds checking doesn't _add_ much cost... but unfortunately our function is much slower even with bounds checking disabled.
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branches
+sum2_bc(DATA)
+sum2_no_bc(DATA)
+```
+
+So it seems like we want to keep the `arr[i]`, while still doing `for value in arr:`.
+Here's what I came up with:
+
+```{python}
+def sum3(arr):
+    total = 0
+    for i, _ in enumerate(arr):
+        total += arr[i]
+    return total
+
+sum3_bc, sum3_no_bc = with_and_without_boundscheck(sum3)
+assert sum3_bc(DATA) == sum3_no_bc(DATA)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branches
+sum3_bc(DATA)
+sum3_no_bc(DATA)
+```
+
+Success! Both versions are almost the same speed, which means we can leave bounds checking on and still get the safety benefits without a large performance hit.
+
+With a little experimentation, I was able to apply the technique to the moving average function we saw in the previous chapter.
+Here's our baseline implementation that turns off bounds checks, losing some safety properties:
+
+```{python}
+@jit(boundscheck=False)
+def moving_average_no_bc(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
+    for i in range(len(timeseries)):
+        total = 0
+        for j in range(max(i - 6, 0), i + 1):
+            total += timeseries[j]
+        result[i] = total / 7
+    return result
+```
+
+The new version has a much more modest performance impact from bounds checking, and even better, it's faster!
+
+```{python}
+def moving_average_2(timeseries):
+    result = np.empty(timeseries.shape, dtype=np.float64)
+    for i, _ in enumerate(timeseries):
+        total = 0
+        # 😎 Get a slice of timeseries, so we can apply the
+        # while loop technique here as well.
+        window = timeseries[max(i - 6, 0):i + 1]
+        # 😎 Loop in a way that allows Numba to optimize away legal bound
+        # checks:
+        for j, _ in enumerate(window):
+            total += window[j]
+        result[i] = total / 7
+        i += 1
+    return result
+
+moving_average_2_bc, moving_average_2_no_bc = with_and_without_boundscheck(
+    moving_average_2
+)
+
+assert np.array_equal(
+    moving_average_no_bc(DATA),
+    moving_average_2_bc(DATA)
+)
+assert np.array_equal(
+    moving_average_no_bc(DATA),
+    moving_average_2_no_bc(DATA)
+)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branches
+moving_average_no_bc(DATA)
+moving_average_2_bc(DATA)
+moving_average_2_no_bc(DATA)
+```
+
+As you can see, you can write code that leaves bounds checking on, without paying a performance cost.
+You do suffer from a bit of a readability cost, and this technique is very dependent on your compiler version.
+A new, sufficiently different version of Numba might make this idiom slower, or more positively might enable the same benefit with normal loops.
+
+If you're writing Rust, which always has bounds checking on, using the [Rust-specific version of this technique](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e) is a great way to speed up your code.

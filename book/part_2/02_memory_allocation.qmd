@@ -45,8 +45,11 @@ That means it's easier for the compiler to reason about, and easier for the comp
 Consider two inefficient implementations of the same algorithm, one of which does many writes to the heap, and one which does many writes to the stack:
 
 ```{python}
+from numba import int64
+
 @jit
 def heap_writes(arr, n, max_value):
+    max_value = max_value
     # i, n, and max_value are on the stack. arr is on the heap:
     for i in range(n):
         if arr[0] > max_value:
@@ -70,6 +73,10 @@ def make_array():
 def check(n, max_value):
     arr1 = make_array()
     arr2 = make_array()
+    # Make sure max_value and n have the same type as the arrays,
+    # which makes it easier for Numba to produce fast code:
+    max_value = arr1.dtype.type(max_value)
+    n = arr1.dtype.type(n)
     heap_writes(arr1, n, max_value)
     stack_writes(arr2, n, max_value)
     assert arr1[0] == arr2[0]
@@ -89,8 +96,9 @@ stack_writes(make_array(), 100_000, 100_000)
 stack_writes(make_array(), 10_000_000, 100_000_000)
 ```
 
-It's certainly possible that some future version of Numba might do better and optimize the `heap_writes()` function too.
-But in general, avoiding unnecessary memory writes and reads from data on the heap will make your compiler's life easier.
+One could argue that the different performance between the two variations is a limitation of Numba.
+And it's quite possible that some future version of Numba might do better and optimize the `heap_writes()` function too.
+But no compiler is perfect, and the simpler the code, the easier it is for the compiler to optimize it.
 
 ## Avoid unnecessary heap memory allocations in the inner loop
 

@@ -33,6 +33,7 @@ book:
         - part_4/02_branchless.qmd
         - part_4/03_edge_case_branches.qmd
         - part_4/04_bounds_checking.qmd
+        - part_4/04b_bounds_checking_auto_removal.qmd
         - part_4/05_divide_by_zero.qmd
     - part: "Floating point"
       chapters:
@@ -57,7 +58,6 @@ book:
         - part_8/02_overflow.qmd
         - part_8/02b_hardware_differences.qmd
         - part_8/03_more_about_simd.qmd
-        - part_8/04_writing_for_the_compiler.qmd
     - part: "Performance in practice"
       chapters:
         - part_9/02_choosing_a_programming_language.qmd
