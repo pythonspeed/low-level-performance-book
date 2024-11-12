@@ -197,7 +197,8 @@ moving_average_2_no_bc(DATA)
 ```
 
 As you can see, you can write code that leaves bounds checking on, without paying a performance cost.
-You do suffer from a bit of a readability cost, and this technique is very dependent on your compiler version.
-A new, sufficiently different version of Numba might make this idiom slower, or more positively might enable the same benefit with normal loops.
+However, this is all highly tuned to very specific implementation details of the compiler.
+A new, sufficiently different version of Numba might make these idioms slower, or more positively might enable the same benefit with normal loops.
+Given how brittle this is, and that the code is written in a surprising way, you should at minimum have a bunch of explanatory comments in the source code explaining why you're doing this.
 
-If you're writing Rust, which always has bounds checking on, using the [Rust-specific version of this technique](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e) is a great way to speed up your code.
+> If you're writing Rust, which always has bounds checking on, using the [Rust-specific version of this technique](https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e) can help speed up your code.
