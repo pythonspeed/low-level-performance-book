@@ -348,6 +348,11 @@ compiled_rescale_intensity(IMAGE, 15, 190)
 
 The compiled function runs quickly—in fact it's faster than the NumPy version—and it also uses far less memory.
 
+> **What happens when Numba code calls a NumPy function?**
+> Numba _reimplements_ the NumPy functions it supports, which means the output might not be quite identical to real NumPy, or perhaps some options or arguments might not be supported.
+> For example, `numpy.mean()` is reimplemented inside Numba using a Numba function; here's [a link to the source code](https://github.com/numba/numba/blob/391511bcb0b97af8d311cd276a46030774bc30b7/numba/np/new_arraymath.py#L424) as of Nov 2024.
+> In normal NumPy [`numpy.mean()` is implemented in C](https://github.com/numpy/numpy/blob/50d64e515e84fc3ed96d19b4796a383f8dfbf08f/numpy/_core/src/multiarray/calculation.c#L714).
+
 ## Identify situations where vectorized operations are not enough
 
 When should you abandon batch APIs like those provided by NumPy, and switch to a compiled language?
