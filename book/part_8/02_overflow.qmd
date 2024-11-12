@@ -20,7 +20,7 @@ There are three options:
 * **Undefined behavior:** This is even worse, because as we saw in the last chapter it can result in completely unexpected behavior, not just wrong values in specific points in memory.
   That is, the effects can be both much stranger and much harder to debug.
 
-[^therac-25]: A real world example resulted in several deaths from radiation poisioning: https://en.wikipedia.org/wiki/Therac-25
+[^therac-25]: A real world example, together with some other errors, resulted in several deaths from radiation poisioning: https://en.wikipedia.org/wiki/Therac-25
 
 ## An example of overflow leading to wraparound
 
