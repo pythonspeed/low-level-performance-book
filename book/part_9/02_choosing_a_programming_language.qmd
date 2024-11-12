@@ -9,6 +9,7 @@ For example, if you are:
 * ... contributing a patch to an existing open source project, you'll need to use whatever languages the maintainers are comfortable accepting.
 
 Still, it's worth understanding the tradeoffs involved with different programming languages for situations that are less constrained.
+My personal preference is to use Numba for small, self-contained functions, and to use Rust for anything where I need to build more complex software.
 
 ## Numba
 
