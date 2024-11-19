@@ -17,6 +17,7 @@ There are pre-existing utilities and libraries for doing this:
 * Python has a [`timeit`](https://docs.python.org/3/library/timeit.html) module you can use for command-line or API-based microbenchmarking.
 * In Jupyter or IPython you can use the `%timeit` magic.
 * The [`pytest-benchmark`](https://pypi.org/project/pytest-benchmark/) package lets you write benchmark suites to be run by `pytest`.
+* This book uses a microbenchmarking library I wrote myself, wrapping Pytho's `timeit`.
 
 Here's an example of the Jupyter `%timeit` magic:
 
