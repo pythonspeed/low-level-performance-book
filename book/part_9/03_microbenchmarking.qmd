@@ -1,23 +1,7 @@
-# Use microbenchmarks to measure your code's performance
+# Make your microbenchmarks more accurate
 
-In much of this book we've relied on microbenchmarks to measure whether or not code is getting faster: we run the code a large number of times, and report how long it took to run on average.
-There are pre-existing utilities and libraries for doing this:
-
-* Python has a [`timeit`](https://docs.python.org/3/library/timeit.html) module you can use for command-line or API-based microbenchmarking.
-* In Jupyter or IPython you can use the `%timeit` magic to measure how long something takes to run.
-* The [`pytest-benchmark`](https://pypi.org/project/pytest-benchmark/) package lets you write benchmark suites to be run by `pytest`.
-
-Here's an example of the Jupyter `%timeit` magic:
-
-```{python}
-%timeit sum(range(1_000))
-```
-
-```{python}
-%timeit sum(range(10_000))
-```
-
-Microbenchmarking is an attractive approach since it's seemingly quite simple, but it also has the potential for false or misleading results.
+Microbenchmarking is an important tool in measuring the impact of performance optimizations.
+But while it's seemingly quite simple, it also has the potential for false or misleading results.
 In this chapter we'll go over some of the potential problems and how to avoid them.
 
 ## Benchmark the right thing
@@ -64,13 +48,10 @@ This is a common problem with Rust; `maturin develop` or `pip install -e .` will
 
 ### Be aware of platform-specific issues
 
-This is by its nature difficult to generalize, but here are some examples:
-
-* In this book we've mostly been using Numba for our examples, and by default Numba compiles its code the first time a function is called with specific types.
-  This can significantly distort benchmarking!
-  You'll notice that all the examples in this book call a function at least once _before_ doing any performance measurements.
-* Code running on GPUs runs asynchronously, so `%%timeit` and the like will give misleading results.
-  GPU-based frameworks like CuPy therefore include [custom microbenchmarking functionality](https://docs.cupy.dev/en/stable/user_guide/performance.html).
+This is by its nature difficult to generalize, but to give one example, in this book we've mostly been using Numba for our examples.
+By default Numba compiles its code the first time a function is called with specific types.
+This can significantly distort benchmarking!
+You'll notice that all the examples in this book call a function at least once _before_ doing any performance measurements.
 
 ## Minimize noise from the CPU
 
