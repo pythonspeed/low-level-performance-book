@@ -229,7 +229,7 @@ constant()
 
 ## Reduce noise caused by randomness in software
 
-Multiple runs of the same program can have different performance behavior due to built-in (or deliberate** randomness.
+Multiple runs of the same program can have different performance behavior due to built-in (or deliberate) randomness.
 For example, every run of Python has a randomized seed for hash functions, which can make dictionaries and sets access data differently for certain operations.
 Since dictionaries are pervasive in Python, different runs of the same code can then have different performance.
 
