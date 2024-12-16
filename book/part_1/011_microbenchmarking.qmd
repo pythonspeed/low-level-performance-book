@@ -17,7 +17,7 @@ There are pre-existing utilities and libraries for doing this:
 * Python has a [`timeit`](https://docs.python.org/3/library/timeit.html) module you can use for command-line or API-based microbenchmarking.
 * In Jupyter or IPython you can use the `%timeit` magic.
 * The [`pytest-benchmark`](https://pypi.org/project/pytest-benchmark/) package lets you write benchmark suites to be run by `pytest`.
-* This book uses a microbenchmarking library I wrote myself, wrapping Pytho's `timeit`.
+* This book uses a microbenchmarking library I wrote myself, wrapping Python's `timeit` module.
 
 Here's an example of the Jupyter `%timeit` magic:
 
@@ -32,9 +32,9 @@ For now I'll just cover one particular problem you might hit you if you try runn
 
 Most of the examples in this book use Numba.
 The first time you run a function decorated with `@numba.jit` with a new set of types, the code will be compiled.
-This is slow, and it's a one time cost, so you usually want to ignore this compilation time when benchmarking: after all, it doesn't reflect the speed of the function.
+This is slow, and it's a one time cost, so you usually want to ignore this compilation time when benchmarking: after all, it doesn't reflect the speed of running the function the second, third, or millionth time.
 
-Let's see this in action:
+Let's see this compilation time in action:
 
 ```{python}
 from time import time
@@ -49,7 +49,7 @@ def arr_sum(arr):
     return result
 ```
 
-The first time we call `arr_sum()` with an array of `np.int64`, the elapsed time will be much higher than subsequent times, due to compilation time:
+The first time we call `arr_sum()` with an array of `np.int64`, the elapsed time will be much higher than subsequently, due to compilation:
 
 ```{python}
 # One million int64s:
