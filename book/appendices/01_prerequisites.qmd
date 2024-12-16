@@ -114,10 +114,10 @@ arr = np.ones((1_000_000,), dtype=np.uint64)
 %time a_function_compiled_with_numba(arr)
 ```
 
-> **Note:** Compilation is done _before_ the function is run, so while it says "JIT" in the decorator name, this is not a just-in-time compiler in the way that PyPy, JavaScript, or Java JVMs are.
-> JIT compilers compile the code after observing it actually running.
-> Numba, in contrast, only looks at the source code of the function and the types of its arguments in order to compile it, so it's really an ahead-of-time compiler as is used for C++ or Rust.
-> When it talks about just-in-time compilation, this is a description of the developer experience, not the compiler technique.
+> **Note:** When Numba talks about just-in-time (JIT) compilation, this is a description of the developer experience, not the compiler technique.
+> In the JIT compilation used by JavaScript or Java, code starts out by running in a slower mode, and then eventually the JIT compiles to machine code after observing how the code actually ran.
+> Numba, in contrast, must compile the code before it ever runs, which means it can only look at the source code of the function and the types of its arguments.
+> So the way it compiles is more like ahead-of-time compilers used by C++ or Rust.
 
 ### Numba variable types
 
