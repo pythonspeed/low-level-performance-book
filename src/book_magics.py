@@ -131,18 +131,19 @@ def compare_timing(line, cell, local_ns):
         if measurements:
             result[-1].extend(get_measurements(measurements, line, local_ns))
 
-    minimum_value = min(r[1] for r in result)
-    for (units, factor) in [
-        ("milliseconds", 1_000_000),
-        ("microseconds", 1_000),
-        ("nanoseconds", 1),
-    ]:
-        if minimum_value > factor * 10:
-            break
+    # minimum_value = min(r[1] for r in result)
+    # for (units, factor) in [
+    #     ("milliseconds", 1_000_000),
+    #     ("microseconds", 1_000),
+    #     ("nanoseconds", 1),
+    # ]:
+    #     if minimum_value > factor * 10:
+    #         break
+    units, factor = ("microseconds", 1_000)
     for row in result:
         row[1] /= factor
-        # Round to whole numbers:
-        row[1] = int(round(row[1]))
+        # Round 100 nanosecond level:
+        row[1] = round(row[1], 1)
 
     headers = ["Code", f"Elapsed {units}"]
     for m in measurements:
