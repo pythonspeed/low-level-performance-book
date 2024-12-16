@@ -239,7 +239,8 @@ You'll see the performance differences only across different processes.
 **What to do:** You have two approaches to overcoming this sort of noise:
 
 1. Use a fixed seed for randomness.
-   For example, you can set Python's hash seed using the [`PYTHONHASHSEED`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED) environment variable; just set it to a fixed number.
+   You can set Python's hash seed using the [`PYTHONHASHSEED`](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED) environment variable; just set it to a fixed number.
+   Similarly, you can use [`random.seed()`](https://docs.python.org/3/library/random.html#random.seed) to set the seed for Python's random number generator, and [`numpy.random.default_rng()`](https://numpy.org/doc/2.0/reference/random/generator.html#numpy.random.default_rng) accepts a seed argument.
    In practice, this wont solve all sources of randomness, and it is also less realistic in that real programs will have different seeds on every run.
 2. Run benchmarks multiple times, and average the results.
    You can use a program like [`hyperfine`](https://github.com/sharkdp/hyperfine) to do this, but that only measures the full process runtime, which is likely not what you want.
