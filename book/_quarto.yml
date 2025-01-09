@@ -11,11 +11,11 @@ book:
       chapters:
         - part_1/00_profiler.qmd
         - part_1/01_vectorized_operations.qmd
-        - part_1/011_microbenchmarking.qmd
-        - part_1/02_algorithms.qmd
-        - part_1/03_generic_optimization.qmd
-        - part_1/04_lookup_table.qmd
-        - part_1/05_example_median_threshold.qmd
+        - part_1/02_microbenchmarking.qmd
+        - part_1/03_algorithms.qmd
+        - part_1/04_generic_optimization.qmd
+        - part_1/05_lookup_table.qmd
+        - part_1/06_example_median_threshold.qmd
         #- part_1/07_research.qmd - mention Huang, DP algorithm
     - part: "Compiler optimizations"
       chapters:
@@ -34,8 +34,8 @@ book:
         - part_4/02_branchless.qmd
         - part_4/03_edge_case_branches.qmd
         - part_4/04_bounds_checking.qmd
-        - part_4/04b_bounds_checking_auto_removal.qmd
-        - part_4/05_divide_by_zero.qmd
+        - part_4/05_bounds_checking_auto_removal.qmd
+        - part_4/06_divide_by_zero.qmd
     - part: "Floating point"
       chapters:
         - part_5/00.qmd
@@ -57,12 +57,12 @@ book:
       chapters:
         - part_8/01_undefined_behavior.qmd
         - part_8/02_overflow.qmd
-        - part_8/02b_hardware_differences.qmd
-        - part_8/03_more_about_simd.qmd
+        - part_8/03_hardware_differences.qmd
+        - part_8/04_more_about_simd.qmd
     - part: "Performance in practice"
       chapters:
-        - part_9/02_choosing_a_programming_language.qmd
-        - part_9/02b_bulk_objects.qmd
+        - part_9/01_choosing_a_programming_language.qmd
+        - part_9/02_bulk_objects.qmd
         - part_9/03_microbenchmarking.qmd
         - part_9/04_dont_break_your_code.qmd
         - part_9/05_document_your_code.qmd
