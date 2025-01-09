@@ -8,5 +8,5 @@ py-perf-event; sys_platform == 'linux'
 pandas
 pyarrow
 line_profiler
-profila
+profila>=0.3.0
 cython
