@@ -22,12 +22,15 @@ The same principles will apply to other data processing libraries, for example P
 NumPy's core data structure is the `ndarray`, an N-dimensional array.
 An `ndarray` is a bit like a standard Python list, but with some key differences:
 
+```python
+%maybe_table
 |                                      | Python `list`      | NumPy `ndarray`               |
 |--------------------------------------|--------------------|-------------------------------|
 | Can change size?                     | Yes, `l.append(1)` | No, fixed size                |
 | Can contain multiple types?          | Yes, `[12, "abc"]` | No, fixed data type ("dtype") |
 | How many dimensions?                 | Just 1             | Can be 1D, 2D, 3D, etc.       |
 | Fast access from compiled languages? | No 😢              | Yes 😎                        |
+```
 
 You can access NumPy arrays in three ways, as we'll see in the following example:
 
