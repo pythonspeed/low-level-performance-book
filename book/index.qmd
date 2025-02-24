@@ -21,7 +21,7 @@ Getting faster results typically involves writing Python extensions in a fast, l
 There are many pre-written compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
 Typically they work by operating on batches of data—an array, or a dataframe.
 Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
-In that case you need to write your own computational code.
+In that case you need to write your own code.
 
 There are multiple ways to optimize computational code, i.e. making it run faster on a single CPU core:
 
