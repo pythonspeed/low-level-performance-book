@@ -13,34 +13,41 @@ I provide a quick review of the bigger picture of performance in the first chapt
 
 Assuming your performance bottleneck is computation, how do you speed it up?
 
-## Speeding up Python-based data processing computation
+## Optimizing Python-based data processing computation
 
-Python[^cpython] is notoriously slow, but often used to handle large-scale data processing.
+Python[^cpython] is notoriously slow for computation, yet often used to handle large-scale data processing.
 Getting faster results typically involves writing Python extensions in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
 
 There are many pre-written compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
 Typically they work by operating on batches of data—an array, or a dataframe.
-
 Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
-In that case, the common advice you'll get is:
+In that case you need to write your own computational code.
 
-1. Re-write your code in a compiled language.
-2. Then, take advantage of parallelism, using multiple CPU cores.
+There are multiple ways to optimize computational code, i.e. making it run faster on a single CPU core:
 
-Unfortunately, there's a key step missing in the middle of this process.
+1. Use scalable algorithms and data structures.
+2. Avoid unnecessary and repetitive work.
+3. If necessary, switch to a faster compiled language.
 
-## The missing step: optimization
+Once you make the switch to a compiled language, you can get even faster results by writing code that:
 
-Here's a better plan for speeding up your computational code:
+1. Enables the compiler to generate the fastest code possible, for example by avoiding aliasing.
+2. Takes advantage of the sometimes unexpected ways modern CPUs work, from branch prediction to memory hierarchy.
 
-1. Re-write your code in a compiled language.
-2. **Optimize your code:** make the compiled code faster, still on a single CPU.
-   This is the bulk of what we'll focus on in this book.
-3. Then, take advantage of parallelism, using multiple CPU cores.
+This book will at least touch on all these techniques, in some cases going into much more depth.
 
-Optimizing your code is multiplicative with parallelism: if you can make your code 10× faster on a single thread, and then 10× faster with parallelism, you will get results 100× faster.
-And unlike parallelism, optimization reduces computation costs, since you get faster results without paying for more expensive hardware.
-For similar reasons, it also reduces carbon emissions.
+## From optimized code to parallel code
+
+Optimizing your code on a single CPU core is one way to get faster results.
+Another is to use parallelism across multiple cores, something this book does not cover.
+
+While you could jump straight to parallelism, optimization is still useful:
+
+* Optimizing your code is multiplicative with parallelism: if you can make your code 10× faster on a single thread, and then 10× faster with parallelism, you will get results 100× faster.
+* Both optimization and parallelism reduce electricity usage, and therefore carbon emissions; the reduction seems at least somewhat multiplicative.
+* Unlike parallelism, optimization reduce the monetary costs of computing, since you get faster results without paying for more expensive hardware.
+
+So really, you should be applying both techniques if possible.
 
 Ready to get faster results from your code?
 Let's get started!
