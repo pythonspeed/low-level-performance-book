@@ -330,9 +330,12 @@ def compiled_rescale_intensity(img, min_value, max_value):
 
     return result
 
-# We make sure to call the function at least once before benchmarking it, so
-# that the compilation time isn't included in the benchmark. Plus, it's useful
-# to ensure the calculation result is still the same.
+# IMPORTANT: We make sure to call the function at least once before
+# benchmarking it, so that the code is already compiled in advance by Numba. If
+# we don't do this, the benchmark will include compilation time, which will
+# distort the results.
+#
+# Separately, this is useful to ensure the calculation result is unchanged.
 assert np.array_equal(
     ORIGINAL_RESCALED,
     compiled_rescale_intensity(IMAGE, 15, 190)
