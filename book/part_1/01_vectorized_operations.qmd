@@ -27,7 +27,7 @@ An `ndarray` is a bit like a standard Python list, but with some key differences
 |                                      | Python `list`      | NumPy `ndarray`               |
 |--------------------------------------|--------------------|-------------------------------|
 | Can change size?                     | Yes, `l.append(1)` | No, fixed size                |
-| Can contain multiple types?          | Yes, `[12, "abc"]` | No, fixed data type ("dtype") |
+| Can contain varying types?           | Yes, `[12, "abc"]` | No, fixed data type ("dtype") |
 | How many dimensions?                 | Just 1             | Can be 1D, 2D, 3D, etc.       |
 | Fast access from compiled languages? | No 😢              | Yes 😎                        |
 ```

@@ -11,7 +11,7 @@ So before you start optimizing your code, it's important to understand that othe
 
 ## Identify bottlenecks with a profiler
 
-By using one of the many performance profilers for Python—Scalene, Py-Spy, Austin, PyInstrument, VizTracer, and many more—you can identify which parts of your code are taking the most time.
+By using one of the many performance profilers for Python—[line_profiler](https://pypi.org/project/line-profiler/), [Scalene](https://github.com/plasma-umass/scalene), [Py-Spy](https://github.com/benfred/py-spy), [PyInstrument](https://pyinstrument.readthedocs.io/en/latest/), [VizTracer](https://viztracer.readthedocs.io/en/stable/), and many more—you can identify which parts of your code are taking the most time.
 
 The following example code matches the basic high-level structure of many data processing programs.
 If you are not familiar with Pandas, that's fine, it's the high-level part that matters:
@@ -41,7 +41,7 @@ def full_pipeline(file_or_url):
 ```
 
 We can profile this code to see where it's spending the most time.
-We'll use [`line_profiler`](https://pypi.org/project/line-profiler/) to profile our code, as it's probably the simplest profiler you can use.
+We'll use `line_profiler` to profile our code, as it's probably the simplest profiler you can use.
 You can use `line_profiler` on the command-line, or inside a Jupyter notebook or equivalent:
 
 ```{python}
