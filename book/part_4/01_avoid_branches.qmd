@@ -58,10 +58,11 @@ Code with branches makes it harder for the compiler to generate efficient code:
   SIMD instructions do the same thing to multiple data values, and a branch might make it impossible to do the same thing.
   Modern CPUs have "masked" SIMD operations that allow running operations on only a subset of values, and compilers will take advantage of this, but there's a limit to how much these instructions can do.
 
-## Instruction-level parallelism, branch prediction, and the cost of misprediction
+## Branches can make the CPU run your code slower due to branch misprediction
 
-Branches have another performance impact at runtime, due to interactions with instruction-level parallelism.
+Branches have another performance impact at runtime, due to interactions with instruction-level parallelism (ILP).
 As we discussed in a previous chapter, ILP allows the CPU to run multiple instructions in parallel if it knows they don't depend on each other.
+
 Branches present a problem for ILP: given there are two possible sets of future instructions, for example the two branches of an `if` statement, how can the CPU know which set it should be executing in parallel?
 
 Instead of just stopping execution until the `if` statement can be calculated, the CPU will instead make a guess, a "branch prediction."

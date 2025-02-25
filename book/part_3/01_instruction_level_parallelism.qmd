@@ -4,9 +4,7 @@ Your CPU is capable of transparently running multiple instructions at the same t
 
 ## Data dependencies are a bottleneck for instruction-level parallelism
 
-Consider the following function.
-Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
-We don't care how the CPU executes the resulting code: so long as we get the correct result, faster is better.
+Consider the following function:
 
 ```{python}
 # Tell Numba to disable SIMD, so it doesn't hide other effects; we'll talk
@@ -24,6 +22,9 @@ def pythagorean_theorem(x_length, y_length):
     y_squared = y_length ** 2
     return sqrt(x_squared + y_squared)
 ```
+
+Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
+We don't care how the CPU executes the resulting code: so long as we get the correct result, faster is better.
 
 In our original, simplistic mental model, we assumed the CPU core will execute each instruction in order.
 First a multiply, then another multiply, then an addition, then whatever instructions are necessary to calculate the square root:
