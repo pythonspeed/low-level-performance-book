@@ -11,9 +11,8 @@ If the data you need isn't in a fast cache, you might end up with a slow memory 
 That means memory access is sometimes fast, and sometimes slow.
 You can make your code run faster, or at least more consistently, by keeping these caches in mind when you design your data structures and data access patterns.
 
-## How large are the CPU's memory caches?
+## Visualizing the memory cache hierarchy
 
-Given data size can impact performance results, it's useful to know how memory caches are organized, and their general sizes.
 To simplify somewhat, here's how the CPU talks to RAM:
 
 ::: {.content-hidden when-format="markdown"}
@@ -49,6 +48,10 @@ RAM is the slowest (a reference is around 100ns), L3 is a bit faster, L2 more so
 Typically L1 is per CPU core, L2 may or may not be per core, and L3 is shared across cores.
 There are actually two L1 caches, one for instructions, i.e. the code you're running, and one for the data your program is using.
 
+## How large are the CPU's memory caches?
+
+Given data size can impact performance results, it's useful to know how memory caches are organized, and their general sizes.
+
 To give a sense of scale, the i7-12700 has 12 physical CPU cores; 8 "performance" (faster) and 4 "efficiency" (slower) cores.
 The 8 performance CPU cores in my i7-12700K have:
 
@@ -59,3 +62,61 @@ The 8 performance CPU cores in my i7-12700K have:
 ::: {.callout-note}
 The `lstopo` command included in the [`hwloc`](https://www.open-mpi.org/projects/hwloc/) package can draw nice diagrams of your CPU's memory cache configuration.
 :::
+
+## An example: more data means slower access
+
+The CPU's memory caches are faster than RAM, but can also store less data.
+So the smaller the data, the more likely you are to be able to use the smaller, faster caches.
+But if your data gets larger, your process will end up using slower caches, or even RAM.
+And that will impact how fast your code runs.
+
+Let's consider an example: we're going to pick 100,000 samples from an array, with repeats allowed.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import jit
+
+GENERATOR = np.random.default_rng(0)
+
+@jit
+def random_sample(random_gen, arr):
+    result = np.empty((100_000,), dtype=arr.dtype)
+    for i in range(100_000):
+        chosen_index = random_gen.integers(0, len(arr))
+        result[i] = arr[chosen_index]
+    return result
+
+# Pre-compile Numba code:
+random_sample(GENERATOR, np.array([1, 2], dtype=np.uint8))
+
+SMALL_DATA = np.arange(0, 1_000, dtype=np.uint8)
+LARGE_DATA = np.arange(0, 100_000_000, dtype=np.uint8)
+```
+
+Since we're doing the same amount of computational work regardless of array size, one might expect the run time to be the same for both `SMALL_DATA` and `LARGE_DATA`.
+In fact:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+random_sample(GENERATOR, SMALL_DATA)
+random_sample(GENERATOR, LARGE_DATA)
+```
+
+Running the function on a large array takes 1.5× as long, even though the number of CPU instructions is virtually identical.
+What's going on?
+
+In the case of `SMALL_DATA`, the data fits in the CPU's memory caches, so repeated access is fast.
+`LARGE_DATA` however is too large to fit in the caches, so it needs to be read from RAM, which is slower.
+
+This leads to two conclusions:
+
+* **If data fits into the memory cache, our code will run faster.**
+  Shrinking how much data we access can speed up our code.
+* **It's important to benchmark code with realistic amounts of data.**
+  If real-world data is 100MB, and our test data is 1KB, the benchmark may will be unrealistically fast.

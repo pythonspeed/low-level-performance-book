@@ -44,7 +44,6 @@ book:
     - part: "Memory caches"
       chapters:
         - part_6/00.qmd
-        - part_6/01_fit_in_cache.qmd
         - part_6/02_linear_scan.qmd
         - part_6/04_learn_implementation_details.qmd
         - part_6/05_n_dimensional.qmd
