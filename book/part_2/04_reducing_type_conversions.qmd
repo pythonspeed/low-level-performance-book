@@ -1,9 +1,10 @@
-# Replace floats with higher-precision integer operations
+# Reduce type conversions in your code
 
-Another approach to the compiler's difficulty with optimizing floating-point is to avoid floating-point numbers altogether.
-If your input data has a relatively small range, for example `uint8` or `int16`, you can use a larger range integer like `uint32` or `int64` to do the calculations.
-In some cases the resulting code will be easier for the compiler to optimize.
-The calculation may give slightly different results than if you'd used floats, but quite often the difference won't be meaningful, or will be worth it given the speedup.
+One key difference between normal Python and compiled languages is that the latter can take advantage of the types of variables.
+Adding two integers uses a different CPU instruction than adding two floats, so the compiler will need to generate different code depending on the type of the variable.
+
+As a result, type conversions (implicit or explicit) can both force the compiler to generate more code, or prevent it from applying certain optimizations.
+You can sometimes help the compiler by using explicit type conversions, or choosing better types.
 
 Let's look at an example; we have a microscope image of a cell:
 
@@ -88,7 +89,10 @@ mean_threshold_numpy(IMAGE)
 mean_threshold_1(IMAGE)
 ```
 
-But what if instead of accumulating a `float64`, we accumulate a `uint64`?
+## Use integers instead of floats when possible
+
+As we'll discuss in a later part of the book, the compiler has a harder time optimizing floating point math than it does optimizing integer math.
+So what if instead of accumulating a `float64`, we accumulate a `uint64`?
 
 ```{python}
 from numba import uint64, uint8
@@ -108,9 +112,9 @@ def mean_threshold_2(image):
     return result
 
 THRESHOLD_2 = mean_threshold_2(IMAGE)
-# Make sure the result is basically the same, with less than 0.1% of pixels being
-# different:
-assert ((THRESHOLD_NUMPY ^ THRESHOLD_2) > 0).sum() < IMAGE.size / 1000
+# Make sure the result is basically the same, with less than 0.01% of pixels
+# being different:
+assert ((THRESHOLD_NUMPY ^ THRESHOLD_2) > 0).sum() < (IMAGE.size / 10_000)
 ```
 
 This version is faster!
@@ -122,10 +126,17 @@ mean_threshold_1(IMAGE)
 mean_threshold_2(IMAGE)
 ```
 
+## Hoist type conversions out of loops
+
 We can do better.
-Notice above we're comparing a `float64` to the pixels, which are `uint8`.
+Notice above we're comparing the threshold, a `float64`, to the pixels, which are `uint8`.
 Somewhere in there, then, the compiler is likely converting both values to the same type, but it's unclear how efficient that conversion is.
-So let's do it ourselves:
+There are two ways the conversion could happen:
+
+* `image[y, x]` is converted to a `float64`, which means doing extra work on every loop iteration.
+* `threshold` is converted to a `uint8`, in which case hopefully the compiler will hoist the conversion out of the loop.
+
+Rather than hoping that the faster choice is selected, let's just explicitly do it ourselves:
 
 ```{python}
 @jit
@@ -144,23 +155,17 @@ def mean_threshold_3(image):
     return result
 
 THRESHOLD_3 = mean_threshold_3(IMAGE)
-# Make sure the result is basically the same, with less than 0.1% of pixels being
+# Make sure the result is basically the same, with less than 0.01% of pixels being
 # different:
-assert ((THRESHOLD_NUMPY ^ THRESHOLD_3) > 0).sum() < IMAGE.size / 1000
+assert ((THRESHOLD_NUMPY ^ THRESHOLD_3) > 0).sum() < (IMAGE.size / 10_000)
 ```
 
-This new version is significantly faster:
+This new version gives slightly different results, but not meaningfully different.
+And it is significantly faster:
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
 mean_threshold_2(IMAGE)
 mean_threshold_3(IMAGE)
-```
-
-And the result is basically identical:
-
-```{python}
-#| echo: false
-%display_image THRESHOLD_3
 ```
