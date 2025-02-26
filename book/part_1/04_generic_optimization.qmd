@@ -10,7 +10,7 @@ The code's scalability won't change if you're still using the same algorithm, bu
 
 ## Focus your efforts on inner loops
 
-As far as speed goes, the three most important locations in your data processing code are loops, loops, and loops.
+As far as speed of computation goes, the three most important locations in your data processing code are loops, loops, and loops.
 A basic assumption in this book is that the code you're writing is used to process relatively large amounts of data.
 That means you will almost always end up writing or calling functions with the following basic structure:
 
@@ -123,7 +123,7 @@ find_primes_2(1_000_000)
 
 ## Don't do unnecessary work inside loops
 
-Continuing the same example, in our loop above we do an `if is_prime[i]: continue` check on all even values of `i`.
+Continuing the same example, in our loop above we do an `if is_prime[i]: continue` check on all values of `i`.
 That includes even numbers like 8 or 212, even though we know that any even number larger than 2 isn't prime.
 Instead of doing this check in every single iteration, we can split processing into two loops, one for odd numbers and one for even numbers.
 The total number of iterations doesn't change, it's still `up_to_value`, but each iteration does less work:
