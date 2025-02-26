@@ -1,4 +1,4 @@
-# Take advantage of modern CPUs' in-core parallelism
+# A better mental model of CPU cores
 
 The first thought you probably have when you see "parallelism" is using multiple threads or processes, in order to take advantage of multiple CPU cores.
 But that's not what we're talking about in this section.

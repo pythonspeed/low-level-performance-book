@@ -1,1 +1,1 @@
-# Part 3: Parallelism in modern CPUs
+# Part 3: Running multiple instructions in parallel
