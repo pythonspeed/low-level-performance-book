@@ -2,7 +2,7 @@ project:
   type: book
 
 book:
-  title: "Faster code for computational Python"
+  title: "Speed up your computational Python"
   author: "Itamar Turner-Trauring"
   date: "1/1/2024"
   chapters:

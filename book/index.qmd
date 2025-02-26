@@ -21,33 +21,34 @@ Getting faster results typically involves writing Python extensions in a fast, l
 There are many pre-written compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
 Typically they work by operating on batches of data—an array, or a dataframe.
 Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
-In that case you need to write your own code.
+In that case you need to write your own Python extensions.
 
-There are multiple ways to optimize computational code, i.e. making it run faster on a single CPU core:
+If you want fast code, using a compiled language is helpful, but not sufficient.
+Regardless of your choice of programming language, you also need to:
 
 1. Use scalable algorithms and data structures.
 2. Avoid unnecessary and repetitive work.
-3. If necessary, switch to a faster compiled language.
 
-Once you make the switch to a compiled language, you can get even faster results by writing code that:
+In addition, once you make the switch to a compiled language, you can implement major performance improvements by learning more about both compiler and CPU behavior.
+In particular, you can write code that:
 
-1. Enables the compiler to generate the fastest code possible, for example by avoiding aliasing.
+1. Enables the compiler to generate even faster code, for example by avoiding aliasing.
 2. Takes advantage of the sometimes unexpected ways modern CPUs work, from branch prediction to memory hierarchy.
 
-This book will at least touch on all these techniques, in some cases going into much more depth.
+We'll cover all of these in this book, focusing in particular on building a better mental model of compilers and CPUs, so you can write fast code from the start.
 
-## From optimized code to parallel code
+## Optimization and parallelism: you want both!
 
-Optimizing your code on a single CPU core is one way to get faster results.
-Another is to use parallelism across multiple cores, something this book does not cover.
+This book focuses on optimizing your code on a single CPU core.
+But you can also use parallelism across multiple cores, something this book does not cover.
 
 While you could jump straight to parallelism, optimization is still useful:
 
-* Optimizing your code is multiplicative with parallelism: if you can make your code 10× faster on a single thread, and then 10× faster with parallelism, you will get results 100× faster.
+* The performance benefit of optimizing your code is multiplicative with parallelism: if you can make your code 10× faster on a single thread, and then 10× faster with parallelism, you will get results 100× faster.
 * Both optimization and parallelism reduce electricity usage, and therefore carbon emissions; the reduction seems at least somewhat multiplicative.
 * Unlike parallelism, optimization reduce the monetary costs of computing, since you get faster results without paying for more expensive hardware.
 
-So really, you should be applying both techniques if possible.
+If possible, you should be applying both techniques.
 
 Ready to get faster results from your code?
 Let's get started!
