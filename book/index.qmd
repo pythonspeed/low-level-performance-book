@@ -7,9 +7,9 @@ In many ways this depends on what kind of software you're writing: web applicati
 This book is specifically written for scientists, data scientists, and software developers who use Python to do numeric computing or data processing.
 
 There are also many potential reasons your software might be slow.
-This book limits itself to one particularly pervasive performance bottleneck: computation.
-That is, the work your CPU does to calculate results, as well as related bottlenecks like memory.
 I provide a quick review of the bigger picture of performance in the first chapter of the book, together with references to additional resources.
+The rest of this book focuses on one particularly pervasive bottleneck: computation.
+That is, the work your CPU does to calculate results, as well as related bottlenecks like memory.
 
 Assuming your performance bottleneck is computation, how do you speed it up?
 
@@ -23,30 +23,30 @@ Typically they work by operating on batches of data—an array, or a dataframe.
 Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
 In that case you need to write your own Python extensions.
 
-If you want fast code, using a compiled language is helpful, but not sufficient.
+But if you want fast code, using a compiled language is usually helpful, but not always sufficient.
 Regardless of your choice of programming language, you also need to:
 
 1. Use scalable algorithms and data structures.
 2. Avoid unnecessary and repetitive work.
 
-In addition, once you make the switch to a compiled language, you can implement major performance improvements by learning more about both compiler and CPU behavior.
+In addition, once you make the switch to a compiled language, you can achieve major performance improvements by taking into account compiler and CPU behavior.
 In particular, you can write code that:
 
 1. Enables the compiler to generate even faster code, for example by avoiding aliasing.
-2. Takes advantage of the sometimes unexpected ways modern CPUs work, from branch prediction to memory hierarchy.
+2. Takes advantage of the sometimes unexpected ways modern CPUs work, from instruction-level parallelism to branch prediction to the CPU memory hierarchy.
 
-We'll cover all of these in this book, focusing in particular on building a better mental model of compilers and CPUs, so you can write fast code from the start.
+We'll cover all of these in this book, focusing in particular on avoiding unnecessary work, and building a better mental model of compilers and CPUs.
 
 ## Optimization and parallelism: you want both!
 
 This book focuses on optimizing your code on a single CPU core.
-But you can also use parallelism across multiple cores, something this book does not cover.
+But though it's not covered in the book, you can and should also use parallelism across multiple cores.
 
-While you could jump straight to parallelism, optimization is still useful:
+And while you could jump straight to parallelism, optimization is still immensely useful:
 
 * The performance benefit of optimizing your code is multiplicative with parallelism: if you can make your code 10× faster on a single thread, and then 10× faster with parallelism, you will get results 100× faster.
 * Both optimization and parallelism reduce electricity usage, and therefore carbon emissions; the reduction seems at least somewhat multiplicative.
-* Unlike parallelism, optimization reduce the monetary costs of computing, since you get faster results without paying for more expensive hardware.
+* Unlike parallelism, optimization can save you money, since you get faster results without paying for more expensive hardware.
 
 If possible, you should be applying both techniques.
 
