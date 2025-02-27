@@ -15,30 +15,5 @@ All of these languages, as typically implemented anyway, share the following pro
 3. **Static typing:** In most cases, the compiler knows each variable's specific type at compile time.
    It might be a 64-bit integer, it might be something more complex, but this information is available to the compiler.
 
-Knowing the types of variables can help the compiler generate efficient machine code.
-For example, your CPU has a machine code instruction for adding two 64-bit integers, so if the compiler knows that's what being added, it can generate that directly.
-Compare this to Python, where integers can be arbitrarily large.
-
-Depending on the compiled language, the types of variables might always be explicit, for example in C:
-
-```c
-int add(int a, int b) {
-  return a + b;
-}
-```
-
-In Numba, the types are discovered from the inputs and by rules that determine what the default types are when there is ambiguity:
-
-```{python}
-import numpy as np
-from numba import jit
-
-@jit
-def add(a, b):
-    return a + b
-
-add(np.int32(1), np.int16(2))
-
-# Tell Numba to print out the types being used in its calculation:
-add.inspect_types()
-```
+These properties allow compiled code to run faster.
+But compilers aren't magic: understanding how they work, and their limitations, can still help you write faster code.
