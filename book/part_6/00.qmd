@@ -1,4 +1,4 @@
-# Make memory access more efficient
+# Reduce data size so it fits in CPU memory caches
 
 So far we've been mostly ignoring memory reads and writes, implicitly assuming that they're fast operations, and take a consistent amount of time to run.
 Neither assumption is completely true, so a more accurate mental model can help you speed up our code.
@@ -63,7 +63,7 @@ The 8 performance CPU cores in my i7-12700K have:
 The `lstopo` command included in the [`hwloc`](https://www.open-mpi.org/projects/hwloc/) package can draw nice diagrams of your CPU's memory cache configuration.
 :::
 
-## An example: more data means slower access
+## More data means slower access
 
 The CPU's memory caches are faster than RAM, but can also store less data.
 So the smaller the data, the more likely you are to be able to use the smaller, faster caches.
@@ -120,3 +120,52 @@ This leads to two conclusions:
   Shrinking how much data we access can speed up our code.
 * **It's important to benchmark code with realistic amounts of data.**
   If real-world data is 100MB, and our test data is 1KB, the benchmark may will be unrealistically fast.
+
+## Pick smaller integer data types when possible
+
+One way to reduce memory usage is to use smaller data types.
+
+Unlike Python, which only has one integer and one float data type, compiled languages have a range of options.
+For integers there are 8-bit, 16-bit, 32-bit, and 64-bit integers (and sometimes 128-bit), and each comes in signed and unsigned versions.
+Signed types can support negative numbers, whereas unsigned types only support positive numbers.
+
+For example:
+
+* 8-bit signed integers range from -128 to 127.
+* 16-bit unsigned integers range from 0 to 65,535.
+
+Which one should you use?
+At minimum, you need to fit your data into the data type.
+If you need to store `123001`, you can't use 8-bit or 16-bit integers: the number simply won't fit.
+So one easy approach is to always use 64-bit integers.
+
+However, when storing large numbers of values, this results in higher memory usage:
+
+```{python}
+print("How much memory (in bytes) is used by an array with 1,000,000 values?")
+print("int8: ", np.ones((1_000_000), dtype=np.int8).nbytes)
+print("int16:", np.ones((1_000_000), dtype=np.int16).nbytes)
+print("int32:", np.ones((1_000_000), dtype=np.int32).nbytes)
+print("int64:", np.ones((1_000_000), dtype=np.int64).nbytes)
+```
+
+So if your data safely fits into a smaller data type, the reduction in memory can speed up your code if it enables more efficient memory cache usage.
+For example, given an `int64` and an `int8` array with the same number of values:
+
+```{python}
+INT64 = np.ones((1_000_000,), dtype=np.int64)
+INT8 = np.ones((1_000_000,), dtype=np.int8)
+
+# Pre-compile code for Numba:
+example1 = random_sample(GENERATOR, INT64)
+example2 = random_sample(GENERATOR, INT8)
+```
+
+Running `random_sample()` on the `int8` array will be faster, because the data fits in the smaller but faster caches:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+random_sample(GENERATOR, INT64)
+random_sample(GENERATOR, INT8)
+```

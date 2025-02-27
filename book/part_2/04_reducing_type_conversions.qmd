@@ -1,4 +1,4 @@
-# Choose appropriate variable types
+# Be on the lookout for expensive type conversions
 
 ```{python}
 #| echo: false
@@ -47,36 +47,6 @@ add(np.int32(1), np.int16(2))
 # Tell Numba to print out the types being used in its calculation:
 add.inspect_types()
 ```
-
-## Pick smaller integer data types when possible
-
-Unlike Python, which only has one integer and one float data type, compiled languages have a range of options.
-For integers there are 8-bit, 16-bit, 32-bit, and 64-bit integers (and sometimes 128-bit), and each comes in signed and unsigned versions.
-Signed types can support negative numbers, whereas unsigned types only support positive numbers.
-
-For example:
-
-* 8-bit signed integers range from -128 to 127.
-* 16-bit unsigned integers range from 0 to 65,535.
-
-Which one should you use?
-At minimum, you need to fit your data into the data type.
-If you need to store `123001`, you can't use 8-bit or 16-bit integers: the number simply won't fit.
-So one easy approach is to always use 64-bit integers.
-
-However, when storing large numbers of values, this results in higher memory usage:
-
-```{python}
-print("How much memory (in bytes) is used by an array with 1,000,000 values?")
-print("int8: ", np.ones((1_000_000), dtype=np.int8).nbytes)
-print("int16:", np.ones((1_000_000), dtype=np.int16).nbytes)
-print("int32:", np.ones((1_000_000), dtype=np.int32).nbytes)
-print("int64:", np.ones((1_000_000), dtype=np.int64).nbytes)
-```
-
-Using more memory means you're more likely to run out of RAM.
-But also due to the limited size of CPUs' memory caches, using more memory can also result in code running more slowly; we'll cover these caches in a later chapter.
-So if you have a large number of integer values between 0 and 100, sticking to 8-bit or 16-bit integers may be worth it.
 
 ## Remove implicit type conversions in inner loops
 
