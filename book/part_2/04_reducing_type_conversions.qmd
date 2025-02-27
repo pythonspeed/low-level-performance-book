@@ -13,20 +13,25 @@ Depending on the compiled language, the types of variables might always be expli
 
 ```c
 int add(int a, int b) {
-  return a + b;
+  int result = a + b;
+  return result;
 }
 ```
 
 In Rust, arguments to functions are always explicit, but variable types can often be automatically deduced:
 
 ```rust
-fn add(a: i64, b: i64) -> i64 {
-    let result = a + b;  // result is also i64
+fn add(a: i32, b: i32) -> i32 {
+    // `result` is deduced to be i32 both from the types of `a` and `b`, but
+    // also from the fact that is the type of the returned value per the
+    // function signature. If there is ambiguity, Rust will complain.
+    let result = a + b;
     result  // return the result
 }
 ```
 
-In Numba, the types are discovered from the inputs and by rules that determine what the default types are when there is ambiguity:
+In Numba, the types are discovered from the inputs and by rules that determine what the default types are when there is ambiguity.
+The default for variables is `int64` for integers, and `float64` for floats.
 
 ```{python}
 import numpy as np
@@ -34,15 +39,14 @@ from numba import jit
 
 @jit
 def add(a, b):
-    return a + b
+    result = a + b
+    return result
 
 add(np.int32(1), np.int16(2))
 
 # Tell Numba to print out the types being used in its calculation:
 add.inspect_types()
 ```
-
-As you can see, Numba's default for integer variables is 64-bit signed integers, the equivalent of `numpy.int64`.
 
 ## Pick smaller integer data types when possible
 
@@ -71,7 +75,7 @@ print("int64:", np.ones((1_000_000), dtype=np.int64).nbytes)
 ```
 
 Using more memory means you're more likely to run out of RAM.
-But also due to the limited size of CPU's memory caches, using more memory can also result in code running more slowly; we'll cover these caches in a later chapter.
+But also due to the limited size of CPUs' memory caches, using more memory can also result in code running more slowly; we'll cover these caches in a later chapter.
 So if you have a large number of integer values between 0 and 100, sticking to 8-bit or 16-bit integers may be worth it.
 
 ## Remove implicit type conversions in inner loops
@@ -107,8 +111,13 @@ As a first pass, we can write an implementation using Numba.
 Because we're accumulating a large number of `uint8`s to create the total used to calculate the mean, we need to store it in a larger type, so we'll use a `float64`:
 
 ```{python}
+from numba import uint8
+
 @jit
 def mean_threshold_1(image):
+    BLACK = uint8(0)
+    WHITE = uint8(255)
+
     # Lacking an explicit type, by default Numba will make `total` an int64:
     total = 0
     for y in range(image.shape[0]):
@@ -121,8 +130,7 @@ def mean_threshold_1(image):
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
-            # The >= expression becomes either 0 or 1:
-            result[y, x] = (image[y, x] >= threshold) * 255
+            result[y, x] = WHITE if image[y, x] >= threshold else BLACK
     return result
 
 THRESHOLD_1 = mean_threshold_1(IMAGE)
@@ -135,7 +143,7 @@ And here's what the result looks like:
 %display_image THRESHOLD_1
 ```
 
-There are multiple implicit type conversion happening in the code beyond the one explained in the code comments.
+There are multiple implicit type conversion happening in the code.
 Can you find them?
 
 ::: {.callout-tip collapse="true"}
@@ -153,10 +161,11 @@ Or perhaps the implementation might happen some other way; perhaps the compiler 
 Nonetheless, rather than hoping that any repetitive work is hoisted out of the loop, can try explicitly casting to `uint8` ourselves outside of the loop:
 
 ```{python}
-from numba import uint8
-
 @jit
 def mean_threshold_2(image):
+    BLACK = uint8(0)
+    WHITE = uint8(255)
+
     total = 0
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
@@ -167,7 +176,7 @@ def mean_threshold_2(image):
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
-            result[y, x] = (image[y, x] >= threshold) * 255
+            result[y, x] = WHITE if image[y, x] >= threshold else BLACK
     return result
 
 THRESHOLD_2 = mean_threshold_2(IMAGE)
