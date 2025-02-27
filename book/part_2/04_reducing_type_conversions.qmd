@@ -77,8 +77,7 @@ We want to threshold the image, separating the image into two parts, the bright 
 This is a useful operation to find the shapes of objects.
 A naive algorithm for thresholding is comparing each pixel to the mean of the image.
 
-As a first pass, we can write an implementation using Numba.
-Because we're accumulating a large number of `uint8`s to create the total used to calculate the mean, we need to store it in a larger type, so we'll use a `float64`:
+As a first pass, we can write an implementation using Numba:
 
 ```{python}
 from numba import uint8
@@ -126,9 +125,9 @@ Focusing on the second conversion, there are at least two ways the comparison mi
 
 * `image[y, x]` is converted to a `float64` so both values are `float64`, which means doing extra work on every loop iteration.
 * `threshold` is converted to a `uint8` so both values are `uint8`, in which case hopefully the compiler will hoist the conversion out of the loop.
+* Or perhaps the compiler might be able to compare a `uint8` and `float64` some other way using some relevant CPU instructions that aren't just a conversion.
 
-Or perhaps the implementation might happen some other way; perhaps the compiler might be able to compare a `uint8` and `float64` without any conversion.
-Nonetheless, rather than hoping that any repetitive work is hoisted out of the loop, can try explicitly casting to `uint8` ourselves outside of the loop:
+Regardless, rather than hoping that any repetitive work is hoisted out of the loop, we can try explicitly casting to `uint8` ourselves outside of the loop:
 
 ```{python}
 @jit
@@ -146,6 +145,7 @@ def mean_threshold_2(image):
     result = np.empty(image.shape, dtype=np.uint8)
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
+            # We are now comparing two uint8s:
             result[y, x] = WHITE if image[y, x] >= threshold else BLACK
     return result
 
