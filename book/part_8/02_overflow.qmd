@@ -68,11 +68,12 @@ Rust behavior is well-defined, but varies depending on compilation mode:
 So how can you balance the need for performance with making sure your code isn't broken?
 
 Presuming you're not writing critical safety software, Rust's approach is a reasonable one: run your test suite with extra checks, and disable them in production.
-You can also add a few strategic safety checks in key points where they will catch bugs without hurting performance too badly.
 
 * For Rust, this approach is the default.
 * For C, C++, and Cython, you can use tools like UBSan to catch this and other problems that can lead to bugs or undefined behavior; gcc and clang have their own variants.
-* For Numba it's not clear to me how you can do this, since Numba doesn't have asserts you can disable.
+* For Numba it's not clear to me if there's any way to catch overflows.
 
-The checks for overlow happen at runtime, so they will only catch bugs triggered by code you run.
+You can also add a few strategic safety checks in key points where they will catch bugs without hurting performance too badly.
+
+Overflow checks and manual assertions will happen at runtime, so they will only catch bugs triggered by code you run.
 So you are still reliant on having a thorough test suite that will cover many edge cases.
