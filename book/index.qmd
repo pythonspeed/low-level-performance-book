@@ -1,13 +1,15 @@
 # Introduction {.unnumbered}
 
-Speeding up Python code with a compiled extension can seem like magic:
+This book is specifically written for scientists, data scientists, and software developers who use Python to do numeric computing or similar large-scale data processing.
+Python[^cpython] is notoriously slow for computation, yet often used to handle large-scale data processing.
+Getting faster results typically involves writing Python extensions in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
 
-1. Switch languages to Rust, Cython, C++, Numba, or others.
-2. CODE GO FAST!!!
+[^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
 
-But if you just think of compiled code as magic, you may be missing significant—and sometimes quite simple!—optimizations.
+Speeding up your Python code with a compiled extension can seem like magic: switch to a compiled language, CODE GO FAST!!!
+
+But if you just think of compiled code as magic, you may be missing significant—and sometimes quite simple!—optimizations that can make your code even faster.
 Or to put it a different way, you might still be unknowingly writing slow code.
-
 If you really want your code to run faster, you will need a deeper understanding of:
 
 1. Your code.
@@ -24,9 +26,11 @@ If you really want your code to run faster, you will need a deeper understanding
 Not all bottlenecks are computational.
 Your code may end up waiting for the network, or for a database query, or for a user to respond to a question.
 Switching to a compiled language won't help in this case.
-We'll briefly cover this in the next chapter.
+We'll briefly cover this in the next chapter, and otherwise I'll assume you've already determined that computation is the performance bottleneck you need to solve.
 
-Even if the bottleneck is computation, you need to make sure your algorithms and data structures are scalable.
+### Use a scalable algorithm
+
+If the bottleneck is computation, you need to make sure your algorithms and data structures are scalable.
 If they're not, sooner or later your code will be far too slow, no matter what programming language it's written in:
 
 ```{python}
@@ -66,6 +70,8 @@ find_intersection_scalable(LIST1, LIST2)
 ```
 We'll briefly cover algorithm scalability in a later chapter.
 
+### Avoid wasted effort and unnecessary precision
+
 Even once you've chosen a scalable algorithm, it's quite possible your code is doing repetitive and unnecessary work.
 While a compiler can help with this, it can only do so much.
 And to some extent what counts as unnecessary work is something you have to decide:
@@ -98,9 +104,7 @@ def find_primes(up_to_value: int) -> list[bool]:
 
 Once you have a scalable algorithm without repetitive or unnecessary work, switching to a compiled language can, at least some of the time, make your code even faster.
 A compiler takes some source code and turns into machine code instructions that run directly on the CPU.
-But of course Python[^cpython] is also written in a compiled language, so why is running Python code often so much slower than the equivalent compiled language code?
-
-[^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
+But of course Python is also written in a compiled language, so why is running Python code often so much slower than the equivalent compiled language code?
 
 ### Static typing allows for faster code
 
@@ -127,68 +131,112 @@ fn add(a: i64, b: i64) -> i64:
 
 [^rust]: This is not idiomatic, insofar as Rust typically uses implicit return. However, for people who don't know Rust it's easier to read.
 
-In this case, the Rust compiler can take advantage of the types, and what's more, we're dealing with a _specific_ integer type: 64-bit signed integers, i.e. they can be negative or positive.
+In this case, the Rust compiler can take advantage of the types, and what's more, we're dealing with a _specific_ integer type: 64-bit signed integers[^signed].
 CPUs have instructions for adding these types, so the compiler doesn't have to deal with different object types, or different integer types, it can just generate machine code for adding two 64-bit signed integers.
-On x86-64, when compiled in release mode, this function compiles down to just 3 CPU instructions.
-In comparison, the Python `add()` uses approximately 68,000 instructions!
 
-### The compiler will optimize your code (except when it can't)
+How do these two functions compare?
+
+* The Python `add()` will use tens of thousands of CPU instructions to run.
+* On x86-64, when compiled in release mode, the Rust function compiles down to just 3 CPU instructions.
+
+[^signed]: A signed integer is one that can be either negative or positive; an unsigned integer can only be positive.
+
+### The compiler will optimize your code...
 
 Compilers do more than just translate your code to machine code: they also optimize it along the way.
 In particular, they will transform your code into (hopefully) faster code.
-In many cases this means your code is made faster, with no work on your part, as we'll see in a later chapter.
+In many cases this means that with no effort on your part your code will just be faster, as we'll see in a later chapter.
 
-For example, the Rust compiler will automatically transform this function:
+For example, in this book we'll be using Numba, a compiled language based on Python.
+The Numba compiler turns a function into compiled code by using the `@numba.jit` decorator:
 
-```rust
-fn add_n_times(value: i64, n: i64) -> i64 {
-    let mut result = 0;
-    // Add value to result, n times:
-    for _ in 0..n {
-        result += value;
-    }
-    return result;
-}
+```{python}
+from numba import jit
+
+# A compiled function that takes two int64 arguments and returns an int64
+# result:
+@jit("int64(int64, int64)")
+def add_n_times(value, n):
+    result = 0
+    for _ in range(10_000):
+        for _ in range(n):
+            result += value
+    return result
 ```
 
-to the equivalent but much faster function:
+When the compiler compiles this code, it will essentially turn it into an equivalent, much faster, function that looks like this:
 
-```rust
-fn add_n_times(value: i64, n: i64) -> i64 {
-    return value * times;
-}
+```{python}
+@jit("int64(int64, int64)")
+def multiply(value, n):
+    return 10_000 * value * n
+
+assert add_n_times(17, 3) == multiply(17, 3)
 ```
 
-This optimization has a caveat: the compiler will only transform your code in ways that ensure the resulting code behaves in the _exact_ same way.
+We can see they're equivalent if we compare their performance; the elapsed time is mostly just function call overhead:
+
+```{python}
+#| echo: false
+%%compare_timing
+add_n_times(17, 3)
+multiply(17, 3)
+```
+
+### ...except when it can't
+
+The compiler's ability to optimize your code has an important caveat: the compiler will only transform your code in ways that ensure the resulting code behaves in the _exact_ same way.
 Sometimes, a slightly different version of the code could be much faster, but the compiler won't be able to choose it.
 That means you can make your code faster by spotting these problems, and either transforming your code so the compiler can optimize it, or just doing the optimization yourself.
 
-Some examples:
+Some examples of problems that can prevent the compiler from optimizing your code:
 
-* **Aliasing:** If it's possible that the program has multiple writable references to some memory, the compiler won't be able to optimize reads to that memory.
+* **Aliasing:** If it's possible that the program has multiple writable references to the same memory, the compiler won't be able to optimize reads to that memory.
   The problem, and some solutions, is covered in one chapter of the book.
 * **Floating point math:** Changing the order of floating calculations can change the results, which limits what the compiler can do.
   The problem and solutions are covered in multiple chapters.
 
-The following function is almost the same as the previous function, with the exception that it's using floats.
-Unlike the integer version, the Rust compiler will _not_ be able to optimize it into multiplication:
+As an example, the following pair of functions is almost the same as the previous pair, with the exception that they're using floats:
 
-```rust
-fn add_n_times(value: f64, n: i64) -> f64 {
-    let mut result = 0.0;
-    for _ in 0..n {
-        result += value;
-    }
-    return result;
-}
+```{python}
+@jit("float64(float64, int64)")
+def add_n_times_float(value, n):
+    result = 0.0
+    for _ in range(10_000):
+        for _ in range(n):
+            result += value
+    return result
+
+@jit("float64(float64, int64)")
+def multiply_float(value, n):
+    return 10_000 * value * n
+
+assert add_n_times_float(12.0, 3) == multiply_float(12.0, 3)
 ```
+
+Unlike the integer version, the Numba compiler will _not_ be able to optimize the float version of `add_n_times_float()` into the equivalent of `multiply_float()`; the latter will be much faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+add_n_times_float(12.0, 3)
+multiply_float(12.0, 3)
+```
+
+### And more!
+
+Other useful topics covered by this book include:
+
+* Stack memory vs heap memory.
+* Avoiding undefined behavior; if your program is wrong, it doesn't matter how fast it is.
+* Hoisting type conversions out of inner loops.
+* Avoiding integer overflows.
 
 ## Understanding how CPUs work
 
-Once you're dealing with compiled code, you have access to additional ways to optimize your code.
 Modern CPUs work in ways that can speed up your code significantly, if you make sure to write your code appropriately.
-If you're writing regular Python, the general slowness of the Python interpreter mean these particular effects are usually not worth thinking about.
-But once you're writing faster compiled code, you can take advantage of these features to run even faster.
+But if you're writing regular Python, the general slowness of the Python interpreter mean these particular effects are usually not worth thinking about.
+Once you're writing faster compiled code, however, you can take advantage of these features to run even faster.
 
 ### Automatic parallel execution: instruction-level parallelism
 
@@ -205,7 +253,7 @@ First `a` gets incremented, then `b`.
 In a compiled language, the code may well be compiled into two sequential operations.
 But when the CPU runs the code, the CPU may run those two instructions _in parallel_ on the same core.
 This is completely unrelated to threads or processes, the usual way we think of parallelism in general purpose computers.
-This is parallelism at the level of CPU instructions, and the CPU does it automatically—if it can.
+This is parallelism at the level of CPU instructions, on a single CPU core, no threads or processes involved—and the CPU does it automatically.
 
 In some cases the CPU won't be able to use parallelism (or as much parallelism, at least) because the order really does matter, for example:
 
@@ -215,11 +263,12 @@ a += 1;
 b += a;
 ```
 
+That means you can potentially speed up your code by restructuring it remove logical dependencies that prevent parallelism.
 We'll cover this in a later chapter.
 
 ### Avoiding branches
 
-In order to maximize this sort of instruction-level parallelism, the CPU will use speculative execution in branches.
+In order to maximize instruction-level parallelism, the CPU will use speculative execution when it encounters a branch.
 In the following code:
 
 ```rust
@@ -229,75 +278,87 @@ if a > 2 {
 }
 ```
 
-The CPU will heuristically guess if `a > 2` is true, and if it is, it will run `b += 1` in parallel.
-If this is guess turns out to be wrong, the work will have to be undone... and this is slow.
+The CPU will heuristically guess if `a > 2` will be true, and if decides it is, it will run `b += 1` in parallel to `a += 1` even before the `if` statement runs (or rather, the relevant generated CPU instructions run).
+If this guess turns out to be wrong, the work will have to be undone... and this is slow.
+
 As a result, branches where the result is unpredictable can make your program run much more slowly.
-
-More broadly, branches can prevent compiler optimizations, and are often unnecessary.
+In addition, branches can prevent compiler optimizations, and are often simply unnecessary.
 We'll cover ways to avoid branches in a number of chapters.
-
-
-### Manual parallel execution with Single Instruction Multiple Data
 
 ### Memory access patterns impact performance
 
-<!--
-Your software is too slow.
-Now what?
+Reading and writing memory can be fast—or slow!
+It depends on how much memory is involved, and the access pattern you're using.
+For example, we can access an array of data linearly, from start to finish:
 
-In many ways this depends on what kind of software you're writing: web applications, video games, and scientific computing all have different bottlenecks.
-This book is specifically written for scientists, data scientists, and software developers who use Python to do numeric computing or data processing.
+```{python}
+@jit
+def linear_scan(arr, multiplier):
+    index = 0
+    size = len(arr)
+    for _ in range(1_000_000):
+        arr[index] += 1
+        index = (multiplier * index + 1) % size
+    return arr[0]
+```
 
-There are also many potential reasons your software might be slow.
-I provide a quick review of the bigger picture of performance in the first chapter of the book, together with references to additional resources.
-The rest of this book focuses on one particularly pervasive bottleneck: computation.
-That is, the work your CPU does to calculate results, as well as related bottlenecks like memory.
+Or, we can access an array pseudo-randomly, jumping around:
 
-Assuming your performance bottleneck is computation, how do you speed it up?
+```{python}
+@jit
+def random_scan(arr):
+    index = 0
+    size = len(arr)
+    for _ in range(1_000_000):
+        arr[index] += 1
+        index = (22695477 * index + 1) % size
+    return arr[0]
+```
 
-## Optimizing Python-based data processing computation
+Given the same array of one million entries (not shown), the linear scan is faster than the random scan even though it uses the same number of CPU instructions:
 
-Regardless of your choice of programming language, you will want to:
+```{python}
+#| echo: false
+import numpy as np
 
-1. Use scalable algorithms and data structures.
-   That's mostly a topic for a different book, but we will touch on it in one chapter.
-2. Avoid unnecessary and repetitive work.
+DATA = np.ones((100_000_000,), dtype=np.uint8)
+_ = linear_scan(DATA, 1)
+_ = random_scan(DATA)
+```
 
-Python[^cpython] is notoriously slow for computation, yet often used to handle large-scale data processing.
-Getting faster results typically involves writing Python extensions in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+linear_scan(DATA, 1)
+random_scan(DATA)
+```
 
-There are many pre-written compiled extensions available as free libraries: NumPy, SciPy, Pandas, and Polars, to name just a few.
-Typically they work by operating on batches of data—an array, or a dataframe.
-Sometimes, however, preexisting libraries aren't fast enough, or aren't memory efficient enough, or simply don't implement the algorithms you need.
-In that case you need to write your own Python extensions.
+We'll discuss memory's impact on performance in a number of chapters.
 
-## From Python code to compiled code
+### And more!
 
-But if you want fast code, using a compiled language is usually helpful, but not always sufficient.
+There's far more to learn about how CPUs work, from SIMD (minimally introduced in a couple of chapters) to details that are beyond the scope of this book (SIMD in depth, µops, instruction latency, and more).
 
-In addition, once you make the switch to a compiled language, you can achieve major performance improvements by taking into account compiler and CPU behavior.
-In particular, you can write code that:
+## Let's get started
 
-1. Enables the compiler to generate even faster code, for example by avoiding aliasing.
-2. Takes advantage of the sometimes unexpected ways modern CPUs work, from instruction-level parallelism to branch prediction to the CPU memory hierarchy.
+The above is just some of what this book covers, but it gives you the big picture of optimizing single-threaded computational code.
+You should write code:
 
-We'll cover all of these in this book, focusing in particular on avoiding unnecessary work, and building a better mental model of compilers and CPUs.
+1. Using a scalable algorithm
+2. Without wasted effort.
+3. Using a compiled language.
+4. Without preventing the compiler from optimizing your code.
+4. Without getting in the way of the CPU's performance features (instruction-level parallelism, speculative execution, memory caches and pre-fetch, and more).
 
-## Optimization and parallelism: you want both!
+Beyond that, though it's not covered in this book, you can and should also use parallelism across multiple CPU cores to go even faster, by utilizing multiple threads or processes.
 
-This book focuses on optimizing your code on a single CPU core.
-But though it's not covered in the book, you can and should also use parallelism across multiple cores.
-
-And while you could jump straight to parallelism, optimization is still immensely useful:
+While you could jump straight to parallelism, optimization is still immensely useful:
 
 * The performance benefit of optimizing your code is multiplicative with parallelism: if you can make your code 10× faster on a single thread, and then 10× faster with parallelism, you will get results 100× faster.
 * Both optimization and parallelism reduce electricity usage, and therefore carbon emissions; the reduction seems at least somewhat multiplicative.
 * Unlike parallelism, optimization can save you money, since you get faster results without paying for more expensive hardware.
 
-If possible, you should be applying both techniques.
+If possible, then, you should be applying both techniques.
 
 Ready to get faster results from your code?
 Let's get started!
-
-[^cpython]: Technically, it's not the language that's slow, it's the default implementation. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that can do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features.
--->
