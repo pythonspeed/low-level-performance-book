@@ -1,3 +1,6 @@
+* Show examples when hoisting doesn't work (len()) and check if it works with Rust
+* Compiled language faster cause of specialized types
+
 * Explain why NumPy arrays are fast to access better (slide deck somewhere that covers this?)
 * Go over all code samples, make sure they're using minimal NumPyisms.
 * Document existence of `py-perf-event`, `perf` command-line tool.
