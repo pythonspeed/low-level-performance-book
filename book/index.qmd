@@ -2,19 +2,21 @@
 
 This book is specifically written for scientists, data scientists, and software developers who use Python to do numeric computing or similar large-scale data processing.
 Python[^cpython] is notoriously slow for computation, yet often used to handle large-scale data processing.
-Getting faster results typically involves writing Python extensions in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
+Getting faster results typically involves either creating or using existing Python extensions written in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
 
 [^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
 
-Speeding up your Python code with a compiled extension can seem like magic: switch to a compiled language, CODE GO FAST!!!
+Speeding up your Python code with a compiled extension can seem like magic: switch to a compiled language, _CODE GO FAST!!!_
 
-But if you just think of compiled code as magic, you may be missing significant—and sometimes quite simple!—optimizations that can make your code even faster.
-Or to put it a different way, you might still be unknowingly writing slow code.
+But if you think of compiled code as magic, you may be missing significant—and sometimes quite simple!—optimizations that can make your code even faster.
+Or to put it a different way, even if you're using a compiled language, you might still be unknowingly writing slow code.
 If you really want your code to run faster, you will need a deeper understanding of:
 
 1. Your code.
 2. The compiler.
 3. The CPU it runs on.
+
+The goal of this book is to help you build a mental model of all of these, so that can write faster code by default.
 
 ```{python}
 #| echo: false
@@ -25,8 +27,8 @@ If you really want your code to run faster, you will need a deeper understanding
 
 Not all bottlenecks are computational.
 Your code may end up waiting for the network, or for a database query, or for a user to respond to a question.
-Switching to a compiled language won't help in this case.
-We'll briefly cover this in the next chapter, and otherwise I'll assume you've already determined that computation is the performance bottleneck you need to solve.
+Switching to a compiled language won't help in these cases.
+We'll briefly cover this issue in the next chapter; for the rest of the book, the assumption is that you've already determined that computation is the performance bottleneck you need to solve.
 
 ### Use a scalable algorithm
 
@@ -68,6 +70,7 @@ Here's how the two versions compare in terms of speed:
 find_intersection(LIST1, LIST2)
 find_intersection_scalable(LIST1, LIST2)
 ```
+
 We'll briefly cover algorithm scalability in a later chapter.
 
 ### Avoid wasted effort and unnecessary precision
@@ -81,9 +84,9 @@ And to some extent what counts as unnecessary work is something you have to deci
 
 Only you can answer these questions.
 
-We'll cover this is in a number of chapters; for example, in one chapter we'll see how you can make this algorithm 80% faster:
+We'll cover this is in a number of chapters; for example, in one chapter we'll see how you can optimize this algorithm:
 
-```python
+```{python}
 # 😢 The Sieve of Eratosthenes algorithm for finding primes, implemented
 # inefficiently.
 def find_primes(up_to_value: int) -> list[bool]:
@@ -100,11 +103,44 @@ def find_primes(up_to_value: int) -> list[bool]:
     return is_prime
 ```
 
+With a little bit of work, we can switch to a more efficient variant:
+
+```{python}
+# 😎 The Sieve of Eratosthenes, with less redundant work.
+def find_primes_optimized(up_to_value: int) -> list[bool]:
+    is_prime = [True] * up_to_value
+    is_prime[0] = False
+    is_prime[1] = False
+
+    for i in range(4, up_to_value, 2):
+        is_prime[i] = False
+
+    for i in range(3, up_to_value, 2):
+        if not is_prime[i]:
+            continue
+        for j in range(i * i, up_to_value, 2 * i):
+            is_prime[j] = False
+
+    return is_prime
+
+assert find_primes(1000) == find_primes_optimized(1000)
+```
+
+And this optimized version is almost twice as fast:
+
+```{python}
+#| echo: false
+%%compare_timing
+find_primes(1000)
+find_primes_optimized(1000)
+```
+
 ## Understanding how compilers work
 
 Once you have a scalable algorithm without repetitive or unnecessary work, switching to a compiled language can, at least some of the time, make your code even faster.
 A compiler takes some source code and turns into machine code instructions that run directly on the CPU.
-But of course Python is also written in a compiled language, so why is running Python code often so much slower than the equivalent compiled language code?
+
+But of course the Python interpreter itself is also written in a compiled language, so why is running Python code often so much slower than the equivalent compiled code?
 
 ### Static typing allows for faster code
 
@@ -117,35 +153,48 @@ def add(a: int, b: int) -> int:
     return a + b
 ```
 
-As a reader, you know it's adding two integers, but Python doesn't actually take advantage of the `int` type annotations; they're hints, not instructions, and if you want to you could call `add("abc", "def")` and the code would run just fine.
-That means Python needs to figure out at runtime which type each of the objects is, and then figure out which function implements addition for those types.
-In addition, Python integers can be arbitrarily large, so Python needs to at minimum figure out if the integers are small enough to use less generic routines.
-All of this work adds up.
+As a reader, you know it's adding two integers, but Python doesn't actually take advantage of the `int` type annotations.
+The type annotations are hints, not instructions, and if you wanted to you could call `add("abc", "def")` and the code would run just fine.
 
-Compare that to a similar Rust function[^rust]:
+When you do `add(2, 3)`, Python will:
+
+1. Figure out at runtime which type each of the objects is.
+2. Figure out which function implements addition for those types.
+3. Because Python integers can be arbitrarily large, the function for adding two Python then needs to at minimum figure out if the integers are small enough to use less generic routines.
+4. Finally, this function does the actual arithmetic.
+5. Then, the resulting integer has to be wrapped in a Python integer.
+
+All of this work adds up!
+
+Compare that to a similar function written in the compiled Rust programming language (in a slightly non-idiomatic way[^rust]):
 
 ```rust
-fn add(a: i64, b: i64) -> i64:
+fn add(a: i64, b: i64) -> i64 {
     return a + b;
+}
 ```
 
-[^rust]: This is not idiomatic, insofar as Rust typically uses implicit return. However, for people who don't know Rust it's easier to read.
+[^rust]: Usually Rust would use an implicit return, rather than explicit return. However, for people who don't know Rust, this version is easier to read, and it's still valid Rust.
 
-In this case, the Rust compiler can take advantage of the types, and what's more, we're dealing with a _specific_ integer type: 64-bit signed integers[^signed].
-CPUs have instructions for adding these types, so the compiler doesn't have to deal with different object types, or different integer types, it can just generate machine code for adding two 64-bit signed integers.
+In this case, the Rust compiler does take advantage of the types.
+What's more, we're dealing with a specific integer type: 64-bit signed integers[^signed].
+And CPUs have instructions for directly adding 64-bit integers.
+That means the compiler doesn't have to deal with different object types, or different integer types, it can just generate machine code for adding two 64-bit signed integers.
 
 How do these two functions compare?
 
 * The Python `add()` will use tens of thousands of CPU instructions to run.
 * On x86-64, when compiled in release mode, the Rust function compiles down to just 3 CPU instructions.
 
+Unsurprisingly, the Rust function is much faster.
+
 [^signed]: A signed integer is one that can be either negative or positive; an unsigned integer can only be positive.
 
 ### The compiler will optimize your code...
 
 Compilers do more than just translate your code to machine code: they also optimize it along the way.
-In particular, they will transform your code into (hopefully) faster code.
-In many cases this means that with no effort on your part your code will just be faster, as we'll see in a later chapter.
+In particular, they will heuristically transform your code into a (hopefully) faster implementation before it gets transformed into machine code.
+In many cases this means that your can run faster, with no additional effort on your part, as we'll see in a later chapter.
 
 For example, in this book we'll be using Numba, a compiled language based on Python.
 The Numba compiler turns a function into compiled code by using the `@numba.jit` decorator:
@@ -158,7 +207,7 @@ from numba import jit
 @jit("int64(int64, int64)")
 def add_n_times(value, n):
     result = 0
-    for _ in range(10_000):
+    for _ in range(100_000):
         for _ in range(n):
             result += value
     return result
@@ -169,12 +218,13 @@ When the compiler compiles this code, it will essentially turn it into an equiva
 ```{python}
 @jit("int64(int64, int64)")
 def multiply(value, n):
-    return 10_000 * value * n
+    return 100_000 * value * n
 
 assert add_n_times(17, 3) == multiply(17, 3)
 ```
 
-We can see they're equivalent if we compare their performance; the elapsed time is mostly just function call overhead:
+We can see they're equivalent, at least as far as performance goes, by benchmarking both of them.
+The elapsed time is mostly just function call and argument parsing overhead, it's not really doing any computational work:
 
 ```{python}
 #| echo: false
@@ -183,7 +233,7 @@ add_n_times(17, 3)
 multiply(17, 3)
 ```
 
-### ...except when it can't
+### ...except sometimes the compiler can't optimize your code
 
 The compiler's ability to optimize your code has an important caveat: the compiler will only transform your code in ways that ensure the resulting code behaves in the _exact_ same way.
 Sometimes, a slightly different version of the code could be much faster, but the compiler won't be able to choose it.
@@ -202,19 +252,20 @@ As an example, the following pair of functions is almost the same as the previou
 @jit("float64(float64, int64)")
 def add_n_times_float(value, n):
     result = 0.0
-    for _ in range(10_000):
+    for _ in range(100_000):
         for _ in range(n):
             result += value
     return result
 
 @jit("float64(float64, int64)")
 def multiply_float(value, n):
-    return 10_000 * value * n
+    return 100_000 * value * n
 
 assert add_n_times_float(12.0, 3) == multiply_float(12.0, 3)
 ```
 
-Unlike the integer version, the Numba compiler will _not_ be able to optimize the float version of `add_n_times_float()` into the equivalent of `multiply_float()`; the latter will be much faster:
+Unlike the integer version, the Numba compiler cannot optimize the float version of `add_n_times_float()` into the equivalent of `multiply_float()`.
+The latter will be much faster:
 
 ```{python}
 #| echo: false
@@ -225,12 +276,12 @@ multiply_float(12.0, 3)
 
 ### And more!
 
-Other useful topics covered by this book include:
+Other useful compiler performance topics covered by this book include:
 
-* Stack memory vs heap memory.
 * Avoiding undefined behavior; if your program is wrong, it doesn't matter how fast it is.
 * Hoisting type conversions out of inner loops.
 * Avoiding integer overflows.
+* And more!
 
 ## Understanding how CPUs work
 
@@ -242,7 +293,7 @@ Once you're writing faster compiled code, however, you can take advantage of the
 
 Consider the following code:
 
-```rust
+```python
 a += 1;
 b += 2;
 ```
@@ -255,20 +306,52 @@ But when the CPU runs the code, the CPU may run those two instructions _in paral
 This is completely unrelated to threads or processes, the usual way we think of parallelism in general purpose computers.
 This is parallelism at the level of CPU instructions, on a single CPU core, no threads or processes involved—and the CPU does it automatically.
 
+Consider these two functions:
+
+```{python}
+@jit
+def add_once(number):
+    result = 0.0
+    for _ in range(1_000_000):
+        result += number
+    return result
+
+@jit
+def add_twice(number):
+    result1 = 0.0
+    result2 = 0.0
+    for _ in range(1_000_000):
+        result1 += number
+        result2 += number
+    return (result1, result2)
+
+once = add_once(3.2)
+assert add_twice(3.2) == (once, once)
+```
+
+Despite `add_twice()` using twice as many CPU instructions, it finishes in the same amount of time, thanks to instruction-level parallelism:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+add_once(3.2)
+add_twice(3.2)
+```
+
 In some cases the CPU won't be able to use parallelism (or as much parallelism, at least) because the order really does matter, for example:
 
-```rust
+```python
 a += 1;
-// This can only run after `a` has been incremented:
+# This can only run after `a` has been incremented:
 b += a;
 ```
 
 That means you can potentially speed up your code by restructuring it remove logical dependencies that prevent parallelism.
 We'll cover this in a later chapter.
 
-### Avoiding branches
+### Speculative execution and branch (mis)prediction
 
-In order to maximize instruction-level parallelism, the CPU will use speculative execution when it encounters a branch.
+In order to maximize instruction-level parallelism, the CPU will use "speculative execution" when it encounters a branch.
 In the following code:
 
 ```rust
@@ -279,9 +362,10 @@ if a > 2 {
 ```
 
 The CPU will heuristically guess if `a > 2` will be true, and if decides it is, it will run `b += 1` in parallel to `a += 1` even before the `if` statement runs (or rather, the relevant generated CPU instructions run).
-If this guess turns out to be wrong, the work will have to be undone... and this is slow.
+If this guess turns out to be wrong, the CPU will automatically undo the incorrect work it did.
+The result will be correct, but the resulting code will run slower.
 
-As a result, branches where the result is unpredictable can make your program run much more slowly.
+This means that branches where the CPU can't predict the result can make your program run much more slowly.
 In addition, branches can prevent compiler optimizations, and are often simply unnecessary.
 We'll cover ways to avoid branches in a number of chapters.
 
@@ -293,43 +377,40 @@ For example, we can access an array of data linearly, from start to finish:
 
 ```{python}
 @jit
-def linear_scan(arr, multiplier):
+def scan(arr, multiplier):
     index = 0
     size = len(arr)
     for _ in range(1_000_000):
         arr[index] += 1
         index = (multiplier * index + 1) % size
     return arr[0]
+
+def linear_scan(arr):
+    return scan(arr, 1)
 ```
 
 Or, we can access an array pseudo-randomly, jumping around:
 
 ```{python}
-@jit
 def random_scan(arr):
-    index = 0
-    size = len(arr)
-    for _ in range(1_000_000):
-        arr[index] += 1
-        index = (22695477 * index + 1) % size
-    return arr[0]
+    return scan(arr, 22695477)
 ```
 
-Given the same array of one million entries (not shown), the linear scan is faster than the random scan even though it uses the same number of CPU instructions:
+Given the same array of one million entries (not shown), the linear scan is faster than the random scan even though both functions use almost the same number of CPU instructions:
 
 ```{python}
 #| echo: false
 import numpy as np
 
 DATA = np.ones((100_000_000,), dtype=np.uint8)
-_ = linear_scan(DATA, 1)
+_ = linear_scan(DATA)
 _ = random_scan(DATA)
 ```
 
 ```{python}
 #| echo: false
 %%compare_timing --measure=instructions
-linear_scan(DATA, 1)
+linear_scan(DATA)
 random_scan(DATA)
 ```
 
@@ -342,9 +423,9 @@ There's far more to learn about how CPUs work, from SIMD (minimally introduced i
 ## Let's get started
 
 The above is just some of what this book covers, but it gives you the big picture of optimizing single-threaded computational code.
-You should write code:
+In particular, to maximize the performance of computation, you should write code:
 
-1. Using a scalable algorithm
+1. Using a scalable algorithm.
 2. Without wasted effort.
 3. Using a compiled language.
 4. Without preventing the compiler from optimizing your code.
