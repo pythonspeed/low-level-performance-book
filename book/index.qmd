@@ -20,6 +20,13 @@ The goal of this book is to help you build a mental model of all of these, so th
 
 ```{python}
 #| echo: false
+
+# Disable SIMD, just so it doesn't obscure branch prediction effects.
+import os
+os.environ["NUMBA_SLP_VECTORIZE"] = "1"
+os.environ["NUMBA_LOOP_VECTORIZE"] = "1"
+del os
+
 %load_ext book_magics
 ```
 
@@ -352,22 +359,76 @@ We'll cover this in a later chapter.
 ### Speculative execution and branch (mis)prediction
 
 In order to maximize instruction-level parallelism, the CPU will use "speculative execution" when it encounters a branch.
-In the following code:
+Consider the following code:
 
-```rust
-a += 1;
-if a > 2 {
-    b += 1;
-}
+```python
+@jit
+def is_bigger_than_half(values):
+    # ... create result array ...
+    for i in range(len(values)):
+        if values[i] > 0.5:
+            result[i] = True
+    # ...
 ```
 
-The CPU will heuristically guess if `a > 2` will be true, and if decides it is, it will run `b += 1` in parallel to `a += 1` even before the `if` statement runs (or rather, the relevant generated CPU instructions run).
-If this guess turns out to be wrong, the CPU will automatically undo the incorrect work it did.
-The result will be correct, but the resulting code will run slower.
+The CPU will try to predict the future.
+In particular, it will heuristically guess if `values[i] > 0.5` is true, and if decides it is, it will run `result[i] = True` in parallel to the `if` statement.
+If this guess turns out to be right, our code runs faster without any work on our part.
 
-This means that branches where the CPU can't predict the result can make your program run much more slowly.
-In addition, branches can prevent compiler optimizations, and are often simply unnecessary.
-We'll cover ways to avoid branches in a number of chapters.
+But if this guess turns out to be wrong, what's known as a "branch misprediction", the CPU will need to undo the incorrect work it did.
+Then, it will have to calculate the correct result given the real result of the `if` statement.
+Ultimately the computation will match what would have happened if the prediction had been correct, but the program will run much slower because of all the extra work involved.
+
+```{python}
+#| echo: false
+import numpy as np
+
+@jit
+def is_bigger_than_half(arr):
+    result = np.zeros((len(arr),), dtype=np.bool_)
+    total = 0
+    for i in range(len(arr)):
+        if arr[i] > 0.5:
+            result[i] = True
+        total += 1
+    return result.sum()
+
+PREDICTABLE = np.ones((1_000_000,), dtype=np.float64)
+PREDICTABLE[500_000:] = 0
+RANDOM_NUMS = np.random.random((1_000_000,))
+assert is_bigger_than_half(PREDICTABLE) == 500_000
+```
+
+Most of the time branches are predictable, and the cost of mispredictions is therefore low.
+But what happens when you have data that is hard to predict?
+Your code can get very very slow.
+
+The demonstrate this, we'll test our function with two arrays, `PREDICTABLE` and `RANDOM_NUMS` (not shown), with an equal number of values above 0.5.
+`PREDICTABLE` has a long sequence of identical values, making it easy for the CPU to predict the `if values[i] > 0.5` branch.
+In contrast, `RANDOM_NUMS` is an array of randomly generated values between 0 and 1, so it's impossible to predict whether a given value will be bigger than 0.5.
+
+```{python}
+# Same length:
+assert len(PREDICTABLE) == len(RANDOM_NUMS)
+# The number of values > 0.5 differs by less than 1%:
+assert abs(
+    is_bigger_than_half(PREDICTABLE) -
+    is_bigger_than_half(RANDOM_NUMS)
+) / len(PREDICTABLE) < 0.01
+```
+
+If we benchmark the function with both inputs, the number of CPU instructions used is almost the same.
+Nonetheless `is_bigger_than_half(RANDOM_NUMS)` is much slower, because there are lots and lots of branch mispredictions:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions,branch_mispredictions
+is_bigger_than_half(PREDICTABLE)
+is_bigger_than_half(RANDOM_NUMS)
+```
+
+
+We'll cover ways to avoid the performance cost of branches in a number of chapters.
 
 ### Memory access patterns impact performance
 
