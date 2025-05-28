@@ -108,54 +108,35 @@ We'll briefly cover algorithm scalability in a later chapter.
 ### Avoid wasted effort and unnecessary precision
 
 Even once you've chosen a scalable algorithm, it's quite possible your code is doing repetitive and unnecessary work.
-While a compiler can help with this, it can only do so much.
-And to some extent what counts as unnecessary work is something you have to decide:
-
-* Does all the data need to be processed?
-* How precise does the answer need to be?
-
-Only you can answer these questions.
-
-We'll cover this is in a number of chapters; for example, in one chapter we'll see how you can optimize this algorithm:
+For example, consider the following algorithm for counting odd and even numbers:
 
 ```{python}
-# 😢 The Sieve of Eratosthenes algorithm for finding primes, implemented
-# inefficiently.
-def find_primes(up_to_value: int) -> list[bool]:
-    is_prime = [True] * up_to_value
-    is_prime[0] = False
-    is_prime[1] = False
-
-    for i in range(2, up_to_value):
-        if not is_prime[i]:
-            continue
-        for j in range(i * 2, up_to_value, i):
-            is_prime[j] = False
-
-    return is_prime
+# 😢 No need to calculate both:
+def even_and_odd(values: list[int]) -> tuple[int, int]:
+    even = 0
+    odd = 0
+    for value in values:
+        if value % 2 == 0:
+            even += 1
+        else:
+            odd += 1
+    return (even, odd)
 ```
 
-With a little bit of work, we can switch to a more efficient variant:
+With a little bit of work, we can switch to a more efficient variant (or at least, more efficient when writing Python):
 
 ```{python}
-# 😎 The Sieve of Eratosthenes, with less redundant work.
-def find_primes_optimized(up_to_value: int) -> list[bool]:
-    is_prime = [True] * up_to_value
-    is_prime[0] = False
-    is_prime[1] = False
+# 😎 Less redundant work:
+def even_and_odd_optimized(values: list[int]) -> tuple[int, int]:
+    odd = 0
+    for value in values:
+        if value % 2:
+            odd += 1
+    even = len(values) - odd
+    return (even, odd)
 
-    for i in range(4, up_to_value, 2):
-        is_prime[i] = False
-
-    for i in range(3, up_to_value, 2):
-        if not is_prime[i]:
-            continue
-        for j in range(i * i, up_to_value, 2 * i):
-            is_prime[j] = False
-
-    return is_prime
-
-assert find_primes(1000) == find_primes_optimized(1000)
+VALUES = list(range(1000))
+assert even_and_odd(VALUES) == even_and_odd_optimized(VALUES)
 ```
 
 And this optimized version is almost twice as fast:
@@ -163,9 +144,17 @@ And this optimized version is almost twice as fast:
 ```{python}
 #| echo: false
 %%compare_timing
-find_primes(1000)
-find_primes_optimized(1000)
+even_and_odd(VALUES)
+even_and_odd_optimized(VALUES)
 ```
+
+While a compiler can help get rid of unnecessary work, it can only do so much.
+And to some extent what counts as unnecessary work is something you have to decide:
+
+* Does all the data need to be processed?
+* How precise does the answer need to be?
+
+Only you can answer these questions.
 
 ## Understanding how compilers work
 
