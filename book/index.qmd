@@ -1,22 +1,47 @@
 # Introduction {.unnumbered}
 
-This book is specifically written for scientists, data scientists, and software developers who use Python to do numeric computing or similar large-scale data processing.
-Python[^cpython] is notoriously slow for computation, yet often used to handle large-scale data processing.
-Getting faster results typically involves either creating or using existing Python extensions written in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
+Writing fast code is very different than the normal way we write code.
+Usually when writing software, we focus on _correctness_: does our calculation give the right result?
+And we try to rely on _abstractions_, which allow us to ignore implementation details and instead focus on the high-level behavior of the libraries and tools we use:
+
+* 1 + 1 = 2, whether it's in Python or C++, whether it's a built-in Python integer or a numeric type provided by a library like NumPy.
+* Python runs the same on ARM CPUs (as used on Macs) as it does on x86-64 CPUs (as used on PCs**.
+
+Unfortunately, writing fast code requires us to do more.
+We can no longer just ask what our abstractions do, and instead we need to focus on _how they work**.
+How our code works, how our programming language works, how our libraries work, even how the computer hardware works.
+
+If you can understand how the abstraction you rely on work, you can write code that will allow you to process more data, run more experiments, and get results faster.
+You will be able to unleash the astounding speed that computers give us.
+
+## Why this book is different
+
+Is this book for you?
+Here's a checklist:
+
+* **Who you are:*** You're a scientist, data scientist, or software developer who does numeric computing or similar large-scale data processing.
+* **What you need to know:** You know how to write Python; you do not need to know any other programming language!
+* **What you want to do:** You want to speed up your code's _computation_.
+    That is, the math, business logic, or other calculations that don't involve disk or network operations.
 
 [^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
 
-Speeding up your Python code with a compiled extension can seem like magic: switch to a compiled language, _CODE GO FAST!!!_
+While Python[^cpython] is notoriously slow for computation, it is often used to handle large-scale data processing.
+Getting faster results typically involves either creating or using existing Python extensions written in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
+So we will be using a compiled language, but the focus is on the underlying similarities between different compiled languages, and on the underlying hardware that runs your software.
 
-But if you think of compiled code as magic, you may be missing significant—and sometimes quite simple!—optimizations that can make your code even faster.
-Or to put it a different way, even if you're using a compiled language, you might still be unknowingly writing slow code.
-If you really want your code to run faster, you will need a deeper understanding of:
+## Three abstractions, three ways to speed up your code
 
-1. Your code.
-2. The compiler.
-3. The CPU it runs on.
+To speed up computational code, there are three sets of abstractions you will need to look beyond:
 
-The goal of this book is to help you build a mental model of all of these, so that can write faster code by default.
+1. **Your code's calculations:** By avoiding wasted effort, or reducing unnecessary precision, you can make your code faster, regardless of programming language.
+2. **The compiler:** Once you switch to a compiled language, you will need to at least a little about what the compiler will do to speed up your code—and just as importantly, what it can't do.
+3. **The CPU:** By understanding the sometimes counter-intuitive ways modern CPUs and related hardware like memory caches work, you can ensure your code isn't being unexpectedly slowed down.
+
+The goal of this book is to help you build a mental model for all three of these components.
+If you better understand how they work, you will be able to speed up your code by addressing each.
+
+In this chapter, as motivation to what you can achieve, we'll briefly go over each abstraction (the calculations in your code, the compiler, and the CPU) in turn, previewing some of the different ways they can speed up or slow down your code.
 
 ```{python}
 #| echo: false
