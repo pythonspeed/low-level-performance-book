@@ -4,18 +4,19 @@ Writing fast code is different from the normal way we write code.
 Usually we focus on _correctness_: does our calculation give the right result?
 And we try to rely on _abstractions_, which allow us to ignore implementation details and instead focus on the high-level behavior of the libraries and tools we use.
 
-1 + 1 ought to equal 2, no matter if we're:
+If you're calculating 2 + 2, you want the answer to be 4, no matter if you are:
 
 * Writing Python or C++.
 * Using Linux or macOS.
 * Running on an x86-64 CPU (from Intel or AMD) or an ARM CPU (like newer Macs, or a Raspberry Pi).
 
 Unfortunately, writing fast code requires more work.
-We can no longer just ask what our abstractions do, and instead we also need to understand _how_ they work.
+We can no longer just ask _what_ our abstractions do, we also need to ask _how_ they do it.
 How our code works, how our programming language works, how our libraries work, even how the computer hardware works.
+I'll call this hidden side of an abstraction its _actuality_: how it actually works.
 
-If you can understand the actuality of how the abstractions are implemented, you can write code that will allow you to process more data, run more experiments, and get results faster.
-You will be able to unleash the astounding computational speed that computers give us.
+If you can understand the actualities of the abstractions you rely on, you can write code that will allow you to process more data, run more experiments, and get results faster.
+In short, you will be able to unleash the astounding computational speed that computers give us.
 
 ## Why this book is different
 
@@ -31,21 +32,18 @@ While Python[^cpython] is notoriously slow for computation, it is often used to 
 Assuming computation is your bottleneck, getting faster results typically involves either creating or using existing Python extensions written in a fast, low-level, compiled language: C, C++, Fortran, Cython, Numba, Rust, and others.
 So we will be using a compiled language, but the focus is on the underlying similarities between different compiled languages, and on the underlying hardware that runs your software.
 
-This is not, however, primarily a book about writing Python extensions.
-Rather, the goal is to ensure that when you write computational code—for a Python extension, but also standalone—you will be able to write significantly faster code.
+This is not a book about writing Python extensions.
+Rather, the goal is to help you write faster computational code—both for Python extensions, and for standalone programs.
 
 [^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
 
 ### From abstraction to actuality: three ways to speed up your code
 
-To speed up computational code, there are three sets of abstractions whose actuality you will need to understand:
+To speed up computational code, there are three sets of abstractions whose actual implementation details you will need to understand, at least at a high level:
 
 1. **Your code's calculations:** By avoiding wasted effort, or reducing unnecessary precision, you can make your code faster, regardless of programming language.
 2. **The compiler:** Once you switch to a compiled language, you will need to know at least a little about what the compiler will do to speed up your code—and just as importantly, what it can't do.
-3. **The CPU:** By understanding the sometimes counter-intuitive ways modern CPUs and related hardware like memory caches work, you can ensure your code isn't being unexpectedly slowed down.
-
-The goal of this book is to help you build a mental model for all three of these components.
-If you better understand how they work, you will be able to speed up your code by addressing each.
+3. **The CPU:** By understanding the sometimes counter-intuitive ways CPUs and related hardware like memory caches work, you can ensure your code isn't being unexpectedly slowed down.
 
 In this chapter, as motivation to what you can achieve, we'll briefly go over each actuality (the calculations in your code, the compiler, and the CPU) in turn, previewing some of the different ways they can speed up or slow down your code.
 
