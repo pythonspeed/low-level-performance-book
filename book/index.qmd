@@ -39,7 +39,7 @@ And while the code you'll be reading is mostly written in a specific compiled la
 
 [^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
 
-### From abstraction to mechanism: Three ways to speed up your code
+### From abstraction to mechanism: Three paths to speed up your code
 
 To speed up computational code, there are three sets of abstractions whose actual implementation details you will need to understand, at least at a high level:
 
