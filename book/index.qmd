@@ -11,11 +11,12 @@ If you're calculating 2 + 2, you want the answer to be 4, no matter if you are:
 * Running on an x86-64 CPU (from Intel or AMD) or an ARM CPU (like newer Macs, or a Raspberry Pi).
 
 Unfortunately, writing fast code requires more work.
-You can no longer just ask _what_ the abstractions you're using do; you also need to ask _how_ they do it.
-How your code works, how your programming language works, how your libraries work, even how the computer hardware works.
-You don't need to understand every detail of how they work, a mental model will do.
+You can no longer just ask _what_ an abstraction you're using does; you also need to ask _how_ it does it.
+You need to ask how your code works, how your programming language works, how your libraries work, even how the computer hardware works.
 
-I'll call this mental model of how an abstraction works the _mechanism_.
+You don't need to understand every detail of how they work, however: a simplified model will do.
+I'll call this mental model of how an abstraction works a _mechanism_.
+
 If you can understand the mechanisms of the abstractions you rely on, you can write code that will allow you to process more data, run more experiments, and get results faster.
 In short, you will be able to unleash the astounding computational speed that computers give you.
 
