@@ -1,5 +1,6 @@
-* Show examples when hoisting doesn't work (len()?) and check if it works with Rust because it knows it's immutable?
+* Show examples when automatic hoisting by the compiler doesn't work (len()?) and check if it works with Rust because it knows it's immutable?
 * Compiled language faster cause of specialized types
+* ILP: mental model of window of instructions, whose execution order is rearranged?
 
 * Explain why NumPy arrays are fast to access better (slide deck somewhere that covers this?)
 * Go over all code samples, make sure they're using minimal NumPyisms.
@@ -13,6 +14,10 @@
 * Moving average can use same trick as median filter (subtract from start, add to end).
 * Add docstring for every function
 
+
+Process:
+
+* Making sure your code doesn't regress, with benchmarks in CI
 
 Parallelism chapters:
 
