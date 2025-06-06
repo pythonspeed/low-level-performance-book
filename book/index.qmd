@@ -1,54 +1,39 @@
 # Introduction {.unnumbered}
 
-Writing fast code is different from the normal way you write code.
-Usually you focus on correctness: does your calculation give the right result?
-And both when working with other people's tools and libraries, and within your own code if it's complex enough, you rely on _abstractions_, which allow you to ignore implementation details and instead focus on the high-level behavior of the libraries and tools you use.
+## Is this book for you?
 
-If you're calculating 2 + 2, you want the answer to be 4, no matter if you are:
-
-* Writing Python or C++.
-* Using Linux or macOS.
-* Running on an x86-64 CPU (from Intel or AMD) or an ARM CPU (like newer Macs, or a Raspberry Pi).
-
-Unfortunately, writing fast code requires more work.
-You can no longer just ask _what_ an abstraction you're using does; you also need to ask _how_ it does it.
-You need to ask how your code works, how your programming language works, how your libraries work, even how the computer hardware works.
-
-You don't need to understand every detail of how they work, however: a simplified model will do.
-I'll call this mental model of how an abstraction works a _mechanism_.
-
-If you can understand the mechanisms of the abstractions you rely on, you can write code that will allow you to process more data, run more experiments, and get results faster.
-In short, you will be able to unleash the astounding computational speed that computers give you.
-
-## Why this book is different
-
-Is this book for you?
 Here's a checklist:
 
 * **Who you are:** You're a scientist, data scientist, or software developer who does numeric computing or similar large-scale data processing.
 * **What you need to know:** You know how to write Python; unlike most other books covering these topics, you do not need to know the C programming language.
-* **What you want to do:** You need to speed up your code's _computation_.
-    That is, the math, business logic, or other calculations that don't involve disk or network operations.
+* **What you want to do:** There are many reasons your code can be slow, from disk bandwidth to network latency.
+    This book focuses on one particular reason: computation, whether you're doing complex math or just adding up a _very_ long list of numbers.
+    That is, you need to speed up the math, business logic, or other calculations that don't involve disk or network operations.
 
-While Python[^cpython] is notoriously slow for computation, it is often used to handle large-scale data processing, which requires fast code.
-This requirement is typically met by creating or using existing Python extensions written in a fast, low-level, compiled language.
-To write a compiled extension, you can use C, C++, Fortran, Cython, Numba, Rust, or other languages.
+Assuming that computational code really is your bottleneck, how do you make it go fast?
 
-But this is not a book about writing Python extensions.
-Rather, the goal is to help you write faster computational code—both for Python extensions, and for standalone programs.
-And while the code you'll be reading is mostly written in a specific compiled language, the focus is on the underlying similarities between different compiled languages, and on the underlying hardware that runs your software.
+## Five practices for faster computation
 
-[^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
+There are five different approaches or practices you can apply to speed up computational code:
 
-### From abstraction to mechanism: Three paths to speed up your code
+* **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all!
+* **The Practice of Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about!
+* **The Practice of Compilation:** A compiler can speed up your code, especially if you understand and compensate for its limitations!
+* **The Practice of Mechanical Sympathy:** Instead of fighting your CPU and other hardware, take advantage of how they work!
+* **The Practice of Process:** Your software development process should encompass speed, and you should use appropriate processes to speed up your code!
 
-To speed up computational code, there are three sets of abstractions whose actual implementation details you will need to understand, at least at a high level:
+If you're lucky, you can use all five, and make your code go five exclamation marks' worth of fast!!!!!
+But you can also start with just one or two.
+And if one practice is a dead end, you can switch to another practice and try to solve the problem from a different angle.
 
-1. **Your code's calculations:** By avoiding wasted effort, or reducing unnecessary precision, you can make your code faster, regardless of programming language.
-2. **The compiler:** Once you switch to a compiled language, you need to know at least a little about what the compiler speeds up your code—and just as importantly, what it can't do.
-3. **The CPU:** By understanding the sometimes counter-intuitive ways CPUs and related hardware like memory caches work, you can ensure your code isn't being unexpectedly slowed down.
+Unfortunately, parallelism is a big enough topic that it deserves its own whole book.
+Among other reasons, concurrency and parallelism have other use cases, like handling network and disk operations.
+You can learn more about parallelism from other books, like [_High Performance Python, 2nd edition_](https://www.oreilly.com/library/view/high-performance-python/9781492055013/) by Gorelick and Oszvald (a third edition is in the works.)
 
-As motivation to what you can achieve, and to preview the topics covered in this book, I'll briefly go over each mechanism (the calculations in your code, the compiler, and the CPU) in turn.
+So this book will introduce you to, and is organized around, the other four practices: efficiency, compilation, mechanical sympathy, and process.
+
+In the following sections, I'll give some examples of the ways these practices can help you write faster code.
+The rest of the book covers both these topics, and much more besides.
 
 ```{python}
 #| echo: false
@@ -62,16 +47,12 @@ del os
 %load_ext book_magics
 ```
 
-## Mechanism #1: How your code works
-
-Not all bottlenecks are computational.
-Your code may end up waiting for the network, or for a database query, or for a user to respond to a question.
-Switching to a compiled language won't help in these cases.
+## The Practice of Efficiency: Some examples
 
 ### Use a scalable algorithm
 
-If the bottleneck is computation, you need to make sure your algorithms and data structures are scalable.
-If they're not, sooner or later your code will be far too slow, no matter what programming language it's written in:
+If you want your computation to run quickly, you need to make sure your algorithms and data structures are scalable.
+If they're not, there will be some sufficiently large input your code which will cause your code to run far too slowly, no matter what programming language it's written in:
 
 ```{python}
 # 😢 This is extremely unscalable!
@@ -115,11 +96,13 @@ Even once you've chosen a scalable algorithm, it's quite possible your code is d
 For example, consider the following algorithm for counting odd and even numbers:
 
 ```{python}
-# 😢 No need to calculate both:
 def even_and_odd(values: list[int]) -> tuple[int, int]:
+    # 😢 No need to calculate both:
     even = 0
     odd = 0
     for value in values:
+        # 😢 In Python, the extra equality comparison slow things down. In a
+        # compiled language, the compiler would optimize it away.
         if value % 2 == 0:
             even += 1
         else:
@@ -143,7 +126,7 @@ VALUES = list(range(1000))
 assert even_and_odd(VALUES) == even_and_odd_optimized(VALUES)
 ```
 
-And this optimized version is almost twice as fast:
+And this optimized version is faster:
 
 ```{python}
 #| echo: false
@@ -152,24 +135,18 @@ even_and_odd(VALUES)
 even_and_odd_optimized(VALUES)
 ```
 
-While a compiler can help get rid of unnecessary work, it can only do so much.
-And to some extent what counts as unnecessary work is something you have to decide:
+## The Practice of Compilation: Some examples
 
-* Does you need to process all the data?
-* How precise does the answer need to be?
-
-Only you can answer these questions.
-
-## Mechanism #2: How compilers work
-
-Once you have a scalable algorithm without repetitive or unnecessary work, switching to a compiled language can, at least sometimes, make your code even faster.
+Switching to a compiled language can often speed up your code.
 A compiler takes some source code and turns into machine code instructions that run directly on the CPU.
 
-But of course the Python interpreter itself is also written in a compiled language, so why is running Python code often so much slower than the equivalent compiled code?
+But of course the Python interpreter itself is also written in a compiled language, so why is running Python[^cpython] code often so much slower than the equivalent compiled code?
+
+[^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
 
 ### Static typing enables faster code
 
-One reason that compiled languages enable faster by code is by providing the information the compiler needs to convert your source code to machine code in a very specialized way.
+One way that compiled languages enable faster run times is by providing the information the compiler needs to convert your source code to machine code in a very specialized, and therefore more efficient, way.
 
 Consider the following Python function:
 
@@ -179,7 +156,7 @@ def add(a: int, b: int) -> int:
 ```
 
 As a reader, you know it's adding two integers, but Python doesn't actually take advantage of the `int` type annotations.
-The type annotations are hints, not instructions, and if you wanted to you could call `add("abc", "def")` and the code would run just fine.
+The type annotations are hints, not constraints, and if you wanted to you could call `add("abc", "def")` and the code would run just fine.
 
 When you do `add(2, 3)`, Python will:
 
@@ -187,7 +164,7 @@ When you do `add(2, 3)`, Python will:
 2. Figure out which function implements addition for those types.
 3. Because Python integers can be arbitrarily large, the function for adding two Python then needs to at minimum figure out if the integers are small enough to use less generic routines.
 4. Finally, this function does the actual arithmetic.
-5. Then, Python converts resulting C integer back into a Python object.
+5. Then, Python converts the resulting C integer back into a Python object.
 
 All this work adds up!
 
@@ -201,15 +178,15 @@ fn add(a: i64, b: i64) -> i64 {
 
 [^rust]: Usually Rust would use an implicit return, rather than explicit return. However, for people who don't know Rust, this version is easier to read, and it's still valid Rust.
 
-In this case, the Rust compiler can take advantage of the types; in fact, the code won't compile if you don't set types for function inputs.
+In this case, the Rust compiler will take advantage of the types; in fact, the code won't compile if you don't set types for function inputs.
 The specific type for both input and output is `i64`, a 64-bit signed integer[^signed], and CPUs have instructions for directly adding 64-bit integers.
 That means the compiler doesn't have to deal with different object types, or different integer types, or arbitrarily sized integers.
 It can just generate machine code for adding two 64-bit signed integers.
 
 How do these two functions compare?
 
-* The Python `add()` will use tens of thousands of CPU instructions to run.
-* On x86-64, when compiled in release mode, the Rust function compiles down to just 3 CPU instructions.
+* The Python `add()` function will use tens of thousands of CPU instructions to run.
+* On x86-64, when compiled in release mode, the Rust function compiles down to a handful of CPU instructions.
 
 Unsurprisingly, the Rust function is much faster!
 
@@ -219,7 +196,7 @@ Unsurprisingly, the Rust function is much faster!
 
 Compilers do more than just translate your code to machine code: they also optimize it along the way.
 In particular, they will heuristically transform your code into a (hopefully) faster implementation before it gets transformed into machine code.
-Often this means that your can run faster, with no additional effort on your part.
+Often this means that your code can run faster, with no additional effort on your part.
 
 For example, in this book most code examples use Numba, a compiled language based on Python.
 The Numba compiler turns a function into compiled code by using the `@numba.jit` decorator:
@@ -238,7 +215,7 @@ def add_n_times(value, n):
     return result
 ```
 
-When the compiler compiles this code, it will essentially turn it into an equivalent, much faster, function that looks like this:
+When the compiler compiles this code, it will optimize it so that it is much faster, equivalent to a function that looks like this:
 
 ```{python}
 @jit("int64(int64, int64)")
@@ -295,7 +272,9 @@ add_n_times_float(12.0, 3)
 multiply_float(12.0, 3)
 ```
 
-## Mechanism #3: How CPUs work
+For floating point calculations, you may need to implement the optimizations yourself.
+
+## The Practice of Mechanical Sympathy: Some examples
 
 Modern CPUs work in ways that can speed up your code significantly, if you make sure to write your code appropriately.
 But if you're writing regular Python, the general slowness of the Python interpreter mean these particular effects are usually not worth thinking about.
@@ -429,10 +408,12 @@ is_bigger_than_half(RANDOM_NUMS)
 ### Memory access patterns impact performance
 
 Reading and writing memory can be fast—or slow!
-It depends on how much memory your code is reading and writing, and the access pattern you're using.
-For example, you can access an array of data linearly, from start to finish:
+Because of hardware features like memory caches and prefetching, it depends on how much memory your code is reading and writing, and the access pattern you're using.
+
+For example, imagine we have two almost-identical functions, the only difference being that one reads some data linearly, while the other jumps around randomly.
 
 ```{python}
+#| echo: false
 @jit
 def _scan(arr, multiplier):
     index = 0
@@ -444,25 +425,18 @@ def _scan(arr, multiplier):
 
 def linear_scan(arr):
     return _scan(arr, 1)
-```
 
-Or, you can access an array pseudo-randomly, jumping around:
-
-```{python}
 def random_scan(arr):
     return _scan(arr, 22695477)
-```
 
-Given the same array of one million entries (not shown), the linear scan is faster than the random scan even though both functions use almost the same number of CPU instructions:
-
-```{python}
-#| echo: false
 import numpy as np
 
 DATA = np.ones((100_000_000,), dtype=np.uint8)
 _ = linear_scan(DATA)
 _ = random_scan(DATA)
 ```
+
+Given the same array of one million entries, the linear scan is faster than the random scan even though both functions use almost the same number of CPU instructions:
 
 ```{python}
 #| echo: false
@@ -471,24 +445,56 @@ linear_scan(DATA)
 random_scan(DATA)
 ```
 
-## Writing faster code
+## The Practice of Process: An example
 
-To speed up your computational code, you should optimize it by:
+### Make sure you're measuring what you think you're measuring
 
-1. Using a scalable algorithm.
-2. Avoiding wasted effort.
-3. Using a compiled language.
-4. Enabling the compiler to optimize your code.
-5. Enabling the CPU's performance features (instruction-level parallelism, speculative execution, memory caches and pre-fetch, and more).
+The process you use to optimize your code is just as important as the optimizations you apply.
+For example, if the way you measure performance is incorrect, you will get misleading results or misunderstand how your code will work in the real world.
 
-Beyond that, though it's not covered in this book, you can and should also use parallelism across multiple CPU cores to go even faster, by utilizing multiple threads or processes.
-While you could jump straight to parallelism, optimization is still immensely useful:
+Compilers, as discussed earlier, can optimize your code.
+If you're implementing a potential optimization and measuring its speed, you need to make sure the compiler isn't being _too_ smart.
+In particular, if you give it a closed-form calculation with all or most of its inputs available at compile time, it might be able to optimize the code based on this extra information.
+But if this extra information won't be available in real-world usage, and is just an artifact of a benchmarking attempt, you will be measuring an unrealistic result.
 
-* The performance benefit of optimizing your code is multiplicative with parallelism: if you can make your code 10× faster on a single thread, and then 10× faster with parallelism, you will get results 100× faster.
-* Both optimization and parallelism reduce electricity usage, and therefore carbon emissions; the reduction seems at least somewhat multiplicative.
-* Unlike parallelism, optimization can save you money, since you get faster results without paying for more expensive hardware.
+For example, a function that does generic division can calculate the same result as a function that has a hard-coded divide by 2:
 
-If possible, then, you should be applying both techniques.
+```{python}
+@jit
+def divide_by_x(arr, x):
+    result = 0.0
+    for value in arr:
+        result += value / x
+    return result
 
-Ready to get faster results from your code?
-Let's get started!
+@jit
+def divide_by_2(arr):
+    result = 0.0
+    for value in arr:
+        result += value / 2
+    return result
+
+assert divide_by_2(DATA) == divide_by_x(DATA, 2)
+```
+
+Measuring the speed of the two functions, `divide_by_2()` is much faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+divide_by_2(DATA)
+divide_by_x(DATA, 2)
+```
+
+If you will be using the generic `divide_by_x()` function in the real world, benchmarking the version with hard-coded 2 might give you misleading results.
+
+## How to read this book
+
+The rest of this book is divided into four sections, each covering one of the four practices.
+In general, I'd recommend reading the chapters in order, but you also skip ahead if you want to learn more about a particular practice.
+
+To help you get started faster, some chapters are marked as optional reading both in the text and with a "🚀" in their title.
+I would suggest skipping them on a first reading, and then going back and reading them later.
+
+
+
