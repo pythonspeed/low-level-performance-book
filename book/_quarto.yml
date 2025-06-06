@@ -7,66 +7,55 @@ book:
   date: "1/1/2024"
   chapters:
     - index.qmd
-    - part: "General performance"
+    - part: "The Practice of Efficiency"
       chapters:
-        - part_1/00_profiler.qmd
-        - part_1/01_vectorized_operations.qmd
-        - part_1/03_algorithms.qmd
-        - part_1/04_generic_optimization.qmd
-        - part_1/05_lookup_table.qmd
-        - part_1/06_example_median_threshold.qmd
-        #- part_1/07_research.qmd - mention Huang, DP algorithm
-    - part: "Compiler optimizations"
+        - part_1_efficiency/00_profiler.qmd
+        - part_1_efficiency/01_vectorized_operations.qmd
+        - part_1_efficiency/03_algorithms.qmd
+        - part_1_efficiency/04_generic_optimization.qmd
+        - part_1_efficiency/05_lookup_table.qmd
+        - part_1_efficiency/06_example_median_threshold.qmd
+        - part_1_efficiency/07_edge_case_branches.qmd
+        #- part_1_efficiency/07_research.qmd - mention Huang, DP algorithm
+    - part: "The Pratice of Compilation"
       chapters:
-        - part_2/00.qmd
-        - part_2/01_compiler_optimizations.qmd
-        - part_2/02_memory_allocation.qmd
-        - part_2/03_aliasing.qmd
-        - part_2/04_reducing_type_conversions.qmd
-    - part: "Running multiple instructions in parallel"
+        - part_2_compilation/00.qmd
+        - part_2_compilation/01_compiler_optimizations.qmd
+        - part_2_compilation/02_memory_allocation.qmd
+        - part_2_compilation/03_aliasing.qmd
+        - part_2_compilation/04_reducing_type_conversions.qmd
+        - part_2_compilation/05_floating_point.qmd
+        - part_2_compilation/06_manual_optimization.qmd
+        - part_2_compilation/07_fast_math.qmd
+        - part_2_compilation/08_bounds_checking.qmd
+        - part_2_compilation/09_bounds_checking_auto_removal.qmd
+        - part_2_compilation/10_divide_by_zero.qmd
+        - part_2_compilation/11_undefined_behavior.qmd
+        - part_2_compilation/12_overflow.qmd
+        - part_2_compilation/13_hardware_differences.qmd
+    - part: "The Pratice of Mechanical Sympathy"
       chapters:
-        - part_3/00.qmd
-        - part_3/01_instruction_level_parallelism.qmd
-        - part_3/02_simd.qmd
-    - part: "Branches, and how to avoid them"
+        - part_3_mechanical_sympathy/00.qmd
+        - part_3_mechanical_sympathy/01_instruction_level_parallelism.qmd
+        - part_3_mechanical_sympathy/02_simd.qmd
+        - part_3_mechanical_sympathy/03_more_about_simd.qmd
+        - part_3_mechanical_sympathy/04_avoid_branches.qmd
+        - part_3_mechanical_sympathy/05_branchless.qmd
+        - part_3_mechanical_sympathy/06_memory.qmd
+        - part_3_mechanical_sympathy/07_linear_scan.qmd
+        - part_3_mechanical_sympathy/08_learn_implementation_details.qmd
+        - part_3_mechanical_sympathy/09_n_dimensional.qmd
+        - part_3_mechanical_sympathy/10_example_memory_layout.qmd
+    - part: "The Practice of Process"
       chapters:
-        - part_4/01_avoid_branches.qmd
-        - part_4/02_branchless.qmd
-        - part_4/03_edge_case_branches.qmd
-        - part_4/04_bounds_checking.qmd
-        - part_4/05_bounds_checking_auto_removal.qmd
-        - part_4/06_divide_by_zero.qmd
-    - part: "Floating point"
-      chapters:
-        - part_5/00.qmd
-        - part_5/01_manual_optimization.qmd
-        - part_5/03_fast_math.qmd
-    - part: "Memory caches"
-      chapters:
-        - part_6/00.qmd
-        - part_6/02_linear_scan.qmd
-        - part_6/04_learn_implementation_details.qmd
-        - part_6/05_n_dimensional.qmd
-    - part: "More examples"
-      chapters:
-        - part_7/02_example_dithering.qmd
-        - part_7/03_example_memory_layout.qmd
-    - part: "Compilers in practice"
-      chapters:
-        - part_8/01_undefined_behavior.qmd
-        - part_8/02_overflow.qmd
-        - part_8/03_hardware_differences.qmd
-        - part_8/04_more_about_simd.qmd
-    - part: "Performance in practice"
-      chapters:
-        - part_9/01_choosing_a_programming_language.qmd
-        - part_9/02_bulk_objects.qmd
-        - part_9/03_microbenchmarking.qmd
-        - part_9/04_dont_break_your_code.qmd
-        - part_9/05_document_your_code.qmd
+        - part_4_process/01_choosing_a_programming_language.qmd
+        - part_4_process/02_bulk_objects.qmd
+        - part_4_process/03_microbenchmarking.qmd
+        - part_4_process/04_dont_break_your_code.qmd
+        - part_4_process/05_document_your_code.qmd
         # optimization first, parallelism later
-        # - part_9/05_keep_code_from_getting_slower.qmd
-        - part_9/07_next_steps.qmd
+        # - part_4_process/05_keep_code_from_getting_slower.qmd
+        - part_4_process/07_next_steps.qmd
   appendices:
     - appendices/01_prerequisites.qmd
 #    - references.qmd

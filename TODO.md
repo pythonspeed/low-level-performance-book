@@ -14,6 +14,9 @@
 * Moving average can use same trick as median filter (subtract from start, add to end).
 * Add docstring for every function
 
+Compiler:
+
+* Profila / profiling?
 
 Process:
 
