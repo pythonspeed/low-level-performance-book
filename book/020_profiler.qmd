@@ -1,7 +1,7 @@
 # Identify the bottleneck in your code before you optimize it
 
-In most of this book we focus on optimizing computational code, and in particular compiled code.
-But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in optimizing computation.
+Most of this focuses on speeding up computation.
+But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in making your calculations faster.
 So before you start optimizing your code, it's important to understand that other bottlenecks exist, and to do the work to identify which specific bottleneck is impacting your code.
 
 ```{python}

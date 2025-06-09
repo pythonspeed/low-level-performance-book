@@ -1,7 +1,3 @@
----
-toc: true
----
-
 # Before you begin {.unnumbered}
 
 This book is still in early access; your feedback can help make it better both for you and for future readers!
