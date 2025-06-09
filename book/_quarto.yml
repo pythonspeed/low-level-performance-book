@@ -2,14 +2,16 @@ project:
   type: book
 
 book:
-  title: "Speed up your computational Python"
+  title: "Practices of Performance"
+  subtitle: "Speeding up computational Python"
   author: "Itamar Turner-Trauring"
-  date: "1/1/2024"
+  date: "7/1/2025"
   chapters:
     - index.qmd
+    - 010_introduction.qmd
+    - 020_profiler.qmd
     - part: "The Practice of Efficiency"
       chapters:
-        - part_1_efficiency/000_profiler.qmd
         - part_1_efficiency/010_vectorized_operations.qmd
         - part_1_efficiency/030_algorithms.qmd
         - part_1_efficiency/040_generic_optimization.qmd
