@@ -1,0 +1,181 @@
+# Reuse calculation results ➊
+
+If you're doing the same calculation multiple times, you can speed up your code by reusing the results and only doing the calculation once.
+
+The key is that looking up the previous calculation should be faster than doing the calculation itself.
+Because Python is slow, there are situations where you won't be able to use this technique when writing Python.
+If you switch to a faster compiled language, the opportunities for caching will increase.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## Reuse calculations inside a function
+
+We have a list of numbers, for example the number of daily car crashes in a major city, and we want to calculate a 7-day moving average.
+We'll skip the first 6 days, and just focus on the 7th day onwards:
+
+```{python}
+import random
+
+DATA = [random.randint(1, 100) for _ in range(10_000)]
+
+def moving_average_1(data):
+    result = []
+    for i in range(6, len(data)):
+        total = 0
+        for j in range(i - 6, i + 1):
+            total += data[j]
+        result.append(total / 7)
+    return result
+```
+
+For day 7 we are doing:
+
+```python
+(data[0] + data[1] + data[2] + data[3] + data[4] + data[5] + data[6]) / 7
+```
+
+For day 8 we are doing:
+
+```python
+(data[1] + data[2] + data[3] + data[4] + data[5] + data[6] + data[7]) / 7
+```
+
+There is an overlap in the calculations we're doing.
+On day 8 we're calculating the sum of `data[2]` through `data[6]`, even though we've already done that for day 7.
+Visually, for day 7's moving average we're adding entries marked with `\`:
+
+```
+\\\\\\\........
+```
+
+And for day 8 we're adding entries marked with `/`:
+
+```
+.///////.......
+```
+
+So on both day we're adding entries that appear in both, marked with `X`:
+
+```
+\XXXXX/........
+```
+
+This suggests a tweak that will allow us to do fewer operations:
+
+```{python}
+def moving_average_2(data):
+    result = []
+    running_total = (data[0] + data[1] + data[2] + data[3] +
+                     data[4] + data[5] + data[6])
+    result.append(running_total / 7)
+    for i in range(7, len(data)):
+        # 😎 Remove the day we're leaving behind from the running total, add
+        # the new day to the running total:
+        running_total -= data[i - 7]
+        running_total += data[i]
+        result.append(running_total / 7)
+    return result
+
+assert moving_average_1(DATA) == moving_average_2(DATA)
+```
+
+If we compare the two versions, the second one is much faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+moving_average_1(DATA)
+moving_average_2(DATA)
+```
+
+## Precalculate results in a lookup table
+
+Let's say we want to calculate the cosine of a series of numbers:
+
+```{python}
+import math
+
+def cosines(values):
+    return [math.cos(v) for v in values]
+```
+
+If we know that there are only a limited number of values, we can create a lookup table for only those values, and then do a lookup instead of calculating the cosine.
+For example, if we know the only possible values are integers between 0 and 200:
+
+```{python}
+def cosines_ints_up_to_200(values):
+    # Create a table where index i gives you cos(i):
+    precalculated = [math.cos(i) for i in range(0, 201)]
+    # 😎 Instead of calculating cos(), look up the pre-calculated value in the
+    # lookup table:
+    return [precalculated[v] for v in values]
+
+assert cosines(DATA) == cosines_ints_up_to_200(DATA)
+```
+
+The second version is faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+cosines(DATA)
+cosines_ints_up_to_200(DATA)
+```
+
+## For varied data, consider using a cache
+
+Our optimized version above is much faster, but also fragile: it won't work for floats, or for integers outside the supported range.
+As a more generic optimization, we can use a dictionary to cache values if we haven't already seen them:
+
+```{python}
+def cosines_with_cache(values):
+    cache = {}
+    # 😎 Instead of calculating cos(), look up the pre-calculated value in the
+    # cache if it's there:
+    result = []
+    for v in values:
+        if (cos := cache.get(v)) is None:
+            cos = cache[v] = math.cos(v)
+        result.append(cos)
+    return result
+
+assert cosines(DATA) == cosines_with_cache(DATA)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+cosines(DATA)
+cosines_with_cache(DATA)
+```
+
+## Beware the cost of cache lookups, especially in Python
+
+There are two problems with using caching:
+
+1. The extra logic to deal with the cache adds more overhead, so we don't get quite the speed boost from this version as we did with the lookup table.
+2. If the input list has a large number of different values, we will both use lots of memory in the cache, and probably end up running much more slowly.
+   Put another way, the benefits of caching are still dependent on the input data.
+
+We can see the latter problem if we generate more varied data:
+
+```{python}
+# Generate floating point numbers between 0 and 1:
+NOISIER_DATA = [random.random() for _ in range(10_000)]
+```
+
+If we measure our two generic implementations with this data, the version without caching is faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+cosines(NOISIER_DATA)
+cosines_with_cache(NOISIER_DATA)
+```
+
+Another factor to keep in mind is the relative cost of cache lookups vs calculation.
+The slower the calculation compared to the cache lookup, the more caching can help.
+In a compiled language, the cache has the potential to be relatively cheaper than in Python, so caching may be viable in more situations.
