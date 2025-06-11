@@ -1,4 +1,4 @@
-# Get rid of repetitive and wasteful code
+# Get rid of repetitive and wasteful code ➊
 
 Once you've picked a good algorithm, you can make your implementation more efficient by removing repetitive, wasteful code.
 The code's scalability won't change if you're still using the same algorithm, but it will still run faster compared to the original version.
@@ -56,16 +56,9 @@ As an example, let's implement the Sieve of Eratosthenes, a classic algorithm fo
 It works by iterating over all whole numbers in a range, crossing out multiples of 2 (4, 6, 8, ...), then multiples of 3 (6, 9, 12, ...), then multiples of 5 (10, 15, 20, ...), and so on.
 
 ```{python}
-# Import the dependencies we'll need:
-import numpy as np
-from numba import jit
-
-# 😎 Remember that by using the @jit decorator, our Python code gets compiled
-# to fast machine code.
-@jit
-def find_primes(up_to_value):
-    # Create an array of booleans, with default value being True:
-    is_prime = np.ones((up_to_value,), dtype=np.bool_)
+def find_primes_1(up_to_value):
+    # Create a list of booleans, with default value being True:
+    is_prime = [True] * up_to_value
     # 0 and 1 are not prime:
     is_prime[0] = False
     is_prime[1] = False
@@ -82,7 +75,9 @@ def find_primes(up_to_value):
 
     return is_prime
 
-PRIMES = find_primes(1_000_000)
+assert find_primes_1(6) == [
+    False, False, True, True, False, True
+]
 ```
 
 Can we make this code any faster?
@@ -93,9 +88,8 @@ But we've already ruled them out in previous rounds, since for example `2 * 5 = 
 That means we can tweak our `j` loop to start at a later point (`i * i` instead of `i * 2`) to prevent doing duplicate work:
 
 ```{python}
-@jit
 def find_primes_2(up_to_value):
-    is_prime = np.ones((up_to_value,), dtype=np.bool_)
+    is_prime = [True] * up_to_value
     is_prime[0] = False
     is_prime[1] = False
 
@@ -109,7 +103,7 @@ def find_primes_2(up_to_value):
 
     return is_prime
 
-assert np.array_equal(PRIMES, find_primes_2(1_000_000))
+assert find_primes_1(100) == find_primes_2(100)
 ```
 
 This small tweak makes our algorithm run noticeably faster:
@@ -117,8 +111,8 @@ This small tweak makes our algorithm run noticeably faster:
 ```{python}
 #| echo: false
 %%compare_timing
-find_primes(1_000_000)
-find_primes_2(1_000_000)
+find_primes_1(5_000)
+find_primes_2(5_000)
 ```
 
 ## Don't do unnecessary work inside loops
@@ -129,9 +123,8 @@ Instead of doing this check in every single iteration, we can split processing i
 The total number of iterations doesn't change, it's still `up_to_value`, but each iteration does less work:
 
 ```{python}
-@jit
 def find_primes_3(up_to_value):
-    is_prime = np.ones((up_to_value,), dtype=np.bool_)
+    is_prime = [True] * up_to_value
     is_prime[0] = False
     is_prime[1] = False
 
@@ -148,7 +141,7 @@ def find_primes_3(up_to_value):
 
     return is_prime
 
-assert np.array_equal(PRIMES, find_primes_3(1_000_000))
+assert find_primes_1(100) == find_primes_3(100)
 ```
 
 This version is even faster:
@@ -156,8 +149,8 @@ This version is even faster:
 ```{python}
 #| echo: false
 %%compare_timing
-find_primes_2(1_000_000)
-find_primes_3(1_000_000)
+find_primes_2(5_000)
+find_primes_3(5_000)
 ```
 
 Now that we're only iterating over odd numbers in the second loop, we apply another optimization in the inner-most `for j` loop.
@@ -169,9 +162,8 @@ And those even numbers have already been marked as non-prime.
 So we can optimize the code even further by only checking every second multiple:
 
 ```{python}
-@jit
 def find_primes_4(up_to_value):
-    is_prime = np.ones((up_to_value,), dtype=np.bool_)
+    is_prime = [True] * up_to_value
     is_prime[0] = False
     is_prime[1] = False
 
@@ -188,7 +180,7 @@ def find_primes_4(up_to_value):
 
     return is_prime
 
-assert np.array_equal(PRIMES, find_primes_4(1_000_000))
+assert find_primes_1(100) == find_primes_4(100)
 ```
 
 Once again, we've sped up the code:
@@ -196,6 +188,8 @@ Once again, we've sped up the code:
 ```{python}
 #| echo: false
 %%compare_timing
-find_primes_3(1_000_000)
-find_primes_4(1_000_000)
+find_primes_1(5_000)
+find_primes_2(5_000)
+find_primes_3(5_000)
+find_primes_4(5_000)
 ```
