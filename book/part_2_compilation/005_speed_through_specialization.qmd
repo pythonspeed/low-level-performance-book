@@ -1,0 +1,56 @@
+# Use static typing to enable faster code
+
+Switching to a compiled language can often speed up your code.
+A compiler takes some source code and turns into machine code instructions that run directly on the CPU.
+
+But of course the Python interpreter itself is also written in a compiled language, so why is running Python[^cpython] code often so much slower than the equivalent compiled code?
+
+[^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
+
+TODO maybe compare Python generic dict to Rust specialized hashmap?
+
+One way that compiled languages enable faster run times is by providing the information the compiler needs to convert your source code to machine code in a very specialized, and therefore more efficient, way.
+
+Consider the following Python function:
+
+```{python}
+def add(a: int, b: int) -> int:
+    return a + b
+```
+
+As a reader, you know it's adding two integers, but Python doesn't actually take advantage of the `int` type annotations.
+The type annotations are hints, not constraints, and if you wanted to you could call `add("abc", "def")` and the code would run just fine.
+
+When you do `add(2, 3)`, Python will:
+
+1. Figure out at runtime which type each of the objects is.
+2. Figure out which function implements addition for those types.
+3. Because Python integers can be arbitrarily large, the function for adding two Python then needs to at minimum figure out if the integers are small enough to use less generic routines.
+4. Finally, this function does the actual arithmetic.
+5. Then, Python converts the resulting C integer back into a Python object.
+
+All this work adds up!
+
+Compare that to a similar function written in the compiled Rust programming language[^rust]:
+
+```rust
+fn add(a: i64, b: i64) -> i64 {
+    return a + b;
+}
+```
+
+[^rust]: Usually Rust would use an implicit return, rather than explicit return. However, for people who don't know Rust, this version is easier to read, and it's still valid Rust.
+
+In this case, the Rust compiler will take advantage of the types; in fact, the code won't compile if you don't set types for function inputs.
+The specific type for both input and output is `i64`, a 64-bit signed integer[^signed], and CPUs have instructions for directly adding 64-bit integers.
+That means the compiler doesn't have to deal with different object types, or different integer types, or arbitrarily sized integers.
+It can just generate machine code for adding two 64-bit signed integers.
+
+How do these two functions compare?
+
+* The Python `add()` function will use tens of thousands of CPU instructions to run.
+* On x86-64, when compiled in release mode, the Rust function compiles down to a handful of CPU instructions.
+
+Unsurprisingly, the Rust function is much faster!
+
+[^signed]: A signed integer is one that can be either negative or positive; an unsigned integer can only be positive.

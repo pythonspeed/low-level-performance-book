@@ -1,0 +1,24 @@
+# Before you begin {.unnumbered}
+
+This book is still in early access; your feedback can help make it better both for you and for future readers!
+
+The goal at this point is _not_ to find typos or grammar mistakes.
+Instead, the goal is to find places where I can improve the content.
+
+- Are you getting bored?
+- Is the explanation confusing?
+- Do you disagree with what I'm saying?
+- Is something particularly interesting or helpful?
+
+Whether it's good or bad feedback, please do share, using the instructions below.
+
+## How to leave feedback
+
+* On a computer, you can select parts of the text with your mouse, and leave feedback on that particular phrase or section using the little pop-up.
+* On a touch device, tap the paragraph.
+  Once you choose the kind of feedback, for example "Confusing," you can also leave a more extended comment.
+
+## Known typographical and design limitations
+
+The helpthisbook.com service I'm using for early access reading has some technical limitations, so I have temporarily replaced tables and diagrams with text equivalents for now.
+In the final version tables and diagrams will look much better.
