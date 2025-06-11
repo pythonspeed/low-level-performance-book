@@ -1,4 +1,4 @@
-# Use scalable algorithms and data structures
+# Use scalable algorithms and data structures ➊
 
 If you've determined the performance bottleneck in your program is computation, there are two high-level reasons the code might be slow:
 
