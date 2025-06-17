@@ -15,7 +15,6 @@ book:
         - part_1_efficiency/030_algorithms.qmd
         - part_1_efficiency/040_generic_optimization.qmd
         - part_1_efficiency/050_reuse_results.qmd
-        - part_1_efficiency/060_example_median_threshold.qmd
         - part_1_efficiency/070_edge_case_branches.qmd
         #- part_1_efficiency/07_research.qmd - mention Huang, DP algorithm
     - part: "The Pratice of Compilation"
@@ -60,7 +59,8 @@ book:
         # - part_4_process/060_keep_code_from_getting_slower.qmd
         - part_4_process/070_next_steps.qmd
   appendices:
-    - appendices/01_prerequisites.qmd
+    - appendices/010_prerequisites.qmd
+    - appendices/020_example_median_threshold.qmd
 #    - references.qmd
 
 #bibliography: references.bib

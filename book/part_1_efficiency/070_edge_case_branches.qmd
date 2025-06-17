@@ -1,8 +1,8 @@
 # Get rid of edge-case branches
 
+A branch is a place in your code where you need to make a decision, an `if` statement for example.
 Some branches are there to handle a rare edge case.
-Given most data won't be an edge case, this branch should be easy to predict.
-Even so, calling the same code over and over in an inner loop is a waste of resources.
+Calling the same code over and over in an inner loop is a waste of resources.
 If you can, handling edge cases separately can speed up your code.
 
 ```{python}
@@ -12,21 +12,16 @@ If you can, handling edge cases separately can speed up your code.
 
 ## Example: A literal edge case
 
-Let's say we have a time series of daily values between 0 and 1, and we want to calculate the 7-day moving average.
-For most values we only calculate the average of the previous (inclusive) 7 values.
+Once again we'll look at the example of calculating a 7-day moving average.
 But for the first 6 days, we won't have sufficient previous values.
+In the last chapter we skipped calculating them at all, and just started from the 7th day.
+But if we do want some values for those first 6 days.
+
 There are various strategies to deal with this missing data, and in this case we'll repeat the value in the first day:
 
 ```{python}
-# Import the dependencies we'll need:
-import numpy as np
-from numba import jit
-
-DATA = np.random.random((1_000_000,))
-
-@jit
 def moving_average(timeseries):
-    result = np.empty(timeseries.shape, dtype=np.float64)
+    result = []
     first_day = timeseries[0]
     for i in range(len(timeseries)):
         total = 0
@@ -35,56 +30,20 @@ def moving_average(timeseries):
             total += (6 - i) * first_day
         for j in range(max(i - 6, 0), i + 1):
             total += timeseries[j]
-        result[i] = total / 7
+        result.append(total / 7)
     return result
-```
-
-A likely performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
-
-## Don't use branchless code when the branch is predictable
-
-In the previous chapter we saw how we can replace branches with branchless code, which can help get rid of the cost of mispredicted branches.
-We can do that here too:
-
-```{python}
-@jit
-def moving_average_branchless(timeseries):
-    result = np.empty(timeseries.shape, dtype=np.float64)
-    first_day = timeseries[0]
-    for i in range(len(timeseries)):
-        # 🥱 Fill in missing values for first few days with branchles code:
-        total = first_day * max(6 - i, 0)
-        for j in range(max(i - 6, 0), i + 1):
-            total += timeseries[j]
-        result[i] = total / 7
-    return result
-
-assert np.array_equal(
-    moving_average(DATA),
-    moving_average_branchless(DATA)
-)
-```
-
-This won't speed up our code, because the branch we just replaced is very predictable.
-After the first 6 iterations, it's never taken.
-So a branchless solution is still doing extra, unnecessary work for the vast majority of iterations:
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions,branch_mispredictions
-moving_average(DATA)
-moving_average_branchless(DATA)
 ```
 
 ## Move edge-case handling into a separate code path
 
-A better optimization is to handle the first 6 days separately, with their own code path.
+A performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
+
+Instead we can handle the first 6 days separately, with their own code path.
 That means the rest of the calculations can safely assume that 7 days of data are always available:
 
 ```{python}
-@jit
-def moving_average_3(timeseries):
-    result = np.empty(timeseries.shape, dtype=np.float64)
+def moving_average_2(timeseries):
+    result = []
 
     # 😎 Handle the first 6 days on their own:
     first_day = timeseries[0]
@@ -93,7 +52,7 @@ def moving_average_3(timeseries):
         # Fill in missing values for first few days:
         for j in range(i + 1):
             total += timeseries[j]
-        result[i] = total / 7
+        result.append(total / 7)
 
     # 😎 Then handle the bulk of the data, without the extra branch we
     # previously had:
@@ -101,20 +60,20 @@ def moving_average_3(timeseries):
         total = 0
         for j in range(i - 6, i + 1):
             total += timeseries[j]
-        result[i] = total / 7
+        result.append(total / 7)
     return result
 
-assert np.array_equal(
-    moving_average(DATA),
-    moving_average_3(DATA)
-)
+import random
+DATA = [random.random() for _ in range(10_000)]
+
+assert moving_average(DATA) == moving_average_2(DATA)
 ```
 
 This version is faster, by removing work from the main loop:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing
 moving_average(DATA)
-moving_average_3(DATA)
+moving_average_2(DATA)
 ```
