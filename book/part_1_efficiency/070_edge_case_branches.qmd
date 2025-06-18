@@ -1,16 +1,115 @@
-# Get rid of edge-case branches ➊
+# Push `if`s up and `for`s down ➊
 
-A branch is a place in your code where you need to make a decision, an `if` statement for example.
-Some branches are there to handle a rare edge case.
-Calling the same code over and over in an inner loop is a waste of resources.
-If you can, handling edge cases separately can speed up your code.
+This principle is [due to Alex Kladov](https://matklad.github.io/2023/11/15/push-ifs-up-and-fors-down.html).
+It has a number of aspects, but as a starting point you can think of it as potential a way of speeding up your code.
+
+When you have an `if` inside a `for` loop, it's going to be run over and over again.
+So if there's a way to move that out of the `for` loop, your code will be faster.
+
+If you are using a compiled language, there are other benefits to avoiding branches, which we'll discuss in later chapters.
 
 ```{python}
 #| echo: false
 %load_ext book_magics
+%load_ext line_profiler
 ```
 
-## Example: A literal edge case
+## Handle `if`s on the summary, not the raw data
+
+Consider a function that counts the frequency of letters in a list of words:
+
+```{python}
+from collections import Counter
+
+def letter_frequency(words):
+    counts = Counter()
+    for word in words:
+        for character in word:
+            # 😢 An `if` statement inside the `for` loop:
+            if character.isalpha():
+                counts[character.lower()] += 1
+    return counts
+```
+
+The check whether a character is a letter or not is happening for every character in the string.
+
+Instead, you can choose to count all characters, and then figure out which is alphabetic in the end, on the much smaller per-character summary.
+While this change will remove the `if` statement, it will also be storing more values in the `counts` dictionary, which might balance things out.
+
+```{python}
+def letter_frequency_2(words):
+    counts = Counter()
+    for word in words:
+        for character in word:
+            counts[character.lower()] += 1
+
+    # 😎 I moved the `if` statement up and out of the `for` loop:
+    final_counts = Counter()
+    for character, num in counts.items():
+        if character.isalpha():
+            final_counts[character] = num
+    return final_counts
+
+with open("northanger_abbey.txt") as f:
+    WORDS = f.read().split()
+assert letter_frequency(WORDS) == letter_frequency_2(WORDS)
+```
+
+This version is very slightly faster, at least for English prose:
+
+```{python}
+#| echo: false
+%%compare_timing
+letter_frequency(WORDS)
+letter_frequency_2(WORDS)
+```
+
+But we can do better.
+
+## Move hidden `if`s out
+
+Sometimes the `if` statement is hidden or implicit, but if you pay attention you'll realize there are additional places you can optimize your code.
+Can you spot the hidden `if` in `letter_frequency_2()`?
+
+It's not clear exactly how `character.lower()` function is implemented without reading Python's implementation, but it's reasonable to guess that it needs to check whether or not a character even has a lower-case value[^lower].
+Having spotted this, you can use the same trick used above:  moving the lower-casing into the second `for` loop.
+
+[^lower]: And in fact there is an `if` statement in [the implementation in CPython](https://github.com/python/cpython/blob/17ac3933c3c860e08f7963cf270116a39a063be7/Objects/unicodectype.c#L192).
+
+
+```{python}
+def letter_frequency_3(words):
+    counts = Counter()
+    for word in words:
+        for character in word:
+            counts[character] += 1
+
+    # 😎 I moved the `lower()` statement up and out of the `for` loop, only
+    # running it on the much smaller counts object.
+    final_counts = Counter()
+    for character, num in counts.items():
+        if character.isalpha():
+            final_counts[character.lower()] += num
+    return final_counts
+
+assert letter_frequency(WORDS) == letter_frequency_3(WORDS)
+```
+
+This version has a more meaningful improvement in speed:
+
+```{python}
+#| echo: false
+%%compare_timing
+letter_frequency(WORDS)
+letter_frequency_2(WORDS)
+letter_frequency_3(WORDS)
+```
+
+## Handle edge-cases in advance
+
+Some branches are there to handle a rare edge case.
+If that branch is inside a loop, calling the same code over and over is a waste of resources.
+If you can, handling edge cases separately can speed up your code.
 
 Once again we'll look at the example of calculating a 7-day moving average.
 But for the first 6 days, we won't have sufficient previous values.
@@ -33,8 +132,6 @@ def moving_average(timeseries):
         result.append(total / 7)
     return result
 ```
-
-## Move edge-case handling into a separate code path
 
 A performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
 
