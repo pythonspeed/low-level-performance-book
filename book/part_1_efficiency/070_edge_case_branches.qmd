@@ -1,4 +1,4 @@
-# Get rid of edge-case branches
+# Get rid of edge-case branches ➊
 
 A branch is a place in your code where you need to make a decision, an `if` statement for example.
 Some branches are there to handle a rare edge case.

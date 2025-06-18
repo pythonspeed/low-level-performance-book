@@ -16,7 +16,9 @@ book:
         - part_1_efficiency/040_generic_optimization.qmd
         - part_1_efficiency/050_reuse_results.qmd
         - part_1_efficiency/070_edge_case_branches.qmd
-        #- part_1_efficiency/07_research.qmd - mention Huang, DP algorithm
+        - part_1_efficiency/080_unnecessary_results.qmd
+        - part_1_efficiency/085_worse_results.qmd
+        #- part_1_efficiency/090_fine_tune_to_data.qmd
     - part: "The Pratice of Compilation"
       chapters:
         # - part_2_compilation/000.qmd "Compiled code is different, reuse somehow"
@@ -58,6 +60,7 @@ book:
         # optimization first, parallelism later
         # - part_4_process/060_keep_code_from_getting_slower.qmd
         - part_4_process/070_next_steps.qmd
+        #- part_1_efficiency/07_research.qmd - mention Huang, DP algorithm
   appendices:
     - appendices/010_prerequisites.qmd
     - appendices/020_example_median_threshold.qmd

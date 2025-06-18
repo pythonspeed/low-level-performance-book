@@ -1,0 +1,11 @@
+# Trade unnecessary results for speed
+
+## Don't calculate things you don't need
+
+
+## Get rid of unnecessary precision
+
+Sometimes your calculation is giving you a very precise answer that isn't any more informative than a less precise answer.
+If you are analyzing financial statements that report revenue and expenses in millions of dollars, you can calculate financial metrics down to the precision down of individual dollars and cents, but that's pretty misleading.
+In some cases, getting rid of this useless precision can speed up your calculations.
+
