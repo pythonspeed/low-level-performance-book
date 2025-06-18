@@ -15,7 +15,7 @@ book:
         - part_1_efficiency/030_algorithms.qmd
         - part_1_efficiency/040_generic_optimization.qmd
         - part_1_efficiency/050_reuse_results.qmd
-        - part_1_efficiency/070_edge_case_branches.qmd
+        - part_1_efficiency/060_if_up_for_down.qmd
         - part_1_efficiency/080_unnecessary_results.qmd
         - part_1_efficiency/085_worse_results.qmd
         #- part_1_efficiency/090_fine_tune_to_data.qmd
