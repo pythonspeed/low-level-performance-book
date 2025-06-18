@@ -4,7 +4,7 @@ This principle is [due to Alex Kladov](https://matklad.github.io/2023/11/15/push
 It has a number of aspects, but as a starting point you can think of it as potential a way of speeding up your code.
 
 When you have an `if` inside a `for` loop, it's going to be run over and over again.
-So if there's a way to move that out of the `for` loop, your code will be faster.
+So if there's a way to move that out of the `for` loop, it's possible your code will be faster.
 
 If you are using a compiled language, there are other benefits to avoiding branches, which we'll discuss in later chapters.
 
@@ -34,7 +34,7 @@ def letter_frequency(words):
 The check whether a character is a letter or not is happening for every character in the string.
 
 Instead, you can choose to count all characters, and then figure out which is alphabetic in the end, on the much smaller per-character summary.
-While this change will remove the `if` statement, it will also be storing more values in the `counts` dictionary, which might balance things out.
+While this change will remove the cost of the `if` statement, it will also be storing more values in the `counts` dictionary, which might balance things out.
 
 ```{python}
 def letter_frequency_2(words):
