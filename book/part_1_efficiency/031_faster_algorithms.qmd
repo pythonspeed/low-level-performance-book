@@ -1,0 +1,76 @@
+# Use faster algorithms and data structures ➊
+
+In the previous chapter you saw the importance of using more _scalable_ algorithms and data structures.
+For example, given a sufficiently large $n$, a $O(n^2)$ algorithm will be much slower than a $O(n)$ algorithm.
+
+Scalability on its own is not enough for software to be fast.
+If two functions have $O(n)$ scalability, that means that for both doubling $n$ will double their run time.
+But it doesn't tell you anything about their speed relative to each other; one may be much faster than the other.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## For small key ranges, consider a vector (Python `list`) instead of a hash map (Python `dict`)
+
+Consider two commonly used data structures:
+
+* Reading and writing values to/from a hash map like Python's `dict` type is an amortized $O(1)$: on average it's constant time.
+  In practice most of the time you can ignore the "amortized" part, as we will in this chapter.
+* Reading and writing values to/from indexes in a vector like Python's `list` type is $O(1)$: it's constant time.
+
+If you have a small range of integer values, you can use one or the other.
+For example, imagine you have a list of all the grades for a standardized test administered to high school students across a city or country.
+Each grade can be between 1 and 100.
+You need to make a histogram of grades with 10 equal buckets.
+Here are two implementations, one with `dict` and one with `list`:
+
+```{python}
+def histogram_dict(grades):
+    histogram = {
+        bucket: 0 for bucket in range(10)
+    }
+    for grade in grades:
+        bucket = (grade - 1) // 10
+        histogram[bucket] += 1
+    return histogram
+
+def histogram_list(grades):
+    histogram = [0] * 10
+    for grade in grades:
+        bucket = (grade - 1) // 10
+        histogram[bucket] += 1
+
+    # Convert into a dict to match the output of histogram_dict():
+    return {
+        bucket: histogram[bucket] for bucket in range(10)
+    }
+```
+
+Both implementations are $O(n)$, where $n$ is the number of grades.
+And both give the same result:
+
+```{python}
+import random
+
+GRADES = [random.randint(1, 100) for _ in range(10_000)]
+
+assert histogram_dict(GRADES) == histogram_list(GRADES)
+```
+
+Which one will be faster?
+Without having measured the results, my initial thought was that `histogram_list()` would win.
+When inserting into a `dict` the key will be hashed into an integer, and then the hash integer is mapped to an internal vector within the `dict`.
+In contrast when indexing into a `list`, there is no need to do any sort of hashing or mapping, so there's less work involved.
+
+And when I actually measured the performance, you can see that is indeed the case:
+
+```{python}
+#| echo: false
+%%compare_timing
+histogram_dict(GRADES)
+histogram_list(GRADES)
+```
+
+In a compiled language I would expect the difference to be even larger.

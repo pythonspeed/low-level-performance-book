@@ -13,6 +13,7 @@ book:
     - part: "The Practice of Efficiency"
       chapters:
         - part_1_efficiency/030_algorithms.qmd
+        - part_1_efficiency/031_faster_algorithms.qmd
         - part_1_efficiency/040_generic_optimization.qmd
         - part_1_efficiency/050_reuse_results.qmd
         - part_1_efficiency/060_if_up_for_down.qmd
