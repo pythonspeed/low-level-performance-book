@@ -16,9 +16,9 @@ But it doesn't tell you anything about their speed relative to each other; one m
 
 Consider two commonly used data structures:
 
-* Reading and writing values to/from a hash map like Python's `dict` type is an amortized $O(1)$: on average it's constant time.
+* Reading and writing values from/to a hash map like Python's `dict` type is an amortized $O(1)$: on average it's constant time.
   In practice most of the time you can ignore the "amortized" part, as we will in this chapter.
-* Reading and writing values to/from indexes in a vector like Python's `list` type is $O(1)$: it's constant time.
+* Reading and writing values from/to indexes in a vector like Python's `list` type is $O(1)$: it's constant time.
 
 If you have a small range of integer values, you can use one or the other.
 For example, imagine you have a list of all the grades for a standardized test administered to high school students across a city or country.
