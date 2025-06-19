@@ -115,7 +115,11 @@ find_primes_1(5_000)
 find_primes_2(5_000)
 ```
 
-## Don't do unnecessary work inside loops
+## Move `if`s up and `for`s down
+
+This principle is [due to Alex Kladov](https://matklad.github.io/2023/11/15/push-ifs-up-and-fors-down.html).
+For this chapter's purposes you can just focus on one aspect of this principle: when you have an `if` inside a `for` loop, it's going to be run over and over again.
+So if there's a way to move that out of the `for` loop, it's possible your code will be faster.
 
 Continuing the same example, in our loop above we do an `if is_prime[i]: continue` check on all values of `i`.
 That includes even numbers like 8 or 212, even though we know that any even number larger than 2 isn't prime.
@@ -153,7 +157,9 @@ find_primes_2(5_000)
 find_primes_3(5_000)
 ```
 
-Now that we're only iterating over odd numbers in the second loop, we apply another optimization in the inner-most `for j` loop.
+## Avoid duplicate calculations
+
+Now that we're only iterating over odd numbers in the second loop, we can apply another optimization in the inner-most `for j` loop.
 Let's say we're ruling out multiples of 3.
 We rule out the sequence `9`, `12`, `15`, `18`, and so on up to `up_to_value`.
 Notice that every second number is even, because we're adding up pairs of odd numbers.
