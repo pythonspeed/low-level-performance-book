@@ -199,3 +199,73 @@ find_primes_2(5_000)
 find_primes_3(5_000)
 find_primes_4(5_000)
 ```
+
+## Handle edge-cases in advance
+
+Some branches are there to handle a rare edge case.
+If that branch is inside a loop, calling the same code over and over is a waste of resources.
+If you can, handling edge cases separately can speed up your code.
+
+Once again we'll look at the example of calculating a 7-day moving average.
+But for the first 6 days, we won't have sufficient previous values.
+In the last chapter we skipped calculating them at all, and just started from the 7th day.
+But if we do want some values for those first 6 days.
+
+There are various strategies to deal with this missing data, and in this case we'll repeat the value in the first day:
+
+```{python}
+def moving_average(timeseries):
+    result = []
+    first_day = timeseries[0]
+    for i in range(len(timeseries)):
+        total = 0
+        if i < 6:
+            # Fill in missing values for first few days:
+            total += (6 - i) * first_day
+        for j in range(max(i - 6, 0), i + 1):
+            total += timeseries[j]
+        result.append(total / 7)
+    return result
+```
+
+A performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
+
+Instead we can handle the first 6 days separately, with their own code path.
+That means the rest of the calculations can safely assume that 7 days of data are always available:
+
+```{python}
+def moving_average_2(timeseries):
+    result = []
+
+    # 😎 Handle the first 6 days on their own:
+    first_day = timeseries[0]
+    for i in range(6):
+        total = first_day * (6 - i)
+        # Fill in missing values for first few days:
+        for j in range(i + 1):
+            total += timeseries[j]
+        result.append(total / 7)
+
+    # 😎 Then handle the bulk of the data, without the extra branch we
+    # previously had:
+    for i in range(6, len(timeseries)):
+        total = 0
+        for j in range(i - 6, i + 1):
+            total += timeseries[j]
+        result.append(total / 7)
+    return result
+
+import random
+DATA = [random.random() for _ in range(10_000)]
+
+assert moving_average(DATA) == moving_average_2(DATA)
+```
+
+This version is faster, by removing work from the main loop:
+
+```{python}
+#| echo: false
+%%compare_timing
+moving_average(DATA)
+moving_average_2(DATA)
+```

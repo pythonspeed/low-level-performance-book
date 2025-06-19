@@ -16,10 +16,9 @@ book:
         - part_1_efficiency/031_faster_algorithms.qmd
         - part_1_efficiency/040_generic_optimization.qmd
         - part_1_efficiency/050_reuse_results.qmd
-        - part_1_efficiency/060_if_up_for_down.qmd
-        - part_1_efficiency/080_unnecessary_results.qmd
         - part_1_efficiency/085_worse_results.qmd
-        #- part_1_efficiency/090_fine_tune_to_data.qmd
+        #- part_1_efficiency/090_fine_tune_to_data.qmd - if you know text is english, you can... something
+        # batch operations in compiled language instead of Python, e.g. word.lower() instead of character.lower()?
     - part: "The Pratice of Compilation"
       chapters:
         # - part_2_compilation/000.qmd "Compiled code is different, reuse somehow"
