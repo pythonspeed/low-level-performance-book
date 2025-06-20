@@ -37,7 +37,7 @@ fn most_frequent_naive<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<Bou
         // Wrap the object in a wrapper that uses Python's hashing and equality
         // to implement Rust's hashing and equality:
         let pyobject = HashEqWrapper { pyobject };
-        // If there's an entry, increment it, otherwise insert 1
+        // If there's an entry, increment count by 1, otherwise insert 1:
         counts
             .entry(pyobject)
             .and_modify(|count| *count += 1)

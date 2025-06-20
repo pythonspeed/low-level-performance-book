@@ -1,5 +1,10 @@
 # Use static typing to enable faster code ➊
 
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
 Switching to a compiled language can often speed up your code.
 A compiler takes some source code and turns into machine code instructions that run directly on the CPU.
 
@@ -22,7 +27,7 @@ def most_frequent_py(values):
     counts = Counter()
     for value in values:
         counts[value] += 1
-    result = 0
+    result = None
     max_count = 0
     for (value, count) in counts.items():
         if count > max_count:
@@ -50,7 +55,7 @@ rustimport.settings.compile_release_binaries = True
 Here's the closest thing to a one-to-one translation Rust; it stores Python objects in a Rust `HashMap`, using their hashing and equality.
 
 ```{rust}
-// TODO
+// TODOs
 ```
 
 It gives the same results:
@@ -59,9 +64,18 @@ It gives the same results:
 import random
 import frequent_rs
 
-DATA = [random.randint(- (2 ** 60), 2 ** 60) for _ in range(100_000)]
+DATA = [random.randint(0, 1000) for _ in range(100_000)]
 
 assert frequent_rs.most_frequent_naive(DATA) == most_frequent_py(DATA)
+```
+
+Here's how their speed compares:
+
+```{python}
+#| echo: false
+%%compare_timing
+most_frequent_py(DATA)
+frequent_rs.most_frequent_naive(DATA)
 ```
 
 ## Understand how static typing enables the compiler to generate faster code ➋
