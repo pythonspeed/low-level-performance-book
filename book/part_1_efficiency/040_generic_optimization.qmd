@@ -202,16 +202,12 @@ find_primes_4(5_000)
 
 ## Handle edge-cases in advance
 
-Some branches are there to handle a rare edge case.
-If that branch is inside a loop, calling the same code over and over is a waste of resources.
-If you can, handling edge cases separately can speed up your code.
+Some `if` statements are there to handle a rare edge case.
+If it's rare, ideally you shouldn't have to check for it over and over again.
 
-Once again we'll look at the example of calculating a 7-day moving average.
-But for the first 6 days, we won't have sufficient previous values.
-In the last chapter we skipped calculating them at all, and just started from the 7th day.
-But if we do want some values for those first 6 days.
-
-There are various strategies to deal with this missing data, and in this case we'll repeat the value in the first day:
+Consider the example of calculating a 7-day moving average over a list of daily data points.
+For the first 6 days, there are fewer than 7 previous values available—how can you calculate a 7-day average?
+There are various strategies to deal with this missing data, and in this case I'll repeat the value in the first day for any missing days:
 
 ```{python}
 def moving_average(timeseries):
@@ -228,9 +224,9 @@ def moving_average(timeseries):
     return result
 ```
 
-A performance problem with this code is the `if i < 6`: it's being called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
+A performance problem with this code is the `if i < 6`, which is called on every single iteration of the loop, even though it's only needed for the first 6 iterations.
 
-Instead we can handle the first 6 days separately, with their own code path.
+Instead you can handle the first 6 days separately, with their own code path.
 That means the rest of the calculations can safely assume that 7 days of data are always available:
 
 ```{python}
