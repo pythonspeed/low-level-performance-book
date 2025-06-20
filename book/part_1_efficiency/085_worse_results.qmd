@@ -1,6 +1,96 @@
-# Trade worse results for speed
+# Change your results to get more speed ➊
 
+In all the optimization examples so far the optimized code gave the exact same result as the original code.
+Sometimes you can achieve additional speedups by returning different results; they might be almost indistinguishable, or they might be noticeably worse, depending how you achieved the speedup.
+Whether that trade off is worth it depends very much on the actual costs, the actual benefits, and your specific situation.
+
+TODO
+- Same information, different format
+- Slightly different, but not in a meaningful way
+- Worse, but still worth it for the speedup
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
 
 ## Reduce the accuracy of your results
 
 ## Look at less data
+
+Do Jane Austen's novels talk more about men, more about women, or more about groups of people?
+
+I load the text of Northanger Abbey and convert it into words:
+
+```{python}
+import string
+
+with open("northanger_abbey.txt") as f:
+    WORDS = [
+        word.strip(string.punctuation).lower()
+        for word in f.read().split()
+    ]
+```
+
+Here is a straightforward, though certainly not ideal, algorithm to answer the question:
+
+```{python}
+from collections import Counter
+
+def gendered_words(words):
+    men_words = {"his", "him", "he"}
+    women_words = {"hers", "her", "she"}
+    # This could be groups of people, or people whose gender is unknown; see
+    # https://pemberley.com/janeinfo/austheir.html for examples of Austen's use
+    # of the singular "they".
+    other_words = {"theirs", "their", "they", "them"}
+    counts = {"male": 0, "female": 0, "other": 0}
+    for word in words:
+        if word in men_words:
+            counts["male"] += 1
+        elif word in women_words:
+            counts["female"] += 1
+        elif word in other_words:
+            counts["other"] += 1
+    total_count = sum(counts.values())
+    return {
+        gender: f"{round(100 * count / total_count)}%"
+        for (gender, count) in counts.items()
+    }
+```
+
+How could you speed this up?
+There's a pretty obvious optimization you could do: getting rid of the `if/elif/elif` structure.
+But that's not our focus in this chapter.
+
+Another way to speed up is to run the same algorithm, but on a random sample of the words novel, say 5,000 words chosen without replacement.
+
+```{python}
+import random
+
+def gendered_sampled_words(words):
+    sample = random.sample(words, 5000)
+    return gendered_words(sample)
+```
+
+How does the sampled implementation compare to running the algorithm on the complete list of words?
+
+```{python}
+print("ACCURATE", gendered_words(WORDS))
+for i in range(1, 6):
+    print("SAMPLE", i, gendered_sampled_words(WORDS))
+```
+
+As you can see, the numbers the sampled version returns are not identical, but the big picture message doesn't change: based on this rather simplistic algorithm, Austen spends more time talking about individual women than about men or groups of people.
+
+And the sampled version is much faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+gendered_words(WORDS)
+gendered_sampled_words(WORDS)
+```
+
+In this particular case, sampling would be a reasonable choice if for some reason I needed faster results.
+For your particular problems, you will need to decide.
