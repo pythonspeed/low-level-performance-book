@@ -1,4 +1,4 @@
-# Use static typing to enable faster code
+# Use static typing to enable faster code ➊
 
 Switching to a compiled language can often speed up your code.
 A compiler takes some source code and turns into machine code instructions that run directly on the CPU.
@@ -7,9 +7,64 @@ But of course the Python interpreter itself is also written in a compiled langua
 
 [^cpython]: In general I'm talking about the default implementation, rather than the language. To distinguish the two, the Python interpreter is often known as CPython. The PyPy interpreter is a different implementation of the language that uses just-in-time compilation do math much faster, but it adds overhead when interoperating with NumPy and other similar libraries, and lags behind on language features. A future version of CPython might also include some just-in-time compilation speedups.
 
-TODO maybe compare Python generic dict to Rust specialized hashmap?
-
 One way that compiled languages enable faster run times is by providing the information the compiler needs to convert your source code to machine code in a very specialized, and therefore more efficient, way.
+
+## Use static typing to generate a specialized data structure
+
+Consider finding the most frequently occurring value in a list of integers.
+
+Here's a pure Python version:
+
+```{python}
+from collections import Counter
+
+def most_frequent_py(values):
+    counts = Counter()
+    for value in values:
+        counts[value] += 1
+    result = 0
+    max_count = 0
+    for (value, count) in counts.items():
+        if count > max_count:
+            max_count = count
+            result = value
+    return result
+```
+
+Next, I'll do a one-to-one translation to a compiled language.
+For this chapter I'm going to be using Rust, because Rust has a much richer set of data structures than Numba, which will come in handy.
+
+```{python}
+#| echo: false
+
+# The `rustimport` library lets you import a Rust files and crates directly
+# from Python, recompiling automatically if they change. See
+# https://pythonspeed.com/articles/easiest-rust-python/ for a walkthrough.
+import rustimport.import_hook
+# Compile in release mode, for full performance; Rust compiles in development
+# mode by default which is much slower to run.
+import rustimport.settings
+rustimport.settings.compile_release_binaries = True
+```
+
+Here's the closest thing to a one-to-one translation Rust; it stores Python objects in a Rust `HashMap`, using their hashing and equality.
+
+```{rust}
+// TODO
+```
+
+It gives the same results:
+
+```{python}
+import random
+import frequent_rs
+
+DATA = [random.randint(- (2 ** 60), 2 ** 60) for _ in range(100_000)]
+
+assert frequent_rs.most_frequent_naive(DATA) == most_frequent_py(DATA)
+```
+
+## Understand how static typing enables the compiler to generate faster code ➋
 
 Consider the following Python function:
 

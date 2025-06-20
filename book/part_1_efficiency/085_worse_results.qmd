@@ -23,7 +23,7 @@ I'm going to look at her first novel, _Northanger Abbey_:
 ```{python}
 import string
 
-with open("northanger_abbey.txt") as f:
+with open("../data/northanger_abbey.txt") as f:
     WORDS = [
         word.strip(string.punctuation).lower()
         for word in f.read().split()

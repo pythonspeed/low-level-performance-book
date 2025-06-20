@@ -289,5 +289,5 @@ You will notice in all the examples in this book that inputs are passed in from 
 The rest of this book is divided into four main sections, each covering one of the four practices.
 In general, I'd recommend reading the chapters in order, but you also skip ahead if you want to learn more about a particular practice.
 
-To help you get started faster, some chapters are marked as essential reading with a ➊, and other chapters are marked as optional reading with a ➋.
+To help you get started faster, some chapters are marked as essential reading with a ➊, and other chapters or sections are marked as optional reading with a ➋.
 I would suggest skipping the latter on first reading, and then going back and reading them later.

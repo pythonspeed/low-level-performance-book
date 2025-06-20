@@ -50,7 +50,7 @@ def letter_frequency_2(words):
             final_counts[character] = num
     return final_counts
 
-with open("northanger_abbey.txt") as f:
+with open("../data/northanger_abbey.txt") as f:
     WORDS = f.read().split()
 assert letter_frequency(WORDS) == letter_frequency_2(WORDS)
 ```

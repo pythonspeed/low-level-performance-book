@@ -10,3 +10,4 @@ pyarrow
 line_profiler
 profila>=0.3.0
 cython
+rustimport
