@@ -66,7 +66,8 @@ gendered_words_count(WORDS)
 
 Providing this information can make it more difficult to speed up the implementation.
 in the next section, for example, I will try running this algorithm on a random subset of the data, and if the function returns absolute counts the values won't be comparable.
-Instead of exact counts, I will switch to a version that returns the relative percentages of our three categories:
+
+So instead of exact counts, for this particular use case it's better to return the relative percentages of the three categories:
 
 ```{python}
 def gendered_words(words):
@@ -91,17 +92,17 @@ def gendered_words(words):
     }
 ```
 
-This makes it easier to answer our question about relative use of gender:
+This makes it easier to answer the question about relative use of gender:
 
 ```{python}
 gendered_words(WORDS)
 ```
 
-This change will allow me to optimize the function further in the next section.
+This change will also make it easier to optimize the function further, as you'll see in the next section.
 
 ## Look at less data
 
-How could you speed this up?
+How could you speed up `gendered_words()`?
 There's a pretty obvious optimization you could do: getting rid of the `if/elif/elif` structure.
 But that's not our focus in this chapter.
 
