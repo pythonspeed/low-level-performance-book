@@ -16,11 +16,14 @@ TODO
 
 ## Reduce the accuracy of your results
 
-## Look at less data
+## Relax the output of your calculation
 
-Do Jane Austen's novels talk more about men, more about women, or more about groups of people?
+Be on the lookout for cases where the format of your function's results is restricting your ability to speed it up.
+For my example I will do some simplistic natural language processing.
 
-I load the text of Northanger Abbey and convert it into words:
+Jane Austen is the author of five classic novels and of _Mansfield Park_.
+Do Austen's novels talk more about men, more about women, or more about groups of people?
+I'm going to look at her first novel, _Northanger Abbey_:
 
 ```{python}
 import string
@@ -37,13 +40,13 @@ Here is a straightforward, though certainly not ideal, algorithm to answer the q
 ```{python}
 from collections import Counter
 
-def gendered_words(words):
-    men_words = {"his", "him", "he"}
-    women_words = {"hers", "her", "she"}
+def gendered_words_count(words):
+    men_words = {"him", "he"}
+    women_words = {"her", "she"}
     # This could be groups of people, or people whose gender is unknown; see
     # https://pemberley.com/janeinfo/austheir.html for examples of Austen's use
     # of the singular "they".
-    other_words = {"theirs", "their", "they", "them"}
+    other_words = {"they", "them"}
     counts = {"male": 0, "female": 0, "other": 0}
     for word in words:
         if word in men_words:
@@ -52,12 +55,51 @@ def gendered_words(words):
             counts["female"] += 1
         elif word in other_words:
             counts["other"] += 1
+    return counts
+```
+
+One thing to notice about this algorithm is that it returns the exact count of the gendered words:
+
+```{python}
+gendered_words_count(WORDS)
+```
+
+Providing this information can make it more difficult to speed up the implementation.
+in the next section, for example, I will try running this algorithm on a random subset of the data, and if the function returns absolute counts the values won't be comparable.
+Instead of exact counts, I will switch to a version that returns the relative percentages of our three categories:
+
+```{python}
+def gendered_words(words):
+    men_words = {"him", "he"}
+    women_words = {"her", "she"}
+    other_words = {"they", "them"}
+    counts = {"male": 0, "female": 0, "other": 0}
+    for word in words:
+        if word in men_words:
+            counts["male"] += 1
+        elif word in women_words:
+            counts["female"] += 1
+        elif word in other_words:
+            counts["other"] += 1
+
+    # 😎 Instead of absolute counts, return relative fractions (shown as % just
+    # for demonstration purposes, in real code you'd return the fraction):
     total_count = sum(counts.values())
     return {
         gender: f"{round(100 * count / total_count)}%"
         for (gender, count) in counts.items()
     }
 ```
+
+This makes it easier to answer our question about relative use of gender:
+
+```{python}
+gendered_words(WORDS)
+```
+
+This change will allow me to optimize the function further in the next section.
+
+## Look at less data
 
 How could you speed this up?
 There's a pretty obvious optimization you could do: getting rid of the `if/elif/elif` structure.
