@@ -1,9 +1,39 @@
 //! A Rust extension that has different implementations of finding the most
 //! common value in a Python list of integers.
 
-use pyo3::types::{PyNone, PySequence};
+use pyo3::types::{PyDict, PyInt, PyNone, PySequence};
 use pyo3::{BoundObject, prelude::*};
 use std::collections::HashMap;
+
+/// One-to-one translation to Python code, still using Python dictionaries and
+/// integers.
+#[pyfunction]
+fn one_to_one<'py>(
+    py: Python<'py>,
+    values: &'py Bound<'py, PySequence>,
+) -> PyResult<Bound<'py, PyInt>> {
+    let counts = PyDict::new(py);
+    let zero = PyInt::new(py, 0);
+    let one = PyInt::new(py, 1);
+    for pyobject in values.try_iter()? {
+        // Deal with case where iteration fails:
+        let pyobject = pyobject?;
+        let current_count = counts
+            .get_item(&pyobject)?
+            .unwrap_or_else(|| zero.as_any().clone());
+        counts.set_item(pyobject, current_count.add(&one)?)?;
+    }
+    // Find the maximum count:
+    let mut result = zero.clone();
+    let mut max_count = zero;
+    for (value, count) in &counts {
+        if count.gt(&max_count)? {
+            max_count = count.downcast_into()?;
+            result = value.downcast_into()?;
+        }
+    }
+    Ok(result.clone())
+}
 
 /// Wrap a Python object so that it can be used in Rust HashMaps.
 struct HashEqWrapper<'a> {
@@ -26,10 +56,9 @@ impl<'a> PartialEq for HashEqWrapper<'a> {
 
 impl<'a> Eq for HashEqWrapper<'a> {}
 
-/// Given a Python sequence of integers (which must fit in a signed 64-bit
-/// integer), return the most frequent value.
+/// Use a Rust HashMap and Rust math, but still use Python objects as the keys in the HashMap.
 #[pyfunction]
-fn most_frequent_naive<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<Bound<'py, PyAny>> {
+fn naive<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<Bound<'py, PyAny>> {
     let mut counts = HashMap::new();
     for pyobject in values.try_iter()? {
         // Deal with case where iteration fails:
@@ -80,7 +109,7 @@ fn most_frequent_impl(values: impl Iterator<Item = i64>) -> i64 {
 /// integer), return the most frequent value. In this version the `HashMap` uses
 /// `i64` instead of Python objects.
 #[pyfunction]
-fn most_frequent_optimized<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<i64> {
+fn python_iterator<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<i64> {
     let result = most_frequent_impl(
         values
             .try_iter()?
@@ -91,7 +120,8 @@ fn most_frequent_optimized<'py>(values: &'py Bound<'py, PySequence>) -> PyResult
 
 #[pymodule]
 fn frequent_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(most_frequent_naive, m)?)?;
-    m.add_function(wrap_pyfunction!(most_frequent_optimized, m)?)?;
+    m.add_function(wrap_pyfunction!(one_to_one, m)?)?;
+    m.add_function(wrap_pyfunction!(naive, m)?)?;
+    m.add_function(wrap_pyfunction!(python_iterator, m)?)?;
     Ok(())
 }

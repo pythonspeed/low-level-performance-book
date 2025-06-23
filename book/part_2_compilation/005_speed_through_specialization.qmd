@@ -1,12 +1,16 @@
 # Replace Python interactions with compiled code ➊
 
+You can speed up your program by replacing Python code with compiled code.
+But there are different levels of replacement: you can write compiled code that still heavily interacts with Python objects, and all these interactions will still be slower than interactions with non-Python objects.
+
+In this chapter then I'll demonstrate making compiled code repeatedly faster by reducing interactions with Python.
+
 ```{python}
 #| echo: false
 %load_ext book_magics
 ```
 
-
-## Use static typing to generate a specialized data structure
+## Example: Finding the most frequent value in a Python list
 
 Consider finding the most frequently occurring value in a list of integers.
 
@@ -15,7 +19,7 @@ Here's a pure Python version:
 ```{python}
 from collections import Counter
 
-def most_frequent_py(values):
+def frequent_py(values: list[int]) -> int:
     counts = Counter()
     for value in values:
         counts[value] += 1
@@ -27,6 +31,8 @@ def most_frequent_py(values):
             result = value
     return result
 ```
+
+## Reduce overhead of dynamic lookups
 
 Next, I'll do a one-to-one translation to a compiled language.
 For this chapter I'm going to be using Rust, because Rust has a much richer set of data structures than Numba, which will come in handy.
@@ -44,8 +50,8 @@ import rustimport.settings
 rustimport.settings.compile_release_binaries = True
 ```
 
-Here's the closest thing to a one-to-one translation Rust; it stores Python objects in a Rust `HashMap`, using their hashing and equality.
-So it's still doing a significant number of interactions with Python objects for every value tracked by the `HashMap`:
+Here's the closest thing to a one-to-one translation Rust; it will do all the operations using Python dictionaries and Python integers.
+In practice this sort of code is better written with Cython, or perhaps compiled with `mypyc`, but using Rust will be helpful in later iterations on this code.
 
 ```{rust}
 // TODOs
@@ -59,7 +65,7 @@ import frequent_rs
 
 DATA = [random.randint(0, 1000) for _ in range(100_000)]
 
-assert frequent_rs.most_frequent_naive(DATA) == most_frequent_py(DATA)
+assert frequent_py(DATA) == frequent_rs.one_to_one(DATA)
 ```
 
 Here's how their speed compares:
@@ -67,16 +73,37 @@ Here's how their speed compares:
 ```{python}
 #| echo: false
 %%compare_timing
-most_frequent_py(DATA)
-frequent_rs.most_frequent_naive(DATA)
+frequent_py(DATA)
+frequent_rs.one_to_one(DATA)
 ```
 
-So that's faster, I suspect because there's a bit less overhead in iteration, but also because all the math incrementing counters doesn't have Python overhead at all.
-But we can do better.
+So that's faster, I suspect because there's a bit less overhead in iteration.
+
+## Use a compiled language for calculations
+
+```{python}
+assert frequent_py(DATA) == frequent_rs.naive(DATA)
+```
 
 ```{python}
 #| echo: false
 %%compare_timing
-most_frequent_py(DATA)
-frequent_rs.most_frequent_optimized(DATA)
+frequent_py(DATA)
+frequent_rs.naive(DATA)
+```
+
+## Use static typing to generate a specialized data structure
+
+but also because all the math incrementing counters doesn't have Python overhead at all.
+But we can do better.
+
+```{python}
+assert frequent_py(DATA) == frequent_rs.python_iterator(DATA)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+frequent_py(DATA)
+frequent_rs.python_iterator(DATA)
 ```
