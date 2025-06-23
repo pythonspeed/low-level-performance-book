@@ -1,3 +1,7 @@
+---
+filters:
+   - include-code-files
+---
 # Replace Python interactions with compiled code ➊
 
 You can speed up your program by replacing Python code with compiled code.
@@ -50,7 +54,8 @@ import rustimport.settings
 # Compile in release mode, for full performance; Rust compiles in development
 # mode by default which is much slower to run.
 rustimport.settings.compile_release_binaries = True
-# Recompile each time:
+# Recompile each time we import the module (seems broken sometimes, might have
+# issues due to Jupyter caching):
 rustimport.settings.force_rebuild = True
 
 # Don't output from Rust compiler:
@@ -60,8 +65,7 @@ os.environ["CARGO_TERM_QUIET"] = "true"
 Here's the closest thing to a one-to-one translation Rust; it will do all the operations using Python dictionaries and Python integers.
 In practice this sort of code is better written with Cython, or perhaps compiled with `mypyc`, but using Rust will be helpful in later iterations on this code.
 
-```{rust}
-// TODOs
+```{.rust include="frequent_rs/src/lib.rs" snippet="one_to_one"}
 ```
 
 This implementation gives the same results:
@@ -88,23 +92,29 @@ So that's faster, I suspect because there's a bit less overhead in iteration.
 
 ## Use static typing for faster math and faster specialized data structure
 
-We can do better:
+The above code can still be sped up:
 
 1. Swap out Python integer math for native math in Rust.
 2. Swap out using a Python dictionary for a Rust `HashMap`, and in particular a `HashMap` that is specifically compiled to store just `i64` and nothing else.
 
+```{.rust include="frequent_rs/src/lib.rs" snippet="rust_calculations"}
+```
+
 ```{python}
-assert frequent_py(DATA) == frequent_rs.python_iterator(DATA)
+assert frequent_py(DATA) == frequent_rs.rust_calculations(DATA)
 ```
 
 ```{python}
 #| echo: false
 %%compare_timing
 frequent_py(DATA)
-frequent_rs.python_iterator(DATA)
+frequent_rs.rust_calculations(DATA)
 ```
 
 ## Bypass Python objects altogether
+
+```{.rust include="frequent_rs/src/lib.rs" snippet="numpy"}
+```
 
 ```{python}
 import numpy as np
