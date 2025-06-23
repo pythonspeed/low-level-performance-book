@@ -44,10 +44,19 @@ For this chapter I'm going to be using Rust, because Rust has a much richer set 
 # from Python, recompiling automatically if they change. See
 # https://pythonspeed.com/articles/easiest-rust-python/ for a walkthrough.
 import rustimport.import_hook
+
+import rustimport.settings
 # Compile in release mode, for full performance; Rust compiles in development
 # mode by default which is much slower to run.
-import rustimport.settings
 rustimport.settings.compile_release_binaries = True
+# Recompile each time:
+rustimport.settings.force_rebuild = True
+# Use a local cache directory:
+rustimport.settings.cache_dir = "frequent_rs/target/rustimport/"
+
+# Don't output from Rust compiler:
+import os
+os.environ["RUSTFLAGS"] = "--quiet"
 ```
 
 Here's the closest thing to a one-to-one translation Rust; it will do all the operations using Python dictionaries and Python integers.
@@ -106,4 +115,21 @@ assert frequent_py(DATA) == frequent_rs.python_iterator(DATA)
 %%compare_timing
 frequent_py(DATA)
 frequent_rs.python_iterator(DATA)
+```
+
+## Bypass Python objects altogether
+
+```{python}
+import numpy as np
+
+DATA_NUMPY = np.array(DATA, dtype=np.int64)
+
+assert frequent_py(DATA) == frequent_rs.numpy(DATA_NUMPY)
+```
+
+```{python}
+#| echo: false
+%%compare_timing
+frequent_py(DATA)
+frequent_rs.numpy(DATA_NUMPY)
 ```

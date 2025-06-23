@@ -1,6 +1,7 @@
 //! A Rust extension that has different implementations of finding the most
 //! common value in a Python list of integers.
 
+use pyo3::buffer::PyBuffer;
 use pyo3::types::{PyDict, PyInt, PyNone, PySequence};
 use pyo3::{BoundObject, prelude::*};
 use std::collections::HashMap;
@@ -118,10 +119,31 @@ fn python_iterator<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<i64> {
     Ok(result)
 }
 
+/// Convert all the Python objects to a Rust data structure right at the start. Actually slower, so not shown in chapter.
+#[pyfunction]
+fn batch_conversion_up_front(values: Vec<i64>) -> PyResult<i64> {
+    let result = most_frequent_impl(values.into_iter());
+    Ok(result)
+}
+
+/// Use NumPy (or anything supporting Python's Buffer API, really) to access
+/// integers without having to interact with Python objects at all (other than
+/// the container).
+#[pyfunction]
+fn numpy(py: Python, values: Bound<PyAny>) -> PyResult<i64> {
+    let buffer = PyBuffer::get(&values)?;
+    let slice = buffer.as_slice(py).unwrap();
+    let result = most_frequent_impl(slice.iter().map(|value| value.get()));
+    Ok(result)
+}
+
+/// The module exposed to Python.
 #[pymodule]
 fn frequent_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(one_to_one, m)?)?;
     m.add_function(wrap_pyfunction!(naive, m)?)?;
     m.add_function(wrap_pyfunction!(python_iterator, m)?)?;
+    m.add_function(wrap_pyfunction!(numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(batch_conversion_up_front, m)?)?;
     Ok(())
 }
