@@ -53,12 +53,13 @@ rustimport.settings.compile_release_binaries = True
 ```
 
 Here's the closest thing to a one-to-one translation Rust; it stores Python objects in a Rust `HashMap`, using their hashing and equality.
+So it's still doing a significant number of interactions with Python objects for every value tracked by the `HashMap`:
 
 ```{rust}
 // TODOs
 ```
 
-It gives the same results:
+This implementation gives the same results:
 
 ```{python}
 import random
@@ -76,6 +77,16 @@ Here's how their speed compares:
 %%compare_timing
 most_frequent_py(DATA)
 frequent_rs.most_frequent_naive(DATA)
+```
+
+So that's faster, I suspect because there's a bit less overhead in iteration, but also because all the math incrementing counters doesn't have Python overhead at all.
+But we can do better.
+
+```{python}
+#| echo: false
+%%compare_timing
+most_frequent_py(DATA)
+frequent_rs.most_frequent_optimized(DATA)
 ```
 
 ## Understand how static typing enables the compiler to generate faster code ➋

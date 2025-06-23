@@ -55,7 +55,43 @@ fn most_frequent_naive<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<Bou
     Ok(result.clone())
 }
 
+/// Given an Iterator over `i64`, return the most frequent value.
+fn most_frequent_impl(values: impl Iterator<Item = i64>) -> i64 {
+    let mut counts = HashMap::new();
+    for value in values {
+        counts
+            .entry(value)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+    }
+    // Find the maximum count:
+    let mut result = 0;
+    let mut max_count = 0;
+    for (value, count) in &counts {
+        if *count > max_count {
+            max_count = *count;
+            result = *value;
+        }
+    }
+    result
+}
+
+/// Given a Python sequence of integers (which must fit in a signed 64-bit
+/// integer), return the most frequent value. In this version the `HashMap` uses
+/// `i64` instead of Python objects.
+#[pyfunction]
+fn most_frequent_optimized<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<i64> {
+    let result = most_frequent_impl(
+        values
+            .try_iter()?
+            .map(|pyobject| pyobject.unwrap().extract::<i64>().unwrap()),
+    );
+    Ok(result)
+}
+
 #[pymodule]
 fn frequent_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(most_frequent_naive, m)?)
+    m.add_function(wrap_pyfunction!(most_frequent_naive, m)?)?;
+    m.add_function(wrap_pyfunction!(most_frequent_optimized, m)?)?;
+    Ok(())
 }
