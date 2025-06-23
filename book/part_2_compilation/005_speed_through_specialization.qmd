@@ -39,24 +39,22 @@ For this chapter I'm going to be using Rust, because Rust has a much richer set 
 
 ```{python}
 #| echo: false
+import os
 
 # The `rustimport` library lets you import a Rust files and crates directly
 # from Python, recompiling automatically if they change. See
 # https://pythonspeed.com/articles/easiest-rust-python/ for a walkthrough.
 import rustimport.import_hook
-
 import rustimport.settings
+
 # Compile in release mode, for full performance; Rust compiles in development
 # mode by default which is much slower to run.
 rustimport.settings.compile_release_binaries = True
 # Recompile each time:
 rustimport.settings.force_rebuild = True
-# Use a local cache directory:
-rustimport.settings.cache_dir = "frequent_rs/target/rustimport/"
 
 # Don't output from Rust compiler:
-import os
-os.environ["RUSTFLAGS"] = "--quiet"
+os.environ["CARGO_TERM_QUIET"] = "true"
 ```
 
 Here's the closest thing to a one-to-one translation Rust; it will do all the operations using Python dictionaries and Python integers.
@@ -88,23 +86,12 @@ frequent_rs.one_to_one(DATA)
 
 So that's faster, I suspect because there's a bit less overhead in iteration.
 
-## Use a compiled language for calculations
+## Use static typing for faster math and faster specialized data structure
 
-```{python}
-assert frequent_py(DATA) == frequent_rs.naive(DATA)
-```
+We can do better:
 
-```{python}
-#| echo: false
-%%compare_timing
-frequent_py(DATA)
-frequent_rs.naive(DATA)
-```
-
-## Use static typing to generate a specialized data structure
-
-but also because all the math incrementing counters doesn't have Python overhead at all.
-But we can do better.
+1. Swap out Python integer math for native math in Rust.
+2. Swap out using a Python dictionary for a Rust `HashMap`, and in particular a `HashMap` that is specifically compiled to store just `i64` and nothing else.
 
 ```{python}
 assert frequent_py(DATA) == frequent_rs.python_iterator(DATA)
@@ -132,4 +119,5 @@ assert frequent_py(DATA) == frequent_rs.numpy(DATA_NUMPY)
 %%compare_timing
 frequent_py(DATA)
 frequent_rs.numpy(DATA_NUMPY)
+
 ```

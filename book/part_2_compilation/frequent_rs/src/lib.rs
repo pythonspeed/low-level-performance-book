@@ -6,13 +6,10 @@ use pyo3::types::{PyDict, PyInt, PyNone, PySequence};
 use pyo3::{BoundObject, prelude::*};
 use std::collections::HashMap;
 
-/// One-to-one translation to Python code, still using Python dictionaries and
-/// integers.
+/// One-to-one translation from Rust to Python code. All operations are done
+/// with Python objects, specifically `PyDict` and `PyInt`.
 #[pyfunction]
-fn one_to_one<'py>(
-    py: Python<'py>,
-    values: &'py Bound<'py, PySequence>,
-) -> PyResult<Bound<'py, PyInt>> {
+fn one_to_one<'py>(py: Python<'py>, values: Bound<'py, PySequence>) -> PyResult<Bound<'py, PyInt>> {
     let counts = PyDict::new(py);
     let zero = PyInt::new(py, 0);
     let one = PyInt::new(py, 1);
@@ -86,7 +83,10 @@ fn naive<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<Bound<'py, PyAny>
 }
 
 /// Given an Iterator over `i64`, return the most frequent value.
-fn most_frequent_impl(values: impl Iterator<Item = i64>) -> i64 {
+fn frequent_algorithm<I>(values: I) -> i64
+where
+    I: Iterator<Item = i64>,
+{
     let mut counts = HashMap::new();
     for value in values {
         counts
@@ -111,7 +111,7 @@ fn most_frequent_impl(values: impl Iterator<Item = i64>) -> i64 {
 /// `i64` instead of Python objects.
 #[pyfunction]
 fn python_iterator<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<i64> {
-    let result = most_frequent_impl(
+    let result = frequent_algorithm(
         values
             .try_iter()?
             .map(|pyobject| pyobject.unwrap().extract::<i64>().unwrap()),
@@ -122,7 +122,7 @@ fn python_iterator<'py>(values: &'py Bound<'py, PySequence>) -> PyResult<i64> {
 /// Convert all the Python objects to a Rust data structure right at the start. Actually slower, so not shown in chapter.
 #[pyfunction]
 fn batch_conversion_up_front(values: Vec<i64>) -> PyResult<i64> {
-    let result = most_frequent_impl(values.into_iter());
+    let result = frequent_algorithm(values.into_iter());
     Ok(result)
 }
 
@@ -133,7 +133,7 @@ fn batch_conversion_up_front(values: Vec<i64>) -> PyResult<i64> {
 fn numpy(py: Python, values: Bound<PyAny>) -> PyResult<i64> {
     let buffer = PyBuffer::get(&values)?;
     let slice = buffer.as_slice(py).unwrap();
-    let result = most_frequent_impl(slice.iter().map(|value| value.get()));
+    let result = frequent_algorithm(slice.iter().map(|value| value.get()));
     Ok(result)
 }
 
