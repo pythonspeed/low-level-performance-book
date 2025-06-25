@@ -86,6 +86,8 @@ fn rust_calculations<'py>(
 fn numpy(py: Python, values: Bound<PyAny>) -> PyResult<i64> {
     let buffer = PyBuffer::get(&values)?;
     let slice = buffer.as_slice(py).unwrap();
+    // Use the same frequent_algorithm() we implemented for the previous
+    // iteration:
     let result = frequent_algorithm(slice.iter().map(|value| value.get()));
     Ok(result)
 }

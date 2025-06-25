@@ -39,7 +39,13 @@ def frequent_py(values: list[int]) -> int:
 ## Reduce overhead of dynamic lookups
 
 Next, I'll do a one-to-one translation to a compiled language.
-For this chapter I'm going to be using Rust, because Rust has a much richer set of data structures than Numba, which will come in handy.
+For this chapter I'm going to be using the Rust programming language, because Rust has a much richer set of data structures than Numba, which will come in handy.
+
+**You do not need to understand Rust to read this chapter.**
+My goal is just to demonstrate how compiled languages can reduce Python's performance in various ways.
+While I do include the Rust code, implemented using the [PyO3](https://pyo3.rs) Python integration layer, you can just glance at it.
+If you have never learned Rust, most of it won't make sense (the `?` you'll see mean "return early with an error", for example), and that's fine.
+But some of the language is still similar enough to Python—a `for` loop is still a `for` loop—that you should be able to get at least a glimmering of what is going on.
 
 ```{python}
 #| echo: false
@@ -63,7 +69,8 @@ os.environ["CARGO_TERM_QUIET"] = "true"
 ```
 
 Here's the closest thing to a one-to-one translation Rust; it will do all the operations using Python dictionaries and Python integers.
-In practice this sort of code is better written with Cython, or perhaps compiled with `mypyc`, but using Rust will be helpful in later iterations on this code.
+In practice this first iteration is the kind of code better written with [Cython](https://cython.readthedocs.io/) or [`mypyc`](https://mypyc.readthedocs.io/en/latest/introduction.html), both of which allow you to compile normal Python code.
+But using Rust will be helpful in later iterations of this example.
 
 ```{.rust include="frequent_rs/src/lib.rs" snippet="one_to_one"}
 ```
@@ -92,29 +99,139 @@ So that's faster, I suspect because there's a bit less overhead in iteration.
 
 ## Use static typing for faster math and faster specialized data structure
 
-The above code can still be sped up:
+The above code can be made even faster if the Rust code didn't interact with Python objects so much.
+In particular, that means:
 
-1. Swap out Python integer math for native math in Rust.
-2. Swap out using a Python dictionary for a Rust `HashMap`, and in particular a `HashMap` that is specifically compiled to store just `i64` and nothing else.
+1. Swapping out Python integer math for native math in Rust.
+2. Swapping out using a Python dictionary for a Rust `HashMap`, and in particular a `HashMap` that is specifically compiled to store just `i64` and nothing else.
+
+Here's what that looks like.
+Notice it's much more readable, since it's using native Rust data structures instead of Python ones:
 
 ```{.rust include="frequent_rs/src/lib.rs" snippet="rust_calculations"}
 ```
+
+We check it's still acting the same:
 
 ```{python}
 assert frequent_py(DATA) == frequent_rs.rust_calculations(DATA)
 ```
 
+And this version is even faster:
+
 ```{python}
 #| echo: false
 %%compare_timing
-frequent_py(DATA)
+frequent_rs.one_to_one(DATA)
 frequent_rs.rust_calculations(DATA)
 ```
 
 ## Bypass Python objects altogether
 
+While the version above doesn't explicitly convert between Python and Rust objects, it's still doing so implicitly.
+The PyO3 framework that connects Rust and Python is, behind the scenes, converting the Python `list` (represented in Rust as a `PyList`) into the native Rust equivalent, a `Vec`, or more specifically a `Vec<i64>`.
+This still requires interacting with Python interpreter APIs to do that conversion.
+
+CPython represents objects rather differently than compiled languages do.
+For example, to convert a Python `int` into a 64-bit integer that Rust or Numba can use, you must call (directly or indirectly) a function provided by CPython called `PyLong_AsLongAndOverflow`.
+Below is this code; it's not worth reading in detail, the important thing is to notice it's doing quite a bit of work:
+
+<details>
+<summary>The C code for PyLong_AsLongAndOverflow()</summary>
+```c
+// This code snippet is copyright © 2001-2023 Python Software Foundation;
+// All Rights Reserved.
+//
+// See https://docs.python.org/3/license.html for the full license.
+long
+PyLong_AsLongAndOverflow(PyObject *vv, int *overflow)
+{
+    /* This version by Tim Peters */
+    PyLongObject *v;
+    unsigned long x, prev;
+    long res;
+    Py_ssize_t i;
+    int sign;
+    int do_decref = 0; /* if PyNumber_Index was called */
+
+    *overflow = 0;
+    if (vv == NULL) {
+        PyErr_BadInternalCall();
+        return -1;
+    }
+
+    if (PyLong_Check(vv)) {
+        v = (PyLongObject *)vv;
+    }
+    else {
+        v = (PyLongObject *)_PyNumber_Index(vv);
+        if (v == NULL)
+            return -1;
+        do_decref = 1;
+    }
+    if (_PyLong_IsCompact(v)) {
+#if SIZEOF_LONG < SIZEOF_VOID_P
+        intptr_t tmp = _PyLong_CompactValue(v);
+        res = (long)tmp;
+        if (res != tmp) {
+            *overflow = tmp < 0 ? -1 : 1;
+        }
+#else
+        res = _PyLong_CompactValue(v);
+#endif
+    }
+    else {
+        res = -1;
+        i = _PyLong_DigitCount(v);
+        sign = _PyLong_NonCompactSign(v);
+        x = 0;
+        while (--i >= 0) {
+            prev = x;
+            x = (x << PyLong_SHIFT) | v->long_value.ob_digit[i];
+            if ((x >> PyLong_SHIFT) != prev) {
+                *overflow = sign;
+                goto exit;
+            }
+        }
+        /* Haven't lost any bits, but casting to long requires extra
+        * care (see comment above).
+        */
+        if (x <= (unsigned long)LONG_MAX) {
+            res = (long)x * sign;
+        }
+        else if (sign < 0 && x == PY_ABS_LONG_MIN) {
+            res = LONG_MIN;
+        }
+        else {
+            *overflow = sign;
+            /* res is already set to -1 */
+        }
+    }
+  exit:
+    if (do_decref) {
+        Py_DECREF(v);
+    }
+    return res;
+}
+```
+</details>
+
+If you're passing in an integer or two, the overhead from calling `PyLong_AsLongAndOverflow()` probably doesn't matter.
+But for large amounts of data, this overhead adds up.
+In our example, we need to call this function for every single integer in the Python list... after we've made sure it's an integer, of course, which also takes work!
+
+And this is just one direction, from Python to compiled code; conversion in the other direction can be equally expensive.
+Converting data back and forth will slow down your code, reducing the performance benefit of using a compiled language.
+
+It's better then to use data structures specifically designed to be accessible from both Python and compiled languages.
+For this particular use case, a NumPy array is an excellent alternative to Python `list`.
+
+Here's a Rust function that can accept a NumPy array, or more broadly anything implementing [the Python Buffer Protocol](https://docs.python.org/3/c-api/buffer.html) (for real world usage, it's probably better to use the [`rust-numpy`](https://docs.rs/rust-numpy/) library):
+
 ```{.rust include="frequent_rs/src/lib.rs" snippet="numpy"}
 ```
+
+Instead of calling it with a Python `list`, this variation is called with a NumPy array:
 
 ```{python}
 import numpy as np
@@ -124,10 +241,12 @@ DATA_NUMPY = np.array(DATA, dtype=np.int64)
 assert frequent_py(DATA) == frequent_rs.numpy(DATA_NUMPY)
 ```
 
+And this version is even faster, since it doesn't need to convert the `list` of `int` into a `Vec<i64>`.
+Rust is able to access the data inside the NumPy array directly, with no conversion necessary:
+
 ```{python}
 #| echo: false
 %%compare_timing
-frequent_py(DATA)
+frequent_rs.rust_calculations(DATA)
 frequent_rs.numpy(DATA_NUMPY)
-
 ```
