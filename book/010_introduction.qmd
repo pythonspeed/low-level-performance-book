@@ -26,6 +26,11 @@ Each one of these practices can make your code faster _in a different way_ becau
 So while you can just start with one, you can often apply multiple practices to go even faster.
 If you're lucky, you can use all five!!!!!
 
+> What about GPUs?
+> This book doesn't cover GPUs at all, but the same practices, with somewhat different techniques, apply there as well.
+> It's also worth keeping in mind that a lot of software is slow not because it's running on a CPU, but because it's written in a vastly inefficient way.
+> Which means you might be able to achieve a two or three orders of magnitude speedup even without switching to a GPU.
+
 This book will introduce you to, and is organized around, these five practices.
 In the following sections, I'll give some examples of the ways these practices can help you speed up your software.
 The rest of the book covers these practices in more depth.
