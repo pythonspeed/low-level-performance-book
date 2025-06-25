@@ -1,0 +1,13 @@
+# TODO
+
+* Threads vs processes
+* Maximize cores used
+     * _Computing_ thread per core _across the whole operating system_
+     * Hyperthreading
+     * Use separate threads for I/O and for compute: blocking network and disk APIs can reduce utilization
+* Make sure you understand libraries' existing threading models and don't fight them (or configure appropriately)
+* Release the GIL
+* Avoid race conditions
+* Models of parallelism:
+    * Full isolation
+    * Worker pool (with fixed size queue for backpressure)
