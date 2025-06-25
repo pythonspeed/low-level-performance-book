@@ -1,4 +1,6 @@
-# Understand why compiled code is faster ➋
+# ⋯ Understand why compiled code is faster
+
+> As a reminder, you may wish to skip chapters like this which are marked with a "⋯" on your first read through, unless you're particularly interested.
 
 Switching to a compiled language can often speed up your code.
 A compiler takes some source code and turns into machine code instructions that run directly on the CPU.

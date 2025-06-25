@@ -1,4 +1,4 @@
-# Get rid of repetitive and wasteful code ➊
+# ➤ Get rid of repetitive and wasteful code
 
 Once you've picked a good algorithm, you can make your implementation more efficient by removing repetitive, wasteful code.
 The code's scalability won't change if you're still using the same algorithm, but it will still run faster compared to the original version.

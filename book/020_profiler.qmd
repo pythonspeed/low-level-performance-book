@@ -1,4 +1,4 @@
-# Identify the bottleneck in your code before you optimize it ➊
+# ➤ Identify the bottleneck in your code before you optimize it
 
 Most of this book focuses on speeding up computation.
 But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in making your calculations faster.

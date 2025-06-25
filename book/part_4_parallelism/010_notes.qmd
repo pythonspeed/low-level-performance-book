@@ -11,3 +11,4 @@
 * Models of parallelism:
     * Full isolation
     * Worker pool (with fixed size queue for backpressure)
+* Memory bandwidth limitations?

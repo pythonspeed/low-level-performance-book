@@ -1,4 +1,4 @@
-# Know when to switch from existing libraries to custom compiled code ➊
+# ➤ Know when to switch from existing libraries to custom compiled code
 
 In many cases, you can speed up computational code with existing libraries.
 Libraries like NumPy, SciPy, Pandas and others can process data very quickly by doing batch processing in functions implemented in a low-level language like C or Fortran.

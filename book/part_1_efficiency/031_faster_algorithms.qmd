@@ -1,4 +1,4 @@
-# Use faster algorithms and data structures ➊
+# ➤ Use faster algorithms and data structures
 
 In the previous chapter you saw the importance of using more _scalable_ algorithms and data structures.
 For example, given a sufficiently large $n$, a $O(n^2)$ algorithm will be much slower than a $O(n)$ algorithm.

@@ -4,7 +4,7 @@
 
 Here's a checklist:
 
-* **Who you are:** You're a scientist, data scientist, or software developer who does numeric computing or similar large-scale data processing.
+* **Who you are:** You're a scientist, data scientist, or software developer who does numeric computing or other computationally intensive data processing.
 * **What you need to know:** You know how to write Python; unlike most other books covering these topics, you do not need to know the C programming language.
 * **What you want to do:** There are many reasons your code can be slow, from disk bandwidth to network latency.
     This book focuses on one particular reason: computation, whether you're doing complex math or just adding up a _very_ long list of numbers.
@@ -16,24 +16,19 @@ Assuming that computational code really is your bottleneck, how do you make it g
 
 There are five different approaches or practices you can apply to speed up computational code:
 
-* **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all!
 * **The Practice of Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about!
 * **The Practice of Compilation:** A compiler can speed up your code, especially if you understand and compensate for its limitations!
 * **The Practice of Mechanical Sympathy:** Instead of fighting your CPU and other hardware, take advantage of how they work!
+* **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all!
 * **The Practice of Process:** Your software development process should encompass speed, and you should use appropriate processes to speed up your code!
 
-If you're lucky, you can use all five, and make your code go five exclamation marks' worth of fast!!!!!
-But you can also start with just one or two.
-And if one practice is a dead end, you can switch to another practice and try to solve the problem from a different angle.
+Each one of these practices can make your code faster _in a different way_ because it relies on different approaches to speed.
+So while you can just start with one, you can often apply multiple practices to go even faster.
+If you're lucky, you can use all five!!!!!
 
-Unfortunately, parallelism is a big enough topic that it deserves its own whole book.
-Among other reasons, concurrency and parallelism have other use cases, like handling network and disk operations.
-You can learn more about parallelism from other books, like [_High Performance Python, 2nd edition_](https://www.oreilly.com/library/view/high-performance-python/9781492055013/) by Gorelick and Oszvald (a third edition is in the works.)
-
-So this book will introduce you to, and is organized around, the other four practices: efficiency, compilation, mechanical sympathy, and process.
-
-In the following sections, I'll give some examples of the ways these practices can help you write faster code.
-The rest of the book covers both these topics, and much more besides.
+This book will introduce you to, and is organized around, these five practices.
+In the following sections, I'll give some examples of the ways these practices can help you speed up your software.
+The rest of the book covers these practices in more depth.
 
 ```{python}
 #| echo: false
@@ -234,6 +229,54 @@ add_thrice(3.3)
 
 You can sometimes significantly speed up your code by ensuring the CPU can take advantage of instruction-level parallelism.
 
+## The Practice of Parallelism: An example
+
+Modern CPUs have multiple _cores_, allowing multiple threads or processes to run at the same time.
+For example, here is an array of random numbers created by the NumPy library:
+
+```{python}
+import numpy as np
+
+# Create an array with 10 million random integers between 0 and 1000:
+RANDOM = np.random.randint(0, 1_000, 10_000_000, dtype=np.uint64)
+assert len(RANDOM) == 10_000_000
+```
+
+I can calculate the sum of squares using NumPy:
+
+```{python}
+def sum_of_squares(arr):
+    return (arr ** 2).sum()
+```
+
+But that only uses one CPU core, and my computer has many more.
+So I can also create a pool of threads, sum different chunks in parallel, and then sum the resulting partial sums:
+
+```{python}
+from concurrent.futures import ThreadPoolExecutor
+
+THREAD_POOL = ThreadPoolExecutor()
+
+def parallel_sum_of_squares(arr, n_chunks):
+    # Split the array to the given number of chunks; this API won't copy
+    # the data, so it's very fast:
+    chunks = np.array_split(arr, n_chunks)
+    # Sum-of-squares each chunk in the thread pool:
+    partial_sums = THREAD_POOL.map(sum_of_squares, chunks)
+    # Add the partial sums to get the final result:
+    return np.sum(list(partial_sums))
+
+assert sum_of_squares(RANDOM) == parallel_sum_of_squares(RANDOM, 4)
+```
+
+This new version will use up to 4 CPU cores in parallel, leading to somewhat faster results:
+
+```{python}
+#| echo: false
+%%compare_timing
+sum_of_squares(RANDOM)
+parallel_sum_of_squares(RANDOM, 4)
+```
 
 ## The Practice of Process: An example
 
@@ -286,8 +329,8 @@ You will notice in all the examples in this book that inputs are passed in from 
 
 ## How to read this book
 
-The rest of this book is divided into four main sections, each covering one of the four practices.
+The rest of this book is divided into five main sections, each covering one of the five practices.
 In general, I'd recommend reading the chapters in order, but you also skip ahead if you want to learn more about a particular practice.
 
-To help you get started faster, some chapters are marked as essential reading with a ➊, and other chapters or sections are marked as optional reading with a ➋.
+To help you get started faster, some chapters are marked as essential reading with a ➤, and other chapters or sections are marked as optional reading with a ⋯.
 I would suggest skipping the latter on first reading, and then going back and reading them later.

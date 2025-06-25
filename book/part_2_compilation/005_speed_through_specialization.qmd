@@ -2,7 +2,7 @@
 filters:
    - include-code-files
 ---
-# Replace Python interactions with compiled code ➊
+# ➤ Replace Python interactions with compiled code
 
 You can speed up your program by replacing Python code with compiled code.
 But there are different levels of replacement: you can write compiled code that still heavily interacts with Python objects, and all these interactions will still be slower than interactions with non-Python objects.
