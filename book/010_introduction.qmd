@@ -16,15 +16,15 @@ Assuming that computational code really is your bottleneck, how do you make it g
 
 There are five different approaches or practices you can apply to speed up computational code:
 
-* **The Practice of Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about!
-* **The Practice of Compilation:** A compiler can speed up your code, especially if you understand and compensate for its limitations!
-* **The Practice of Mechanical Sympathy:** Instead of fighting your CPU and other hardware, take advantage of how they work!
-* **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all!
-* **The Practice of Process:** Your software development process should encompass speed, and you should use appropriate processes to speed up your code!
+* **The Practice of Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about.
+* **The Practice of Compilation:** A compiler can speed up your code, especially if you understand and compensate for its limitations.
+* **The Practice of Mechanical Sympathy:** Instead of fighting your CPU and other hardware, take advantage of how they work.
+* **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all.
+* **The Practice of Process:** Your software development process should encompass speed, and you should use appropriate processes to speed up your code.
 
-Each one of these practices can make your code faster _in a different way_ because it relies on different approaches to speed.
+Each one of these practices can make your code faster _in a distinct way_, because each relies on different approaches and mechanisms.
 So while you can just start with one, you can often apply multiple practices to go even faster.
-If you're lucky, you can use all five!!!!!
+When the five practices combine, the full power of the computer can be yours!
 
 > What about GPUs?
 > This book doesn't cover GPUs at all, but the same practices, with somewhat different techniques, apply there as well.
