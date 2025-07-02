@@ -18,7 +18,8 @@ book:
         - part_1_efficiency/050_reuse_results.qmd
         - part_1_efficiency/085_worse_results.qmd
         #- part_1_efficiency/090_fine_tune_to_data.qmd - if you know text is english, you can... something
-        # batch operations in compiled language instead of Python, e.g. word.lower() instead of character.lower()?
+        # batch operations in compiled language instead of Python, e.g. word.lower() instead of character.lower()? Or hwayne's Counter(text.lower()) example.
+        # TODO copy concrete skills from Writing Efficient Programs
     - part: "The Pratice of Compilation"
       chapters:
         # - part_2_compilation/000.qmd "Compiled code is different, reuse somehow"
