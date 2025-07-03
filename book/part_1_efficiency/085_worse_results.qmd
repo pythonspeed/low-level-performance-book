@@ -60,7 +60,7 @@ print(
 )
 ```
 
-Based on these results, we can build a custom median algorithm using two reasonable assumptions:
+Based on these results, one can build a custom median algorithm using two reasonable assumptions:
 
 **Super-long headways don't have to be very accurate:** As you can see, 99.9% of headways are less than 68 minutes (4067 seconds).
 From a passenger experience perspective, the impact of headways is much more meaningful for frequent buses.
