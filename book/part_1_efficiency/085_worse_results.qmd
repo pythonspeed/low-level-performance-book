@@ -11,12 +11,128 @@ Whether that trade off is worth it depends very much on the actual costs, the ac
 
 ## Reduce the accuracy of your results
 
+One potential optimization—thought not the only one—is relaxing the precision or even accuracy of your code.
+Having worse results may be acceptable in many situations:
+
+* The results you're calculating may be more "precise" than the error caused by your input data.
+  If that extra precision is slowing your code down, you can reduce your precision and still got results that are faster and still just as accurate.
+  A generic library has no way of knowing what level of precision is acceptable, so it can't make this sort of compromise.
+* In other cases, less accurate results may also be acceptable.
+  For example, the monetary cost of inaccuracy may be much lower than the monetary cost savings from a faster run time.
+
+For my example I'm using data from the realm of public transportation: bus "headways", the time between the arrival of the previous and the next bus.
+Headways need to be as low as possible so that passengers can rely on the bus: if the bus arrives every 5 minutes that's a lot better than the bus arriving every 10 minutes.
+
+My goal is to compute the median headway experienced by passengers on my local transit authority's buses:
+
+```{python}
+import pandas as pd
+import numpy as np
+
+BUS_HEADWAYS = pd.read_parquet(
+    "../data/MBTA-bus-2022-05.parquet",
+    columns=["headway"]
+)["headway"].dropna().values
+
+print("Size:", len(BUS_HEADWAYS))
+print("dtype:", BUS_HEADWAYS.dtype)
+```
+
+The NumPy library has built-in support for calculating the median, so I could just use that:
+
+```{python}
+print("Median (in seconds):", np.median(BUS_HEADWAYS))
+```
+
+But I want faster results.
+I'm going to implement a custom algorithm that is faster, by customizing it to this particular data.
+
+### Customizing the algorithm
+
+Here's a high-level view of the data:
+
+```{python}
+print("Min value (in seconds):", int(BUS_HEADWAYS.min()))
+print("Max value (in seconds):", int(BUS_HEADWAYS.max()))
+print(
+    "99.9th percentile (in seconds):",
+    int(np.quantile(BUS_HEADWAYS, 0.999))
+)
+```
+
+Based on these results, we can build a custom median algorithm using two reasonable assumptions:
+
+**Super-long headways don't have to be very accurate:** As you can see, 99.9% of headways are less than 68 minutes (4067 seconds).
+From a passenger experience perspective, the impact of headways is much more meaningful for frequent buses.
+For example, a change from a 5-minute to a 15-minute headway can have a major negative impact on the usefulness of a bus route.
+On the other hand, a bus route that runs every 60 minutes isn't very different from a bus that runs every 70 minutes; they both suck.
+
+**Reducing accuracy to 15 seconds is reasonable:** The data we have is at a 1-second resolution, but it's unlikely that a headway of 67 seconds really make a difference versus a headway of 66 seconds.
+Plus, the arrival and departure of a bus at a stop takes a few seconds, and it's doubtful that the timing data is actually as accurate as it is precise.
+
+Using these two constraints, I implemented an approximate median algorithm, by using a histogram:
+
+```{python}
+from numba import jit
+
+# numpy.median() is implemented in a compiled language, so in order to have a
+# fair comparison I implemented my version in a compiled language. As a
+# reminder, the @jit decorator will compile the function the first time it is
+# called.
+@jit
+def histogram_median(bus_headways):
+    # Histogram by number of quarter-minutes (15 seconds), with a maximum of
+    # 500 × 15 = 7,500 seconds.
+    by_quarter_minutes = [0] * 500
+    for headway in bus_headways:
+        number_quarter_minutes = int(headway / 15)
+        # If the data is too large, just use the highest bucket. Since 7500 is
+        # higher than the 99.9th percentile value, we're underestimating less
+        # than 0.1% of the data.
+        by_quarter_minutes[min(number_quarter_minutes, 499)] += 1
+
+    # Now that we know how many samples there are for every quarter minute
+    # index, add up the cumulative counts until we hit 50% of values:
+    median_location = len(bus_headways) / 2
+    cumulative_samples = 0
+    median = 0
+    for i in range(len(by_quarter_minutes)):
+        cumulative_samples += by_quarter_minutes[i]
+        if cumulative_samples >= median_location:
+            median = i
+            break
+
+    # Convert back to seconds:
+    return median * 15.0
+```
+
+Comparing the new algorithm to the NumPy `np.median()`, you can see that the results are pretty close.
+This is partially luck, but in general it shouldn't be too far off:
+
+```{python}
+print("Median:", np.median(BUS_HEADWAYS), "secs")
+print("Approximate median:", histogram_median(BUS_HEADWAYS), "secs")
+```
+
+And comparing the speed of the two, the custom algorithm is much faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+np.median(BUS_HEADWAYS)
+histogram_median(BUS_HEADWAYS)
+```
+
+This custom algorithm wouldn't work with generic inputs: it makes many assumptions about the distribution and range of the data.
+But for this _specific_ situation and data, it's good enough—and much faster than a general purpose algorithm.
+
 ## Relax the output of your calculation
 
-Be on the lookout for cases where the format of your function's results is restricting your ability to speed it up.
-For my example I will do some simplistic natural language processing.
+In addition to changing how accurate a function's result is, you can also change what it returns.
+Sometimes the format of your function's results is restricting your ability to speed it up.
 
-Jane Austen is the author of five classic novels and of _Mansfield Park_.
+For my example I will do some simplistic natural language processing.
+Jane Austen is the author of five classic novels, and of the novel _Mansfield Park_.
 Do Austen's novels talk more about men, more about women, or more about groups of people?
 I'm going to look at her first novel, _Northanger Abbey_:
 
@@ -60,8 +176,6 @@ gendered_words_count(WORDS)
 ```
 
 Providing this information can make it more difficult to speed up the implementation.
-in the next section, for example, I will try running this algorithm on a random subset of the data, and if the function returns absolute counts the values won't be comparable.
-
 So instead of exact counts, for this particular use case it's better to return the relative percentages of the three categories:
 
 ```{python}
@@ -92,21 +206,22 @@ def print_percentage(gender_fractions):
     })
 ```
 
-This makes it easier to answer the question about relative use of gender:
+Here's what the new results look like:
 
 ```{python}
 print_percentage(gendered_words(WORDS))
 ```
 
-This change will also make it easier to optimize the function further, as you'll see in the next section.
+Now, this doesn't actually make the function any faster.
+But in the next section you'll see how this change will enable switching to a faster, albeit less accurate, implementation.
 
 ## Look at less data
 
 How could you speed up `gendered_words()`?
-There's a pretty obvious optimization you could do: getting rid of the `if/elif/elif` structure.
-But that's not our focus in this chapter.
+There are some ways you could probably get rid of wasted work (all those dictionary writes will probably be faster if they were replaced with local variables).
+But that's not the focus of this chapter.
 
-Another way to speed up is to run the same algorithm, but on a random sample of the words novel, say 5,000 words chosen without replacement.
+Another way to speed up this calculation is to run the same algorithm, but on a random sample of the words novel, say 5,000 words chosen without replacement.
 
 ```{python}
 import random
