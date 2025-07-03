@@ -154,49 +154,8 @@ We can hypothesize that it's not optimized for our particular case.
 And even if it is, having our own implementation will allow for a second round of optimization, as we'll see in the next step.
 
 We're going to implement a histogram-based median, based on the fact we're using 8-bit images that only have a limited range of potential values.
-Here's the basic algorithm for a histogram-based median:
-
-* Create a histogram with one bucket per possible pixel value; since we know our image is 8-bit, we only need 256 buckets.
-* Iterate over each pixel in the chosen neighborhood.
-* Each pixel's value will increase the count in the corresponding bucket in the histogram.
-  For example, if a pixel has brightness value of 17, the count in bucket 17 will get incremented.
-  Once we're done constructing the histogram, if for example the 17th bucket has a value of 32, that means 32 pixels had a brightness of 17.
-* Then, we add up the size of each bucket in the histogram, from smallest to largest, until we hit 50% of the pixels we inspected, i.e. half the size of the neighborhood in pixels.
-  That 50% point is the median, since 50% of the pixels are smaller in value and 50% of the pixels were larger in value.
-
-To give a sense of what the histogram looks like, we can implement that subset of the algorithm, call it on the neighborhood of a particular pixel, and plot the result:
-
-```{python}
-import matplotlib.pyplot as plt
-
-# This isn't actually used in the implementation below, we're just implementing
-# this subset of the algorithm for educational purposes:
-def plot_neighborhood_histogram(y, x):
-    # Build a 256-bucket histogram, based on the values of the pixels in the
-    # specified 11×11 neighborhood:
-    histogram = np.zeros((256,), dtype=np.uint32)
-    for i in range(y - 5, y + 6):
-        for j in range(x - 5, x + 6):
-            histogram[IMAGE[i, j]] += 1
-
-    # Draw a barchart of the histogram:
-    plt.bar(range(256), histogram)
-    plt.ylabel("Number of pixels with that brightness")
-    plt.xlabel("Buckets for each level of pixel brightness")
-    plt.show()
-
-plot_neighborhood_histogram(100, 100)
-```
-
-Looking at this histogram, I can estimate by eye that the point where half the pixels are on one side and half on the other, which is to say the median, will be somewhere between 140 and 160.
-We can calculate it to validate that:
-
-```{python}
-print("Median value of this neighborhood:", np.median(IMAGE[95:105, 95:105]))
-```
-
-In our full algorithm we're going to find the median value with code, rather than visually, but the same principle applies: we're finding the bucket where half the counted pixels are on each side.
-Let's reimplement our local thresholding algorithm using a histogram-based median:
+We already explained how this works in a previous chapter.
+Here's the code:
 
 ```{python}
 @jit

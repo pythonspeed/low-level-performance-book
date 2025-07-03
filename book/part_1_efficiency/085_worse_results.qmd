@@ -70,7 +70,48 @@ On the other hand, a bus route that runs every 60 minutes isn't very different f
 **Reducing accuracy to 15 seconds is reasonable:** The data we have is at a 1-second resolution, but it's unlikely that a headway of 67 seconds really make a difference versus a headway of 66 seconds.
 Plus, the arrival and departure of a bus at a stop takes a few seconds, and it's doubtful that the timing data is actually as accurate as it is precise.
 
-Using these two constraints, I implemented an approximate median algorithm, by using a histogram:
+I'm going to implement a histogram-based median.
+Here's the basic algorithm:
+
+* Create a histogram with one bucket for every 15 second range of headways.
+* Iterate over each headway, and increment the count in the corresponding bucket in the histogram.
+  For example, if a headway is 37 seconds, it will go in the 30-44 seconds bucket, which is the third bucket.
+  Once all headways have been counted in the histogram, if for example the 3rd bucket had a count of 20, that means 20 buses took between 30 and 44 seconds to arrive.
+* Then, we add up the size of each bucket in the histogram, from smallest to largest, until we hit 50% of the headways we inspected.
+  That 50% point is the median, since 50% of the headways are smaller in value and 50% of the headways were larger in value.
+
+To give a sense of what the histogram looks like, here's a plot:
+
+```{python}
+import matplotlib.pyplot as plt
+
+# This isn't actually used in the implementation below, I'm just implementing
+# this subset of the algorithm for educational purposes:
+def plot_histogram(bus_headways):
+    # Histogram by number of quarter-minutes (15 seconds), with a maximum of
+    # 500 × 15 = 7,500 seconds.
+    by_quarter_minutes = [0] * 500
+    for headway in bus_headways:
+        number_quarter_minutes = int(headway / 15)
+        # If the data is too large, just use the highest bucket. Since 7500 is
+        # higher than the 99.9th percentile value, we're underestimating less
+        # than 0.1% of the data.
+        by_quarter_minutes[min(number_quarter_minutes, 499)] += 1
+
+    # Draw a barchart of the histogram:
+    plt.bar(range(500), by_quarter_minutes)
+    plt.ylabel("Number of headways for the bucket")
+    plt.xlabel("Length of headway, in quarter minutes (15 secs)")
+    plt.show()
+
+plot_histogram(BUS_HEADWAYS)
+```
+
+Looking at this histogram, I can estimate by eye that the point where half the headways are on one side and half on the other, which is to say the median, is around the 50th bucket, i.e. 50 * 15 seconds, around 750 seconds.
+
+In the full algorithm I'm going to find the median value with code, rather than visually, but the same principle applies: it finds the bucket where half the counted headways are on each side.
+
+Here's the actual implementation:
 
 ```{python}
 from numba import jit
@@ -81,14 +122,9 @@ from numba import jit
 # called.
 @jit
 def histogram_median(bus_headways):
-    # Histogram by number of quarter-minutes (15 seconds), with a maximum of
-    # 500 × 15 = 7,500 seconds.
     by_quarter_minutes = [0] * 500
     for headway in bus_headways:
         number_quarter_minutes = int(headway / 15)
-        # If the data is too large, just use the highest bucket. Since 7500 is
-        # higher than the 99.9th percentile value, we're underestimating less
-        # than 0.1% of the data.
         by_quarter_minutes[min(number_quarter_minutes, 499)] += 1
 
     # Now that we know how many samples there are for every quarter minute
@@ -126,7 +162,7 @@ histogram_median(BUS_HEADWAYS)
 This custom algorithm wouldn't work with generic inputs: it makes many assumptions about the distribution and range of the data.
 But for this _specific_ situation and data, it's good enough—and much faster than a general purpose algorithm.
 
-## Relax the output of your calculation
+## Change what your calculation returns
 
 In addition to changing how accurate a function's result is, you can also change what it returns.
 Sometimes the format of your function's results is restricting your ability to speed it up.
@@ -221,7 +257,7 @@ How could you speed up `gendered_words()`?
 There are some ways you could probably get rid of wasted work (all those dictionary writes will probably be faster if they were replaced with local variables).
 But that's not the focus of this chapter.
 
-Another way to speed up this calculation is to run the same algorithm, but on a random sample of the words novel, say 5,000 words chosen without replacement.
+Another way to speed up this calculation is to run the same algorithm, but on a random sample of the words in the novel, say 5,000 words chosen without replacement.
 
 ```{python}
 import random
@@ -253,5 +289,4 @@ gendered_words(WORDS)
 gendered_sampled_words(WORDS)
 ```
 
-In this particular case, sampling would be a reasonable choice if for some reason I needed faster results.
-For your particular problems, you will need to decide.
+Whether or not sampling works for your particular problem is something you will need to decide.
