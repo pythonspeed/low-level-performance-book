@@ -6,12 +6,12 @@ If you've determined the performance bottleneck in your program is computation, 
 2. How you _implemented_ the algorithm and any relevant data structures.
    For example, low-level languages like C usually run the same algorithm much faster than Python can.
 
-In the rest of the book we'll focus on the second part, how exactly the algorithm is implemented.
-But in this chapter we'll focus on the first decision, the choice of algorithm.
+In much of this book I'll focus on the second part, how exactly the algorithm is implemented.
+But in this chapter I'll focus on the first decision, the choice of algorithm.
 
-Because an algorithm can have multiple implementations, we can't really measure its speed.
-Instead, we can consider how it scales with its input size.
-For example, if we switch from processing a 1,000-base DNA sequence to a 1,000,000-base sequence, the algorithm will almost certainly take longer to run.
+Because an algorithm can have multiple implementations, you can't really measure its speed.
+Instead, you can consider how it scales with its input size.
+For example, if you switch from processing a 1,000-base DNA sequence to a 1,000,000-base sequence, the algorithm will almost certainly take longer to run.
 
 The key question is, how much longer?
 Depending on the algorithm's scalability, it might take 3× as long to run, or 1,000× as long, or even 1,000,000× as long.

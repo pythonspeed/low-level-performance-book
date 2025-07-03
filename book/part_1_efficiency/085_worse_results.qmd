@@ -42,12 +42,12 @@ def gendered_words_count(words):
     # https://pemberley.com/janeinfo/austheir.html for examples of Austen's use
     # of the singular "they".
     other_words = {"they", "them"}
-    counts = {"male": 0, "female": 0, "other": 0}
+    counts = {"women": 0, "men": 0, "other": 0}
     for word in words:
-        if word in men_words:
-            counts["male"] += 1
-        elif word in women_words:
-            counts["female"] += 1
+        if word in women_words:
+            counts["women"] += 1
+        elif word in men_words:
+            counts["men"] += 1
         elif word in other_words:
             counts["other"] += 1
     return counts
@@ -69,28 +69,33 @@ def gendered_words(words):
     men_words = {"him", "he"}
     women_words = {"her", "she"}
     other_words = {"they", "them"}
-    counts = {"male": 0, "female": 0, "other": 0}
+    counts = {"women": 0, "men": 0, "other": 0}
     for word in words:
-        if word in men_words:
-            counts["male"] += 1
-        elif word in women_words:
-            counts["female"] += 1
+        if word in women_words:
+            counts["women"] += 1
+        elif word in men_words:
+            counts["men"] += 1
         elif word in other_words:
             counts["other"] += 1
 
-    # 😎 Instead of absolute counts, return relative fractions (shown as % just
-    # for demonstration purposes, in real code you'd return the fraction):
+    # 😎 Instead of absolute counts, return relative fractions:
     total_count = sum(counts.values())
     return {
-        gender: f"{round(100 * count / total_count)}%"
+        gender: count / total_count
         for (gender, count) in counts.items()
     }
+
+def print_percentage(gender_fractions):
+    print({
+        gender: f"{round(100 * fraction)}%"
+        for (gender, fraction) in gender_fractions.items()
+    })
 ```
 
 This makes it easier to answer the question about relative use of gender:
 
 ```{python}
-gendered_words(WORDS)
+print_percentage(gendered_words(WORDS))
 ```
 
 This change will also make it easier to optimize the function further, as you'll see in the next section.
@@ -114,12 +119,15 @@ def gendered_sampled_words(words):
 How does the sampled implementation compare to running the algorithm on the complete list of words?
 
 ```{python}
-print("ACCURATE", gendered_words(WORDS))
+print("ACCURATE", end=" ")
+print_percentage(gendered_words(WORDS))
+print()
 for i in range(1, 6):
-    print("SAMPLE", i, gendered_sampled_words(WORDS))
+    print("SAMPLE", i, end=" ")
+    print_percentage(gendered_sampled_words(WORDS))
 ```
 
-As you can see, the numbers the sampled version returns are not identical, but the big picture message doesn't change: based on this rather simplistic algorithm, Austen spends more time talking about individual women than about men or groups of people.
+As you can see, the numbers the sampled version returns are not identical, but the big picture message doesn't change: based on this rather simplistic algorithm, Austen spends more time talking about individual women than about men, groups of people, or people of unknown gender.
 
 And the sampled version is much faster:
 
