@@ -4,8 +4,10 @@ In the previous chapter you saw the importance of using more _scalable_ algorith
 For example, given a sufficiently large $n$, a $O(n^2)$ algorithm will be much slower than a $O(n)$ algorithm.
 
 Scalability on its own is not enough for software to be fast.
-If two functions have $O(n)$ scalability, that means that for both doubling $n$ will double their run time.
+If two functions have $O(n)$ scalability, that means that for both functions doubling $n$ will double their run time.
 But it doesn't tell you anything about their speed relative to each other; one may be much faster than the other.
+
+In short, looking at scalability is insufficient: you also need to see how fast the implementation is.
 
 ```{python}
 #| echo: false
@@ -17,8 +19,10 @@ But it doesn't tell you anything about their speed relative to each other; one m
 Consider two commonly used data structures:
 
 * Reading and writing values from/to a hash map like Python's `dict` type is an amortized $O(1)$: on average it's constant time.
-  In practice most of the time you can ignore the "amortized" part, as we will in this chapter.
+  In practice most of the time you can ignore the "amortized" part, as I will in this chapter[^bulk].
 * Reading and writing values from/to indexes in a vector like Python's `list` type is $O(1)$: it's constant time.
+
+[^bulk]: In general, this book focuses on the bulk data processing, so the latency of a specific operation doesn't matter.
 
 If you have a small range of integer values, you can use one or the other.
 For example, imagine you have a list of all the grades for a standardized test administered to high school students across a city or country.
@@ -48,8 +52,7 @@ def histogram_list(grades):
     }
 ```
 
-Both implementations are $O(n)$, where $n$ is the number of grades.
-And both give the same result:
+Both implementation give the same result:
 
 ```{python}
 import random
@@ -59,12 +62,15 @@ GRADES = [random.randint(1, 100) for _ in range(10_000)]
 assert histogram_dict(GRADES) == histogram_list(GRADES)
 ```
 
-Which one will be faster?
-Without having measured the results, my initial thought was that `histogram_list()` would win.
-When inserting into a `dict` the key will be hashed into an integer, and then the hash integer is mapped to an internal vector within the `dict`.
-In contrast when indexing into a `list`, there is no need to do any sort of hashing or mapping, so there's less work involved.
+And both implementations are $O(n)$, where $n$ is the number of grades.
+Which one will be _faster_?
 
-And when I actually measured the performance, you can see that is indeed the case:
+`histogram_list()` will be faster.
+To read or write from a key, the `dict` hashed the key into an integer, map that to internal vector within the `dict`, and do an equality comparison.
+If you're unlucky, it will have to do some or all of these operations multiple times.
+In contrast, when indexing into a `list`, there is no need to do any of those preliminary steps, so there's less work involved.
+
+Measuring the actual performance, you can see that `histogram_list()` is faster:
 
 ```{python}
 #| echo: false
