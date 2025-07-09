@@ -1,0 +1,117 @@
+# How to use this book
+
+This book is organized into 5 parts, each covering a different practice.
+And each part has many chapters.
+Where should you start?
+What should you read first?
+
+## Step 0. First, do no harm
+
+Imagine you are working on an application that makes someone sick every time you run it.
+This is bad.
+
+Then, you make it 10× faster: now you can make ten people sick in the same amount of time.
+Your software has gone from bad to worse.
+
+**If your software harms people or harms the environment, making it faster will make it cause even more harm.**
+So if your work causes harm, you shouldn't be reading this book, you should be looking for a new project or a new job.
+
+For the rest of this book I will assume you are working on software that, at minimum, does no harm.
+It's up to you to make sure you follow this rule.
+
+## Step 1. Make sure you actually have a computational bottleneck
+
+Most of this book focuses on speeding up computation.
+But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in making your calculations faster.
+So before you start optimizing your code, it's important to understand that other bottlenecks exist, and to do the work to identify which specific bottleneck is impacting your code.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+One way to do this is with one of the  many performance profilers for Python—[line_profiler](https://pypi.org/project/line-profiler/), [Scalene](https://github.com/plasma-umass/scalene), [Py-Spy](https://github.com/benfred/py-spy), [PyInstrument](https://pyinstrument.readthedocs.io/en/latest/), [VizTracer](https://viztracer.readthedocs.io/en/stable/), and others.
+By measuring yoru code, you can identify which parts are taking the most time.
+
+The following example code matches the basic high-level structure of many data processing programs.
+If you are not familiar with Pandas, that's fine, it's the high-level part that matters:
+
+```{python}
+import pandas as pd
+
+def read_data(file_or_url):
+    return pd.read_csv(file_or_url)
+
+def process_data(input_df):
+    # Return the distribution of the first letter of the first name; if you're
+    # unfamiliar with Pandas that's fine, you don't need to understand this
+    # particular code.
+    first_letter = input_df["FIRST NAME"].dropna().apply(
+        lambda s: s[0]
+    )
+    return first_letter.value_counts()
+
+def generate_report(output):
+    output.to_csv("result.csv")
+
+def full_pipeline(file_or_url):
+    input_df = read_data(file_or_url)
+    result = process_data(input_df)
+    generate_report(result)
+```
+
+Next I'll profile this code to see where it's spending the most time.
+I'll use `line_profiler` to profile the code, as it's probably the simplest profiler you can use.
+You can use `line_profiler` on the command-line, or inside a Jupyter notebook or equivalent:
+
+```{python}
+# Load the line_profiler extension into a Jupyter notebook; this book is
+# written using Jupyter notebooks, one per chapter.
+%load_ext line_profiler
+
+# Birth name and date for people born in Missouri between 1980 and 1989:
+url = "https://archive.org/download/Missouri_Birth_Index_-_1980-1989/Reclaim_The_Records_-_Missouri_Birth_Index_-_1980-1989.csv"
+
+# Run the expression full_pipeline(url), and show profiled time for the
+# full_pipeline and process_data functions:
+%lprun -f full_pipeline -f process_data full_pipeline(url)
+```
+
+As you can see from looking at the output for `full_pipeline()`, reading in the CSV is the main bottleneck, using up 99% of the time.
+This presumably is some combination of bandwidth (downloading the file) and computation (parsing the CSV).
+Some profilers—like the [Sciagraph profiler](https://sciagraph.com) I created—can tell you whether code was spending it's time waiting or doing computation.
+Lacking that information, you'll need to figure this out from some combination of context, detailed profiling, and experiments.
+
+The profiling also suggests which parts of `process_data()` are slower.
+However, since loading the data uses the vast majority of the time there is no point in trying to optimize `process_data()`, at least initially.
+If I wanted faster results, I'd need to figure out a faster way to load the data.
+
+Keep in mind that profilers can distort the results somewhat, so low overhead is an important feature in a profiler.
+If you want this style of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
+
+If you discover your bottleneck is not computation, this book won't help you, and you will need to find other resources.
+
+## Step 2. Pick the relevant practice
+
+Assuming your bottleneck is computation, you need to pick which practices to apply.
+Process is always important; this chapter is part of the Practice of Process.
+Beyond that:
+
+### You're using an existing compiled extension library like NumPy or Pandas
+
+### 
+## Step 3. Start by reading just the essential chapters
+
+To help you get started faster, I have marked chapter titles, specifically:
+
+* Essential chapters with a **➤**.
+* Useful but less essential chapters with a **⋯**.
+
+I would suggest skipping the latter on first reading, and then going back and reading them later.
+
+## Step 4. Apply what you've learned
+
+
+## Step 5. Revisit if you need more speed
+
+If your code is still too slow, go back to step 1 and repeat the process from the start.

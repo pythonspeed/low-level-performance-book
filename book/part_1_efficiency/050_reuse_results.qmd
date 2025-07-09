@@ -57,7 +57,7 @@ And for day 8 we're adding entries marked with `/`:
 .///////.......
 ```
 
-So on both day we're adding entries that appear in both, marked with `X`:
+So on both days we're adding entries that appear in both, marked with `X`:
 
 ```
 \XXXXX/........

@@ -9,7 +9,7 @@ book:
   chapters:
     - index.qmd
     - 010_introduction.qmd
-    - 020_profiler.qmd
+    - 020_use.qmd
     - part: "The Practice of Efficiency"
       chapters:
         # TODO make clear that this is about language-agnostic optimizations
@@ -23,7 +23,7 @@ book:
     - part: "The Pratice of Compilation"
       chapters:
         # - part_2_compilation/000.qmd "Compiled code is different, reuse somehow"
-        # batch operations in compiled language instead of Python, e.g. word.lower() instead of character.lower()? Or hwayne's Counter(text.lower()) example. Probably sum()? Emphasize this is Compilation not Efficiency
+        # batch operations in compiled language instead of Python, e.g. word.lower() instead of character.lower()? Or hwayne's Counter(text.lower()) example. Probably sum()? Emphasize this is Compilation not Efficiency. also, avoid calling back into Python from compiled extensions, e.g. Pandas.
         - part_2_compilation/001_vectorized_operations.qmd
         - part_2_compilation/005_speed_through_specialization.qmd
         - part_2_compilation/008_static_typing_and_monomorphization.qmd
