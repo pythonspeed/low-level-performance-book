@@ -4,34 +4,36 @@ essential: true
 ---
 
 If you're going to make your software faster, you need some way to measure it.
-But there are different measures you can use, depending on your use case, which can lead you in different directions.
+There are different metrics you can use, depending on your use case, which can lead you in different directions.
 
 ## An example: Geolocating
 
-Here's an example: imagine you're working on a geocoding service, that turns addresses into latitude/longitude pairs.
+Imagine you're working on a geocoding service, that turns addresses into latitude/longitude pairs.
 There are two ways to use the service:
 
 * An individual API where a customer sends a single address, and gets back its location.
 * A bulk API where a customer uploads a CSV with many addresses, and back a CSV with all the locations.
 
-To measure these two APIs, you could send a few million requests to the API server as fast as possible, and also create an equivalent CSV file for the batch API.
+To measure these two APIs, you could send a few million requests to the API server as fast as possible, and also create an equivalent CSV file for the batch API and measure its processing time.
 But what metric should you use to summarize the result?
 
 ## Metrics you can use
 
 ### Elapsed time
 
-You could measure elapsed time, just keeping in mind the number of requests you sent.
-And that's probably fine for individual optimization session, but it does suffer as a long-term metric.
-If you change the input size in your benchmarks, the results won't be comparable.
+You could measure elapsed time.
+And that's probably fine for individual optimization session, where you repeatedly measure the speed of the same input.
+
+This metric is less useful over the long term.
+If you change the input size used in your benchmarks, the results won't be comparable.
 
 ### Throughput
 
-A better metric is throughput: addresses/second.
+A better metric is throughput, in this case addresses/second.
 This works for both a individual API handling individual requests (where it's the server throughput under load), and for a batch API handling many addresses at once.
-And if you switch to uploading a CSV with 1 million addresses instead of 2 million addresses, the throughput should still be comparable between the two CSVs.
+If you switch to uploading a CSV with 1 million addresses instead of 2 million addresses, the throughput should still be comparable between the two CSVs.
 
-But for the individual API, this metric is still insufficient.
+For the individual API, this metric is useful but insufficient.
 Imagine that for 1% of addresses, processing is 100× slower than the other 99% of requests.
 For the batch API, this doesn't matter.
 But for the individual API, this means 1% of user requests will have super-slow response times, and users might not like that!
