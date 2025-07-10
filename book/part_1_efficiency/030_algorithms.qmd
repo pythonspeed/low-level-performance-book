@@ -209,7 +209,7 @@ def linear_filter_python(arr1, arr2):
 
 assert np.array_equal(
     quadratic_filter_python(SMALL_DATA, SMALL_DATA2),
-    linear_filter_python(SMALL_DATA, SMALL_DATA2),
+    linear_filter_python(SMALL_DATA, SMALL_DATA2)
 )
 ```
 

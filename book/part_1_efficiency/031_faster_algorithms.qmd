@@ -1,4 +1,7 @@
-# ➤ Use faster algorithms and data structures
+---
+title: "Use faster algorithms and data structures"
+essential: true
+---
 
 In the previous chapter you saw the importance of using more _scalable_ algorithms and data structures.
 For example, given a sufficiently large $n$, a $O(n^2)$ algorithm will be much slower than a $O(n)$ algorithm.
@@ -57,6 +60,7 @@ Both implementation give the same result:
 ```{python}
 import random
 
+# Generate 10,000 random grades:
 GRADES = [random.randint(1, 100) for _ in range(10_000)]
 
 assert histogram_dict(GRADES) == histogram_list(GRADES)
@@ -74,7 +78,7 @@ Measuring the actual performance, you can see that `histogram_list()` is faster:
 
 ```{python}
 #| echo: false
-%%compare_timing
+%%compare_throughput --unit=grades:len(GRADES)
 histogram_dict(GRADES)
 histogram_list(GRADES)
 ```

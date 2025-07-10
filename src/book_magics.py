@@ -5,7 +5,6 @@ from io import BytesIO
 import locale
 from time import perf_counter_ns, sleep
 import gc
-import tracemalloc
 
 from IPython.core.magic import (
     register_cell_magic,
@@ -35,7 +34,7 @@ else:
             if key == "peak_memory":
                 result.append(measure_peak_memory(line, local_ns))
             else:
-                result.append(f"N/A, Linux only")
+                result.append("N/A, Linux only")
         return result
 
     @register_cell_magic
@@ -111,6 +110,29 @@ MEASUREMENT_TITLES = {
 }
 
 
+def _benchmark_lines(cell: str, local_ns: dict[str: object], measurements: list[str]):
+    result = []
+    for line in cell.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        result.append([f"`{line}`", ns_per_iteration(line, local_ns)])
+        if measurements:
+            result[-1].extend(get_measurements(measurements, line, local_ns))
+    return result
+
+
+def _generate_benchmark_table(result, speed_title, measurements):
+    headers = ["Code", speed_title]
+    for m in measurements:
+        headers.append(MEASUREMENT_TITLES[m])
+
+    table = MarkdownTableWriter(headers=headers, value_matrix=result)
+    for i in range(1, len(headers)):
+        table.set_style(i, Style(thousand_separator=",", align="right"))
+    display_table(table.dumps())
+
+
 @magic_arguments()
 @argument("--measure", default="")
 @needs_local_scope
@@ -122,14 +144,7 @@ def compare_timing(line, cell, local_ns):
     arguments = parse_argstring(compare_timing, line)
     measurements = [m for m in arguments.measure.split(",") if m]
 
-    result = []
-    for line in cell.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        result.append([f"`{line}`", ns_per_iteration(line, local_ns)])
-        if measurements:
-            result[-1].extend(get_measurements(measurements, line, local_ns))
+    result = _benchmark_lines(cell, local_ns, measurements)
 
     # minimum_value = min(r[1] for r in result)
     # for (units, factor) in [
@@ -139,20 +154,37 @@ def compare_timing(line, cell, local_ns):
     # ]:
     #     if minimum_value > factor * 10:
     #         break
-    units, factor = ("microseconds", 1_000)
+    units, factor = ("µ-seconds", 1_000)
     for row in result:
         row[1] /= factor
         # Round 100 nanosecond level:
         row[1] = round(row[1], 1)
 
-    headers = ["Code", f"Elapsed {units}"]
-    for m in measurements:
-        headers.append(MEASUREMENT_TITLES[m])
+    _generate_benchmark_table(result, f"Elapsed {units}  (➘ is better)", measurements)
+    numba_config.DISABLE_JIT = False
 
-    table = MarkdownTableWriter(headers=headers, value_matrix=result)
-    for i in range(1, len(headers)):
-        table.set_style(i, Style(thousand_separator=",", align="right"))
-    display_table(table.dumps())
+
+@magic_arguments()
+@argument("--unit")  # name=<python expr>
+@argument("--measure", default="")
+@needs_local_scope
+@register_cell_magic
+def compare_throughput(line, cell, local_ns):
+    # TODO test that DISABLE_JIT actually does something...
+    numba_config.DISABLE_JIT = True
+
+    arguments = parse_argstring(compare_throughput, line)
+    measurements = [m for m in arguments.measure.split(",") if m]
+
+    result = _benchmark_lines(cell, local_ns, measurements)
+    unit_name, unit_expr = arguments.unit.split(":", 1)
+    num_items = eval(unit_expr, local_ns)
+
+    # Convert speed in nanoseconds into throughput:
+    for row in result:
+        row[1] = round((1_000_000_000.0) * num_items / row[1])
+
+    _generate_benchmark_table(result, f"{unit_name.title()}/sec (➚ is better)", measurements)
     numba_config.DISABLE_JIT = False
 
 
