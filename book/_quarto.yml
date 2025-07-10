@@ -10,6 +10,7 @@ book:
     - index.qmd
     - 010_introduction.qmd
     - 020_use.qmd
+    - 030_measure.qmd
     - part: "The Practice of Efficiency"
       chapters:
         # TODO make clear that this is about language-agnostic optimizations

@@ -1,0 +1,55 @@
+---
+title: "Choose an appropriate speed metric for your software"
+essential: true
+---
+
+If you're going to make your software faster, you need some way to measure it.
+But there are different measures you can use, depending on your use case, which can lead you in different directions.
+
+## An example: Geolocating
+
+Here's an example: imagine you're working on a geocoding service, that turns addresses into latitude/longitude pairs.
+There are two ways to use the service:
+
+* An individual API where a customer sends a single address, and gets back its location.
+* A bulk API where a customer uploads a CSV with many addresses, and back a CSV with all the locations.
+
+To measure these two APIs, you could send a few million requests to the API server as fast as possible, and also create an equivalent CSV file for the batch API.
+But what metric should you use to summarize the result?
+
+## Metrics you can use
+
+### Elapsed time
+
+You could measure elapsed time, just keeping in mind the number of requests you sent.
+And that's probably fine for individual optimization session, but it does suffer as a long-term metric.
+If you change the input size in your benchmarks, the results won't be comparable.
+
+### Throughput
+
+A better metric is throughput: addresses/second.
+This works for both a individual API handling individual requests (where it's the server throughput under load), and for a batch API handling many addresses at once.
+And if you switch to uploading a CSV with 1 million addresses instead of 2 million addresses, the throughput should still be comparable between the two CSVs.
+
+But for the individual API, this metric is still insufficient.
+Imagine that for 1% of addresses, processing is 100× slower than the other 99% of requests.
+For the batch API, this doesn't matter.
+But for the individual API, this means 1% of user requests will have super-slow response times, and users might not like that!
+Unfortunately if you just measure addresses/second, these outliers will be invisible.
+
+### Latency
+
+For an API where you are doing many separate requests each of which needs to be fast, you often want additional metrics, the latency at different percentiles.
+Latency is the time to respond to a request.
+For example, you can calculate 50th, 95th, and 99th percentile latencies.
+
+For a batch API, the latency of an individual address is irrelevant.
+A user won't care how long it took to process any individual address, they just care about how long it takes until the full batch of results comes back.
+
+## This book's default metric: Throughput
+
+Because this book focuses on bulk data processing, throughput is usually the most useful metric.
+However, sometimes I'll use elapsed time because throughput won't make sense for the particular example.
+
+To reduce noise, the benchmarking system runs code snippets multiple times, and reports the average result and the range. TODO
+The inputs should be large enough that the branch predictor and lower level caches should not be significantly affected by previous runs.
