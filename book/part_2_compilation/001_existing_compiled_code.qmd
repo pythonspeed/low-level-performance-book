@@ -1,0 +1,99 @@
+# Use existing compiled code
+
+Often you don't need to write your own compiled code, you can use existing code that's built-in to Python, or available as third-party libraries.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## Use batch operations in Python
+
+Python has a number of batch operations that are implemented in a compiled language, and therefore run faster.
+For example, instead of writing your own function to sum numbers, you can use the built-in `sum()` function:
+
+```{python}
+def my_sum(values):
+    total = 0
+    for value in values:
+        total += value
+    return total
+
+import random
+DATA = [random.randint(0, 100) for _ in range(10_000)]
+assert my_sum(DATA) == sum(DATA)
+```
+
+Because the `sum()` function is implemented in a compiled language, it reduces some of the overhead of using Python:
+
+```{python}
+#| echo: false
+%%compare_throughput --unit=adds:len(DATA)
+my_sum(DATA)
+sum(DATA)
+```
+
+## Use existing libraries written in compiled languages
+
+Often you can speed up computational code with existing libraries.
+Libraries like NumPy, SciPy, Pandas and others can process data very quickly by doing batch processing in functions implemented in a low-level language like C or Fortran.
+
+Especially for large-scale data operations, these libraries often operate on bulk data: a whole array, or a whole column.
+In the Python world this is known as "vectorization" (I'll discuss a different meaning for "vectorization" in a later chapter, when I cover SIMD.)
+The benefit of these libraries that you don't have to implement everything yourself, and can rely on a library of already-fast operations.
+
+Pandas, for example, is a library for operating on columnar data.
+We can create a column of 64-bit integers from our list of Python integers:
+
+```{python}
+import pandas as pd
+import numpy as np
+
+DATA_SERIES = pd.Series(DATA, dtype=np.int64)
+
+assert DATA_SERIES.sum() == sum(DATA)
+```
+
+And now we can use Pandas' `sum()` API:
+
+```{python}
+#| echo: false
+%%compare_throughput --unit=additions:len(DATA)
+sum(DATA)
+DATA_SERIES.sum()
+```
+
+While `sum()` still has to deal with Python objects, like an iterator and Python integers, Pandas' `Series.sum()` is operating on an array of 64-bit integers.
+It doesn't need to call Python APIs for every value.
+That allows it to run much faster.
+
+## Avoid calling back into Python from compiled code
+
+While compiled libraries can be much faster, it's important not to call back into Python.
+If you do, you end up losing that benefit because you are once again using Python's slow interpreter.
+For example, if I wanted to add 7 to every value in a Pandas series, here are two ways to do it:
+
+* `my_series + 7` will use a batch ("vectorized") operation written in C that adds 7 to every value and returns a new `Series`.
+  This involves almost no interaction with Python APIs.
+* `my_series.map(lambda a: a + 7)` will call a Python function for every value.
+
+```{python}
+def add_7(a):
+    return a + 7
+
+MINI_SERIES = pd.Series([1, 2, 3])
+
+print(list(MINI_SERIES + 7))
+print(list(MINI_SERIES.map(add_7)))
+```
+
+The `map()`-based solution results in this case in 10,000 Python function calls and Python additions, which is quite slow:
+
+```{python}
+#| echo: false
+%%compare_throughput --unit=additions:len(DATA)
+DATA_SERIES + 7
+DATA_SERIES.apply(add_7)
+```
+
+Repeatedly calling back into Python loses much of the benefit of using a compiled language.

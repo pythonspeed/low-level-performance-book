@@ -96,17 +96,17 @@ def display_table(markdown_table: str):
 
 MEASUREMENT_TITLES = {
     "instructions": "CPU instructions",
-    "memory_cache_miss": "L3 memory cache miss %",
-    "memory_cache_refs": "L3 memory cache references",
-    "l1_memory_cache_miss": "L1 memory cache miss %",
-    "l1_memory_cache_refs": "L1 memory cache references",
-    "ll_memory_cache_miss": "LL memory cache miss %",
-    "ll_memory_cache_refs": "LL memory cache references",
-    "branch_mispredictions": "Branch misprediction %",
+    "memory_cache_miss": "L3 memory cache miss % ➘",
+    "memory_cache_refs": "L3 memory cache references ➘",
+    "l1_memory_cache_miss": "L1 memory cache miss % ➘",
+    "l1_memory_cache_refs": "L1 memory cache references ➘",
+    "ll_memory_cache_miss": "LL memory cache miss % ➘",
+    "ll_memory_cache_refs": "LL memory cache references ➘",
+    "branch_mispredictions": "Branch misprediction % ➘",
     "branches": "Branch instructions",
     "simd_256bit": "256-bit SIMD instructions",
     "simd_128bit": "128-bit SIMD instructions",
-    "peak_memory": "Peak allocated memory (bytes)",
+    "peak_memory": "Peak allocated memory (bytes) ➘",
 }
 
 
@@ -122,7 +122,7 @@ def _benchmark_lines(cell: str, local_ns: dict[str: object], measurements: list[
     return result
 
 
-def _generate_benchmark_table(result, speed_column_title, caption, measurements):
+def _generate_benchmark_table(result, speed_column_title, measurements):
     headers = ["Code", speed_column_title]
     for m in measurements:
         headers.append(MEASUREMENT_TITLES[m])
@@ -130,7 +130,7 @@ def _generate_benchmark_table(result, speed_column_title, caption, measurements)
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
     for i in range(1, len(headers)):
         table.set_style(i, Style(thousand_separator=",", align="right"))
-    display_table(table.dumps() + f"\n: {caption}")
+    display_table(table.dumps() + "\n: ➘ Lower numbers are better, ➚ Higher numbers are better")
 
 
 @magic_arguments()
@@ -160,7 +160,7 @@ def compare_timing(line, cell, local_ns):
         # Round 100 nanosecond level:
         row[1] = round(row[1], 1)
 
-    _generate_benchmark_table(result, f"Elapsed {units} ➘", "➘ Lower numbers are faster", measurements)
+    _generate_benchmark_table(result, f"Elapsed {units} ➘", measurements)
     numba_config.DISABLE_JIT = False
 
 
@@ -184,7 +184,7 @@ def compare_throughput(line, cell, local_ns):
     for row in result:
         row[1] = round((1_000_000_000.0) * num_items / row[1])
 
-    _generate_benchmark_table(result, f"{unit_name.title()}/second ➚", "➚ Higher numbers are faster", measurements)
+    _generate_benchmark_table(result, f"{unit_name.title()}/second ➚", measurements)
     numba_config.DISABLE_JIT = False
 
 

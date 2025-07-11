@@ -1,12 +1,7 @@
 # ➤ Know when to switch from existing libraries to custom compiled code
 
-In many cases, you can speed up computational code with existing libraries.
-Libraries like NumPy, SciPy, Pandas and others can process data very quickly by doing batch processing in functions implemented in a low-level language like C or Fortran.
-These are operations that operate on whole arrays at once.
-In the Python world this is known as "vectorization" (we'll discuss a different meaning for "vectorization" in a later chapter, when we cover SIMD).
-The benefit of these libraries that you don't have to implement everything yourself, and can rely on a library of already-fast operations.
-
-In this chapter we'll see how they're used, and then see the benefits of switching to compiled code you write yourself.
+As I covered in the previous chapter, there are often existing libraries written in compiled languages that you can use to solve your problem quickly.
+But those libraries have limits, and you may need to switch to compiled code you write yourself.
 
 ```{python}
 #| echo: false
@@ -15,8 +10,8 @@ In this chapter we'll see how they're used, and then see the benefits of switchi
 
 ## Introducing NumPy
 
-Before we can move on to the example, it's worth briefly discussing the technology stack we'll be using for examples in this book, starting with the NumPy library.
-For more details on the technologies used, [see the appendix](../appendices/01_prerequisites.qmd).
+Before we can move on to the example, it's worth briefly discussing the NumPy library, which I'll be using for many of the examples in this book.
+For more details on this and other technologies used, [see the appendix](../appendices/01_prerequisites.qmd).
 
 ::: {.callout-important}
 ### This is not a book about NumPy
@@ -205,18 +200,6 @@ assert np.array_equal(
     numpy_rescale_optimized(IMAGE, 15, 190)
 )
 ```
-
-::: {.callout-important}
-### How to read code examples in this book
-
-In many of the book's chapters I will end up rewriting a function step-by-step in order to speed it up.
-That means some of the code will change, and some will stay the same.
-To make it easier to notice what has changed:
-
-* Scan the code for comments, which I have added anywhere I change the code or where you need to notice an important point.
-* Code without comments should be the same as previous versions of a function.
-* Comments starting with a 😎 indicate a performance speedup.
-:::
 
 Here's the performance and memory usage of the new API:
 

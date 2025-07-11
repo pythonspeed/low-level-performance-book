@@ -53,12 +53,9 @@ Consider the following algorithm for counting odd and even numbers:
 
 ```{python}
 def even_and_odd(values: list[int]) -> tuple[int, int]:
-    # 😢 No need to calculate both:
     even = 0
     odd = 0
     for value in values:
-        # 😢 In Python, the extra equality comparison slow things down. In a
-        # compiled language, the compiler would optimize it away.
         if value % 2 == 0:
             even += 1
         else:
@@ -66,19 +63,31 @@ def even_and_odd(values: list[int]) -> tuple[int, int]:
     return (even, odd)
 ```
 
+::: {.callout-important}
+### How to read code examples in this book
+
+In many of the book's chapters I will end up rewriting a function step-by-step in order to speed it up.
+That means some of the code will change, and some will stay the same.
+To make it easier to notice what has changed:
+
+* Scan the code for comments, which I have added anywhere I change the code or where you need to notice an important point.
+* Code without comments should be the same as previous versions of a function.
+* Comments starting with a 😎 indicate a performance speedup.
+:::
+
 With a little bit of work, you can implement a more efficient variant:
 
 ```{python}
-# 😎 Less redundant work:
 def even_and_odd_optimized(values: list[int]) -> tuple[int, int]:
-    odd = 0
+    # 😎 Only count even numbers, instead of counting both odds and evens:
+    even = 0
     for value in values:
-        if value % 2:
-            odd += 1
-    even = len(values) - odd
+        if value % 2 == 0:
+            even += 1
+    odd = len(values) - even
     return (even, odd)
 
-VALUES = list(range(1000))
+VALUES = list(range(999))
 assert even_and_odd(VALUES) == even_and_odd_optimized(VALUES)
 ```
 
@@ -219,8 +228,8 @@ def add_thrice(number):
 ```{python}
 #| echo: false
 # Run once so Numba compiles the code; see discussion in later chapters.
-add_once(3.3)
-add_thrice(3.3)
+_ = add_once(3.3)
+_ = add_thrice(3.3)
 ```
 
 Despite `add_thrice()` using twice times as many CPU instructions, it finishes in the same amount of time, likely thanks to instruction-level parallelism:
@@ -263,10 +272,10 @@ from concurrent.futures import ThreadPoolExecutor
 THREAD_POOL = ThreadPoolExecutor()
 
 def parallel_sum_of_squares(arr, n_chunks):
-    # Split the array to the given number of chunks; this API won't copy
-    # the data, so it's very fast:
+    # Split the array into a number of chunks; this API won't copy the data, so
+    # it's very fast:
     chunks = np.array_split(arr, n_chunks)
-    # Sum-of-squares each chunk in the thread pool:
+    # 😎 Sum-of-squares each chunk in the thread pool:
     partial_sums = THREAD_POOL.map(sum_of_squares, chunks)
     # Add the partial sums to get the final result:
     return np.sum(list(partial_sums))
