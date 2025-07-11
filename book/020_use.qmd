@@ -1,4 +1,4 @@
-# How to use this book
+# How to use this book {.unnumbered}
 
 This book is organized into 5 parts, each covering a different practice.
 And each part has many chapters.
