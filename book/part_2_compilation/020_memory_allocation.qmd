@@ -1,4 +1,4 @@
-# Understand the performance impact of using heap memory
+# Minimize heap allocations
 
 When you store data in memory, compiled languages have two different places they can store it:
 
@@ -38,7 +38,91 @@ def a_function(n):
 
 Where data is stored, read, and written can impact performance for a number of reasons.
 
-## Prefer stack reads and writes to heap reads and writes
+## Avoid unnecessary heap memory allocations in the inner loop
+
+Creating and cleaning up data on the stack is, to a first approximation, free: the performance cost is minimal to non-existent.
+On the other hand, creating data on the heap typically involves calling some external function to allocate that memory; perhaps a Python API, perhaps an operating system API.
+And then, when you're done with memory on the heap, you need to call another API to deallocate (sometimes called "free") that memory.
+
+Array creation can happen explicitly, but also implicitly.
+For example, any arrays you create in Numba uses the heap, and some NumPy APIs emulated by Numba will create new arrays:
+
+```{python}
+# Explicitly create a new array:
+my_arr = np.array([1, 2, 3])
+# Implicitly create a new array:
+new_arr = my_arr + 1
+print(new_arr)
+```
+
+Allocating memory on the heap is a pretty optimized operation, and so it's not necessarily going to be a performance problem.
+However, if it's done in an inner loop, the cost of the heap allocation and memory copying used to create a new array can add up.
+For example, consider the following function:
+
+```{python}
+import numpy as np
+from numba import jit
+
+@jit
+def allocate_in_loop(arr):
+    total = 0
+    for i in range(len(arr) // 4):
+        # This is only a view, so it doesn't allocate:
+        slice_of_4 = arr[i * 4:(i + 1) * 4]
+        # 🙁 Calculating the power of 2 on the array view creates a temporary
+        # array! Oops.
+        total += (slice_of_4 ** 2).mean()
+    return total
+```
+
+Instead of allocating and then freeing new arrays in every iteration, you can reuse a single array, replacing its data on every iteration:
+
+```{python}
+@jit
+def no_allocate_in_loop(arr):
+    total = 0
+    # 😎 Create a single, temporary array we can reuse across loop iterations.
+    temp_arr = np.zeros((4, ), dtype=arr.dtype)
+    for i in range(len(arr) // 4):
+        slice_of_4 = arr[i * 4:(i + 1) * 4]
+        # 😎 Replace the contents of temp with the values in slice_of_4. This
+        # is an in-place operation, so no allocation happens.
+        temp_arr[:] = slice_of_4
+        # 😎 Again, this operations is in-place, so it doesn't allocate:
+        temp_arr *= slice_of_4
+
+        total += temp_arr.mean()
+    return total
+
+# np.linspace() is similar to range(); it gives us a range of data in a
+# NumPy array.
+DATA = np.linspace(1_000_000, 0, 1_000_000, dtype=np.uint64)
+assert allocate_in_loop(DATA) == no_allocate_in_loop(DATA)
+```
+
+The second implementation is faster, because it does no allocations in the hot inner loop, both reducing work and perhaps enabling additional compiler optimizations:
+
+```{python}
+#| echo: false
+%%compare_timing
+allocate_in_loop(DATA)
+no_allocate_in_loop(DATA)
+```
+
+## Understand what gets stored on the stack and heap
+
+Different compiled programming languages will have different rules about what ends up on the heap and what ends up on the stack.
+You can assume simple numeric values like a variable storing a 64-bit integer will always be on the stack.
+Beyond that, you'll need to learn your chosen programming language's rules.
+For example:
+
+* In Rust, you can read [an introduction to stack and heap](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html) in the Rust book, and then see the relevant documentation of various data types.
+* In C, heap memory is allocated using APIs like `malloc()`, and freed using APIs like `free()`.
+  C++ adds the `new` operator which also allocates on the heap.
+
+You can read the documentation for your particular language for more details.
+
+## ⋯ Prefer stack reads and writes to heap reads and writes ⋯
 
 Data that is stored on the stack is tied to the running function call.
 That means it's easier for the compiler to reason about, and easier for the compiler to aggressively transform it without impacting the outcome of the function.
@@ -100,93 +184,3 @@ stack_writes(make_array(), 10_000_000, 100_000_000)
 One could argue that the different performance between the two variations is a limitation of Numba.
 And it's quite possible that some future version of Numba might do better and optimize the `heap_writes()` function too.
 But no compiler is perfect, and the simpler the code, the easier it is for the compiler to optimize it.
-
-## Avoid unnecessary heap memory allocations in the inner loop
-
-Creating and cleaning up data on the stack is, to a first approximation, free: the performance cost is minimal to non-existent.
-On the other hand, creating data on the heap typically involves calling some external function to allocate that memory; perhaps a Python API, perhaps an operating system API.
-And then, when you're done with memory on the heap, you need to call another API to deallocate (sometimes called "free") that memory.
-
-We've already talked about how creating arrays in Numba uses the heap.
-Array creation can also happen implicitly, given the way NumPy works and that Numba emulates NumPy.
-
-```{python}
-# Explicitly create a new array:
-my_arr = np.array([1, 2, 3])
-# Implicitly create a new array:
-new_arr = my_arr + 1
-print(new_arr)
-```
-
-Allocating memory on the heap is a pretty optimized operation, and so it's not necessarily going to be a performance problem.
-However, if it's done in an inner loop, the cost of the heap allocation and memory copying used to create a new array can add up.
-For example, consider the following function:
-
-```{python}
-import numpy as np
-from numba import jit
-
-@jit
-def allocate_in_loop(arr):
-    total = 0
-    for i in range(len(arr) // 4):
-        # This is only a view, so it doesn't allocate:
-        slice_of_4 = arr[i * 4:(i + 1) * 4]
-        # 🙁 Calculating the power of 2 on the array view creates a temporary
-        # array! Oops.
-        total += (slice_of_4 ** 2).mean()
-    return total
-```
-
-Instead of allocating and then freeing new arrays in every iteration, we can reuse a single array, just replacing its data on every iteration:
-
-```{python}
-@jit
-def no_allocate_in_loop(arr):
-    total = 0
-    # 😎 Create a single, temporary array we can reuse across loop iterations.
-    temp_arr = np.zeros((4, ), dtype=arr.dtype)
-    for i in range(len(arr) // 4):
-        slice_of_4 = arr[i * 4:(i + 1) * 4]
-        # 😎 Replace the contents of temp with the values in slice_of_4. This
-        # is an in-place operation, so no allocation happens.
-        temp_arr[:] = slice_of_4
-        # 😎 Again, this operations is in-place, so it doesn't allocate:
-        temp_arr *= slice_of_4
-
-        total += temp_arr.mean()
-    return total
-
-# np.linspace() is similar to range(); it gives us a range of data in a
-# NumPy array.
-DATA = np.linspace(1_000_000, 0, 1_000_000, dtype=np.uint64)
-assert allocate_in_loop(DATA) == no_allocate_in_loop(DATA)
-```
-
-The second implementation is faster, because it does no allocations in the hot inner loop, both reducing work and perhaps enabling additional compiler optimizations:
-
-```{python}
-#| echo: false
-%%compare_timing
-allocate_in_loop(DATA)
-no_allocate_in_loop(DATA)
-```
-
-## Understand what gets stored on the stack and heap
-
-Different programming languages will have different rules about what ends up on the heap and what ends up on the stack.
-In pretty much all of them:
-
-* Simple numeric values like a variable storing a 64-bit integer will be on the stack.
-  As we saw, doing `x = 1` in Numba creates a value on the stack.
-* Any array type that can be exposed to NumPy is likely to be on the heap.
-  Thus `arr = np.zeros((1024,))` in Numba creates an array that is stored on the heap.
-
-Beyond that, you'll need to learn your chosen programming language's rules.
-For example:
-
-* In Rust, you can read [an introduction to stack and heap](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html) in the Rust book, and then see the relevant documentation of various data types.
-* In C, heap memory is allocated using APIs like `malloc()`, and freed using APIs like `free()`.
-  C++ adds the `new` operator which also allocates on the heap.
-
-You can read the documentation for your particular language for more details.
