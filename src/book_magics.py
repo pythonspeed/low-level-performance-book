@@ -122,15 +122,15 @@ def _benchmark_lines(cell: str, local_ns: dict[str: object], measurements: list[
     return result
 
 
-def _generate_benchmark_table(result, speed_title, measurements):
-    headers = ["Code", speed_title]
+def _generate_benchmark_table(result, speed_column_title, caption, measurements):
+    headers = ["Code", speed_column_title]
     for m in measurements:
         headers.append(MEASUREMENT_TITLES[m])
 
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
     for i in range(1, len(headers)):
         table.set_style(i, Style(thousand_separator=",", align="right"))
-    display_table(table.dumps())
+    display_table(table.dumps() + f"\n: {caption}")
 
 
 @magic_arguments()
@@ -154,13 +154,13 @@ def compare_timing(line, cell, local_ns):
     # ]:
     #     if minimum_value > factor * 10:
     #         break
-    units, factor = ("µ-seconds", 1_000)
+    units, factor = ("microseconds", 1_000)
     for row in result:
         row[1] /= factor
         # Round 100 nanosecond level:
         row[1] = round(row[1], 1)
 
-    _generate_benchmark_table(result, f"Elapsed {units}  (➘ is better)", measurements)
+    _generate_benchmark_table(result, f"Elapsed {units} ➘", "➘ Lower numbers are faster", measurements)
     numba_config.DISABLE_JIT = False
 
 
@@ -184,7 +184,7 @@ def compare_throughput(line, cell, local_ns):
     for row in result:
         row[1] = round((1_000_000_000.0) * num_items / row[1])
 
-    _generate_benchmark_table(result, f"{unit_name.title()}/sec (➚ is better)", measurements)
+    _generate_benchmark_table(result, f"{unit_name.title()}/second ➚", "➚ Higher numbers are faster", measurements)
     numba_config.DISABLE_JIT = False
 
 
