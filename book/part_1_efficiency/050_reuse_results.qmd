@@ -1,4 +1,4 @@
-# ➤ Reuse calculation results
+# Reuse calculation results
 
 If you're doing the same calculation multiple times, you can speed up your code by reusing the results and only doing the calculation once.
 

@@ -124,6 +124,8 @@ You can read the documentation for your particular language for more details.
 
 ## ⋯ Prefer stack reads and writes to heap reads and writes ⋯
 
+> {{< var optional-section >}}
+
 Data that is stored on the stack is tied to the running function call.
 That means it's easier for the compiler to reason about, and easier for the compiler to aggressively transform it without impacting the outcome of the function.
 Consider two inefficient implementations of the same algorithm, one of which does many writes to the heap, and one which does many writes to the stack:

@@ -1,4 +1,6 @@
-# Reduce the cost of bounds checking
+# ⋯ Reduce the cost of bounds checking ⋯
+
+> {{< var optional >}}
 
 In addition to explicit branches you add to your code, there are other less obvious sources of branches: those that are automatically added by the compiler.
 In this chapter we'll cover bounds checking, and in the next chapter we'll cover division by zero.

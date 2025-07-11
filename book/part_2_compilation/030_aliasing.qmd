@@ -1,4 +1,6 @@
-# Avoid aliasing to enable compiler optimizations
+# ⋯ Avoid aliasing to enable compiler optimizations ⋯
+
+> {{< var optional >}}
 
 Compilers can't read your mind; they can only read your code.
 And one key requirement for the compiler's optimization passes is that your code continues to have the _exact_ same behavior.

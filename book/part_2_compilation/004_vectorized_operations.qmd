@@ -1,4 +1,4 @@
-# ➤ Know when to switch from existing libraries to custom compiled code
+# Know when to switch from existing libraries to custom compiled code
 
 As I covered in the previous chapter, there are often existing libraries written in compiled languages that you can use to solve your problem quickly.
 But those libraries have limits, and you may need to switch to compiled code you write yourself.

@@ -1,17 +1,13 @@
-# Help the compiler optimize bounds checking out of existence
+# ⋯ Tune your code for your compiler's quirks ⋯
 
-With this technique, we abandon the notion that the compiler is an opaque box we can't peer into.
-Instead, we figure out idioms that are transparent enough to the compiler that it can prove to itself that reads and writes never go out of bounds.
-That means any bounds checks can be optimized away, or perhaps never even added to the code.
-The actual mechanism will be language-specific, and likely compiler-specific as well.
+> {{< var optional >}}
 
-## Tune your code for your compiler's quirks
-
-Before moving on to bounds checks, it's worth talking about compiler-specific code, using Numba as an example.
 Your compiler is not magic: it will have bugs, limitations, and quirks.
 If you want to maximize your code's speed, you might need to take them into account.
 This is of course _very_ specific to your language, compiler, and version of compiler, so these sort of optimizations can be very brittle.
-Like tuning your code for a specific CPU model, consider them as a last resource.
+Like tuning your code for a specific CPU model, consider this as a technique of last resort.
+
+## Example: Generating faster Numba `for` loops
 
 To demonstrate, let's look at a limitation in Numba's options for looping.
 We're going to look at the performance impacts of two different ways of looping over an array:

@@ -102,12 +102,8 @@ Beyond that:
 ### 
 ## Step 3. Start by reading just the essential chapters
 
-To help you get started faster, I have marked chapter titles, specifically:
-
-* Essential chapters with a **➤**.
-* Useful but less essential chapters with a **⋯**.
-
-I would suggest skipping the latter on first reading, and then going back and reading them later.
+To help you get started faster, useful but optional chapters look like this: *⋯ An optional chapter ⋯*.
+If you have limited time, I would suggest skipping these on your first reading, and then going back and reading them later.
 
 ## Step 4. Apply what you've learned
 

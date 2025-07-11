@@ -1,6 +1,5 @@
 ---
 title: "Use faster algorithms and data structures"
-essential: true
 ---
 
 In the previous chapter you saw the importance of using more _scalable_ algorithms and data structures.

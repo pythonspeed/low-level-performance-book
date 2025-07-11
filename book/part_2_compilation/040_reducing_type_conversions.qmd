@@ -1,4 +1,6 @@
-# Be on the lookout for expensive type conversions
+# ⋯ Be on the lookout for expensive type conversions ⋯
+
+> {{< var optional >}}
 
 ```{python}
 #| echo: false

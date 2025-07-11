@@ -1,4 +1,6 @@
-# Manually optimize floating-point calculations
+# ⋯ Manually optimize floating-point calculations ⋯
+
+> {{< var optional >}}
 
 As discussed in more detail in the next section, the compiler won't apply many "obvious" optimization to floating-point calculations because the result will be different.
 But it might only be _slightly_ different, or different in ways that you, the author of the code, know don't matter.

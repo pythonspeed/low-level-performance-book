@@ -1,4 +1,4 @@
-# ➤ Change your results to get more speed
+# Change your results to get more speed
 
 In all the optimization examples so far the optimized code gave the exact same result as the original code.
 Sometimes you can achieve additional speedups by returning different results; they might be almost indistinguishable, or they might be noticeably worse, depending how you achieved the speedup.
