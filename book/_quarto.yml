@@ -10,7 +10,6 @@ book:
     - index.qmd
     - 010_introduction.qmd
     - 020_use.qmd
-    - 030_measure.qmd
     - part: "The Practice of Efficiency"
       chapters:
         # TODO make clear that this is about language-agnostic optimizations
@@ -60,6 +59,7 @@ book:
     - part: "The Practice of Process"
       chapters:
         - part_5_process/010_choosing_a_programming_language.qmd
+        - part_5_process/020_choosing_a_metric.qmd
         - part_5_process/030_microbenchmarking.qmd
         - part_5_process/040_dont_break_your_code.qmd
         - part_5_process/050_document_your_code.qmd
