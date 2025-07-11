@@ -33,7 +33,6 @@ book:
         - part_2_compilation/030_aliasing.qmd
         - part_2_compilation/040_reducing_type_conversions.qmd
         - part_2_compilation/050_floating_point.qmd
-        - part_2_compilation/060_manual_optimization.qmd
         - part_2_compilation/070_fast_math.qmd
         - part_2_compilation/080_bounds_checking.qmd
         - part_2_compilation/090_bounds_checking_auto_removal.qmd
