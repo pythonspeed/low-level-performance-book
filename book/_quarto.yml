@@ -51,7 +51,6 @@ book:
         - part_3_mechanical_sympathy/070_linear_scan.qmd
         - part_3_mechanical_sympathy/080_learn_implementation_details.qmd
         - part_3_mechanical_sympathy/090_n_dimensional.qmd
-        - part_3_mechanical_sympathy/100_example_memory_layout.qmd
         - part_3_mechanical_sympathy/130_hardware_differences.qmd
     - part: "The Practice of Parallelism"
       chapters:
