@@ -1,5 +1,6 @@
 project:
   type: book
+#  pre-render: ../src/prerender.py
 
 book:
   title: "Practices of Performance"
@@ -33,13 +34,11 @@ book:
         - part_2_compilation/030_aliasing.qmd
         - part_2_compilation/040_reducing_type_conversions.qmd
         - part_2_compilation/050_floating_point.qmd
-        - part_2_compilation/070_fast_math.qmd
         - part_2_compilation/080_bounds_checking.qmd
         - part_2_compilation/090_bounds_checking_auto_removal.qmd
         - part_2_compilation/100_divide_by_zero.qmd
         - part_2_compilation/110_undefined_behavior.qmd
         - part_2_compilation/120_overflow.qmd
-        - part_2_compilation/130_hardware_differences.qmd
     - part: "The Pratice of Mechanical Sympathy"
       chapters:
         - part_3_mechanical_sympathy/000.qmd
@@ -53,6 +52,7 @@ book:
         - part_3_mechanical_sympathy/080_learn_implementation_details.qmd
         - part_3_mechanical_sympathy/090_n_dimensional.qmd
         - part_3_mechanical_sympathy/100_example_memory_layout.qmd
+        - part_3_mechanical_sympathy/130_hardware_differences.qmd
     - part: "The Practice of Parallelism"
       chapters:
         - part_4_parallelism/010_notes.qmd
