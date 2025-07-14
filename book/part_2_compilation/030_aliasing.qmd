@@ -2,16 +2,11 @@
 
 > {{< var optional >}}
 
-Compilers can't read your mind; they can only read your code.
-And one key requirement for the compiler's optimization passes is that your code continues to have the _exact_ same behavior.
-**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
-
-As a result, in cases where the optimization might change your code's behavior, the compiler won't apply seemingly obvious optimizations.
-In this chapter we'll cover one of the problems that can prevent the compiler from optimizing your code: the potential for aliasing.
+In this chapter I'll cover another problem that can prevent the compiler from optimizing your code: the potential for aliasing.
 
 ## Pointers and aliasing
 
-We first need to cover a couple of definitions:
+First, some definitions:
 
 * A "pointer" is a piece of data that points at a memory address.
   When you allocate memory on the heap, the result is a pointer, or some wrapper around a pointer.
@@ -21,6 +16,7 @@ We first need to cover a couple of definitions:
 When you slice a NumPy array, for example, by default the data doesn't get copied.
 Instead, you get a view object that has a pointer that points at the same memory as the original array.
 Now you have two pointers to the same memory address: one in the original array, and one in the view.
+Those two pointers are _aliased_.
 
 ```{python}
 #| echo: false
@@ -51,7 +47,7 @@ print("Updated view ", arr_view)
 ## The performance impact of the potential for aliasing
 
 Here's the problem with aliasing: the _possibility_ that aliasing might occur can limit what the compiler is able to do to speed up your code.
-That's because seemingly identically-behaved functions will actually behave differently when inputs are aliased.
+Functions that appear to behave identically might actually behave differently when you pass in aliased inputs.
 
 Consider the following function:
 
@@ -103,7 +99,8 @@ minmax_optimized(empty(), empty(), DATA1, DATA2)
 
 Why doesn't `minmax()` get automatically optimized to match `minmax_optimized()`?
 Because the two functions are not truly identical: they behave differently for inputs that involve aliasing.
-For example, if we pass the same array to both arguments of the functions, we get different results:
+That means the compiler _cannot_ compile one variant into the other.
+For example, if I pass the same array to both arguments of the functions, I get different results:
 
 ```{python}
 arr = np.ones((3, ), dtype=np.float64)
@@ -118,7 +115,7 @@ print(
 )
 ```
 
-Here's what happens when we run the code in `minmax(arr, arr2, arr, arr2)`:
+Here's what happens when running the code in `minmax(arr, arr2, arr, arr2)`:
 
 ```python
 # This code...
@@ -136,7 +133,7 @@ Because `minmax()` and `minmax_optimized()` behave differently, the compiler can
 And that means slower code.
 
 The obstacle to optimization in this particular case is the potential for aliasing.
-How can we avoid that?
+How can you avoid that?
 
 ## Solution #1: Manual optimization
 
