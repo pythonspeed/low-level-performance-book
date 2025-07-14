@@ -7,6 +7,8 @@ Often you don't need to write your own compiled code, you can use existing code 
 %load_ext book_magics
 ```
 
+TODO Emphasize this is Compilation not Efficiency?
+
 ## Use batch operations in Python
 
 Python has a number of batch operations that are implemented in a compiled language, and therefore run faster.

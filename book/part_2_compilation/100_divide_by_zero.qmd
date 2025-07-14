@@ -1,4 +1,6 @@
-# Use faster division-by-zero handling when possible
+# ⋯ Use faster division-by-zero handling when possible ⋯
+
+> {{< var optional >}}
 
 Another source of hidden branches is division by zero.
 Dividing by zero is mathematically meaningless, so programming languages need to decide how to handle it for different data types.

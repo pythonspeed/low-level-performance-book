@@ -3,3 +3,4 @@ _book/
 .jupyter_cache
 **/*.ipynb
 _site/
+**/*.quarto_ipynb

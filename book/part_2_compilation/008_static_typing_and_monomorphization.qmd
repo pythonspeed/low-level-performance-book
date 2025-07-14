@@ -1,4 +1,4 @@
-# ⋯ Understand why compiled code is faster ⋯
+# ⋯ Static typing enables the compiler to speed up your code ⋯
 
 > {{< var optional >}}
 

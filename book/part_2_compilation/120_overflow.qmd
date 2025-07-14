@@ -1,4 +1,6 @@
-# Avoid integer overflows without slowing down your code
+# ⋯ Avoid integer overflows without slowing down your code ⋯
+
+> {{< var optional >}}
 
 Normal Python integers can be of any size, at least until you start running out of either RAM or patience.
 In compiled languages, the integer types have fixed sizes in memory, and therefore a limited range of values.
