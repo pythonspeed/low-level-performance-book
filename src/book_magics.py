@@ -130,7 +130,18 @@ def _generate_benchmark_table(result, speed_column_title, measurements):
     table = MarkdownTableWriter(headers=headers, value_matrix=result)
     for i in range(1, len(headers)):
         table.set_style(i, Style(thousand_separator=",", align="right"))
-    display_table(table.dumps() + "\n: ➘ Lower numbers are better, ➚ Higher numbers are better")
+    lower = any("➘" in header for header in headers)
+    higher = any("➚" in header for header in headers)
+    if lower or higher:
+        messages = []
+        if lower:
+            messages.append("➘ Lower numbers are better")
+        if higher:
+            messages.append("➚ Higher numbers are better")
+        footer = "\n: " + ", ".join(messages)
+    else:
+        footer = ""
+    display_table(table.dumps() + footer)
 
 
 @magic_arguments()
