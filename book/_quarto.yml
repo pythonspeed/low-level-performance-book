@@ -11,7 +11,7 @@ book:
     - index.qmd
     - 010_introduction.qmd
     - 020_use.qmd
-    - part: "The Practice of Efficiency"
+    - part: "The Practice of Algorithmic Efficiency"
       chapters:
         # TODO make clear that this is about language-agnostic optimizations
         - part_1_efficiency/030_algorithms.qmd

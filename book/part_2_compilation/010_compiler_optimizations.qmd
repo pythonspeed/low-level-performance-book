@@ -209,7 +209,7 @@ You can then search for `OPTIMIZED DUMP your_functions_name` in the output (repl
 ## Don't assume the compiler is magic
 
 The compiler will not, and sometimes cannot, always optimize your code.
-In theory a compiler could apply some optimizations that you might, if you were applying the Practice of Efficiency.
+In theory a compiler could apply some optimizations that you might, if you were applying the Practice of Algorithmic Efficiency.
 In practice, many such optimizations are not going to happen automatically.
 
 For one thing, compilers can't read your mind; they can only read your code.

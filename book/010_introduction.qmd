@@ -16,7 +16,7 @@ Assuming that computational code really is your bottleneck, how do you make it g
 
 There are five different approaches or practices you can apply to speed up computational code:
 
-* **The Practice of Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about.
+* **The Practice of Algorithmic Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about.
 * **The Practice of Compilation:** A compiler can speed up your code, especially if you understand and compensate for its limitations.
 * **The Practice of Mechanical Sympathy:** Instead of fighting your CPU and other hardware, take advantage of how they work.
 * **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all.
@@ -47,7 +47,7 @@ del os
 %load_ext book_magics
 ```
 
-## The Practice of Efficiency: An example
+## The Practice of Algorithmic Efficiency: An example
 
 Consider the following algorithm for counting odd and even numbers:
 
@@ -206,6 +206,7 @@ This is parallelism at the level of CPU instructions, on a single CPU core—and
 Consider these two functions:
 
 ```{python}
+# Adds one number in each iteration:
 @jit
 def add_once(number):
     result = 0.0
@@ -213,6 +214,7 @@ def add_once(number):
         result += number
     return result
 
+# Adds three numbers in each iteration:
 @jit
 def add_thrice(number):
     result1 = 0.0
@@ -232,7 +234,7 @@ _ = add_once(3.3)
 _ = add_thrice(3.3)
 ```
 
-Despite `add_thrice()` using twice times as many CPU instructions, it finishes in the same amount of time, likely thanks to instruction-level parallelism:
+Even though `add_thrice()` uses twice times as many CPU instructions, it finishes in the same amount of time, likely thanks to instruction-level parallelism:
 
 ```{python}
 #| echo: false
@@ -245,26 +247,27 @@ You can sometimes significantly speed up your code by ensuring the CPU can take 
 
 ## The Practice of Parallelism: An example
 
-Modern CPUs have multiple _cores_, allowing multiple threads or processes to run at the same time.
+Modern CPUs have multiple cores, allowing multiple threads or processes to run at the same time.
 For example, here is an array of random numbers created by the NumPy library:
 
 ```{python}
 import numpy as np
 
-# Create an array with 10 million random integers between 0 and 1000:
-RANDOM = np.random.randint(0, 1_000, 10_000_000, dtype=np.uint64)
-assert len(RANDOM) == 10_000_000
+# Create an array with 1 million random integers between 0 and 1000:
+RANDOM = np.random.randint(0, 1_000, 1_000_000, dtype=np.uint64)
+assert len(RANDOM) == 1_000_000
 ```
 
 I can calculate the sum of squares using NumPy:
 
 ```{python}
 def sum_of_squares(arr):
+    # Square on each individual value separately, then sums them all together:
     return (arr ** 2).sum()
 ```
 
-But that only uses one CPU core, and my computer has many more.
-So I can also create a pool of threads, sum different chunks in parallel, and then sum the resulting partial sums:
+This function only uses one CPU core, but my computer has many more.
+To take advantage of those cores, I can also create a pool of threads, sum different chunks in parallel, and then sum the resulting partial sums:
 
 ```{python}
 from concurrent.futures import ThreadPoolExecutor
@@ -283,7 +286,7 @@ def parallel_sum_of_squares(arr, n_chunks):
 assert sum_of_squares(RANDOM) == parallel_sum_of_squares(RANDOM, 4)
 ```
 
-This new version will use up to 4 CPU cores in parallel, leading to somewhat faster results:
+This new version will use up to 4 CPU cores in parallel, leading to faster results:
 
 ```{python}
 #| echo: false
@@ -294,7 +297,7 @@ parallel_sum_of_squares(RANDOM, 4)
 
 ## The Practice of Process: An example
 
-The process you use to optimize your code is just as important as the optimizations you apply.
+The development processes or activities you use to optimize your code is just as important as the optimizations you apply.
 For example, if the way you measure performance is incorrect, you will get misleading results or misunderstand how your code will work in the real world.
 
 Compilers, as discussed earlier, can optimize your code.
