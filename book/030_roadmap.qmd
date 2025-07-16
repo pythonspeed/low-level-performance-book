@@ -1,0 +1,30 @@
+# Roadmap: Use this book to speed up your code {.unnumbered}
+
+How you read this book will depend on your immediate goal, and on how much time you have.
+
+## Goal: Improve your skills
+
+Reading a book can be helpful to build a mental map of performance bottlenecks, and how you can solve them.
+This map can both help you write faster code from the start, and help you know what to do when you do hit a specific performance problem.
+Depending how much time and interest you have, you can:
+
+1. Read the whole book, start to finish.
+2. Or, read from start to finish, but skip optional chapters.
+   Optional chapters are marked with "⋯" symbols, so they will have titles that look like this: *⋯ An optional chapter ⋯*.
+
+## Goal: Fix a specific performance bottleneck
+
+### Step 1. Figure out how you will measure speed
+
+### Step 2. Apply the Practice of Algorithmic Efficiency
+
+Algorithmic efficiency won't necessarily give you the biggest boost to speed.
+Beyond the speed benefits, it can also help you _understand_ your code better, which is very helpful in applying other practices.
+
+### Step 3. Apply additional practices as needed
+
+#### Pure Python code
+
+#### Using an existing compiled extension library like NumPy or Pandas
+
+#### You're using 

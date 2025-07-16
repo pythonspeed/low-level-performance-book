@@ -9,13 +9,15 @@ book:
   date: "7/1/2025"
   chapters:
     - index.qmd
-    - 010_introduction.qmd
-    - 020_use.qmd
+    - 020_useful.qmd
+    - 025_overview.qmd
+    - 030_roadmap.qmd
     - part: "The Practice of Algorithmic Efficiency"
       chapters:
         # TODO make clear that this is about language-agnostic optimizations
         - part_1_efficiency/030_algorithms.qmd
         - part_1_efficiency/031_faster_algorithms.qmd
+        - part_1_efficiency/035_documentation.qmd
         - part_1_efficiency/040_generic_optimization.qmd
         - part_1_efficiency/050_reuse_results.qmd
         - part_1_efficiency/085_worse_results.qmd

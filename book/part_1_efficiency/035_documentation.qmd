@@ -1,0 +1,93 @@
+# Read the documentation
+
+The programming languages and libraries you use will usually have official documentation.
+Sometimes this documentation can give you important hints to writing faster code.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## Follow explicit suggestions
+
+The Rust standard library does a good job of providing performance hints.
+For example, imagine you want to remove an item from a specific index in a `Vec`, the equivalent of doing `del a_python_list[i]` in Python.
+If you [read the documentation for `Vec.remove()`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.remove) it will:
+
+1. Warn you that the worst case run time is $O(n)$.
+2. Suggest `Vec.swap_remove()` as a faster alternative you can use if preserving order doesn't matter to you.
+3. Suggest using a `VecDeque` if your goal is to remove items from the front of the data structure.
+
+## Look for implicit hints
+
+Unfortunately, Python's documentation for `list` is nowhere near as helpful.
+But even insufficient documentation can sometimes give you hints of things you can try.
+
+For example, imagine you want to shift an image by some number of pixels, a common task when you're aligning two images.
+As of July 2025, the [documentation for `scipy.ndimage.shift()`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.shift.html#scipy.ndimage.shift) doesn't tell you how to speed up this function.
+But it does tell you, at least, about all the different arguments, some of which may (or may not) impact performance.
+
+One argument that I happen to know does impact performance is `order`, which according to the documentation is "the order of the spline interpolation, default is 3. The order has to be in the range 0-5."
+I will try it out with an image:
+
+```{python}
+from skimage.data import cell
+
+IMAGE = cell()
+```
+
+```{python}
+#| echo: false
+%display_image IMAGE
+```
+
+We can shift the image:
+
+```{python}
+from scipy.ndimage import shift
+
+SHIFTED_IMAGE_O3 = shift(IMAGE, (23.4, -17.63), order=3)
+```
+
+```{python}
+#| echo: false
+%display_image SHIFTED_IMAGE_O3
+```
+
+That's with the default order of 3.
+We can also use an order of 2:
+
+```{python}
+from scipy.ndimage import shift
+
+SHIFTED_IMAGE_O2 = shift(IMAGE, (23.4, -17.63), order=2)
+```
+
+```{python}
+#| echo: false
+%display_image SHIFTED_IMAGE_O2
+```
+
+Notice that the two shifted images look pretty similar, at least to a human eye.
+They are not identical, however; here's the mean difference per pixel:
+
+```{python}
+import numpy as np
+np.abs(SHIFTED_IMAGE_O3 - SHIFTED_IMAGE_O2).mean()
+```
+
+How does the speed compare for different orders?
+
+```{python}
+#| echo: false
+%%compare_throughput --unit=pixels:IMAGE.size
+shift(IMAGE, (23.4, -17.63), order=3)
+shift(IMAGE, (23.4, -17.63), order=2)
+shift(IMAGE, (23.4, -17.63), order=1)
+```
+
+The difference in results can be meaningful: when I was doing image processing for gene sequencing I would get slightly worse data quality with lower orders, because the shift isn't as smooth.
+But lower orders also gave me significantly faster results.
+
+There's no point in doing this level of experimentation and digging for every line of code you write.
+But if your profiling suggests a particular line or API call are having a significant performance impact, you'll want to dig deeper and see if there are parameters you can tweak, or alternative APIs you can use.

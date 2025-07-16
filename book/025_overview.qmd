@@ -1,24 +1,13 @@
-# Introduction: The practices of Python performance {.unnumbered}
-
-## Is this book for you?
-
-Here's a checklist:
-
-* **Who you are:** You're a scientist, data scientist, or software developer who does numeric computing or other computationally intensive data processing.
-* **What you need to know:** You know how to write Python; unlike most other books covering these topics, you do not need to know the C programming language.
-* **What you want to do:** There are many reasons your code can be slow, from disk bandwidth to network latency.
-    This book focuses on one particular reason: computation, whether you're doing complex math or just adding up a _very_ long list of numbers.
-    That is, you need to speed up the math, business logic, or other calculations that don't involve disk or network operations.
-
-Assuming that computational code really is your bottleneck, how do you make it go fast?
-
-## Five practices for faster computation
+# Overview: The practices of Python performance {.unnumbered}
 
 There are five different approaches or practices you can apply to speed up computational code:
 
 * **The Practice of Algorithmic Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about.
-* **The Practice of Compilation:** A compiler can speed up your code, especially if you understand and compensate for its limitations.
+  Optimizations in this practice are language agnostic.
+  They will be helpful, albeit to varying degrees, both in Python and in compiled languages.
+* **The Practice of Compilation:** Using a compiled language can speed up your code, especially if you understand the limits of the compiler and compensate accordingly.
 * **The Practice of Mechanical Sympathy:** Instead of fighting your CPU and other hardware, take advantage of how they work.
+  This is far more relevant once you've switched to a compiled language.
 * **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all.
 * **The Practice of Process:** Your software development process should encompass speed, and you should use appropriate processes to speed up your code.
 
@@ -343,9 +332,3 @@ divide_by_x(DATA, 2)
 
 If you will be using the generic `divide_by_x()` function in the real world, benchmarking the version with hard-coded 2 might give you misleading results.
 You will notice in all the examples in this book that inputs are passed in from Python, ensuring the compiler doesn't know them at compile time, and therefore that benchmarks match real-world behavior at least in this aspect.
-
-## How to read this book
-
-The rest of this book is divided into five main sections, each covering one of the five practices.
-In general, I'd recommend reading the chapters in order, but you also skip ahead if you want to learn more about a particular practice.
-

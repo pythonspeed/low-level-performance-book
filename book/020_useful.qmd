@@ -1,25 +1,27 @@
-# How to use this book {.unnumbered}
+# Will this book be useful right now? {.unnumbered}
 
-This book is organized into 5 parts, each covering a different practice.
-And each part has many chapters.
-Where should you start?
-What should you read first?
+Like all books, this one cannot solve all problems for all people, so it's worth ensuring in advance that you will benefit from reading it.
 
-## Step 0. First, do no harm
+## First, do no harm
 
 Imagine you are working on an application that makes someone sick every time you run it.
 This is bad.
 
-Then, you make it 10× faster: now you can make ten people sick in the same amount of time.
+Then, you make it 10× faster: now you can make ten people sick in the same amount of time!
 Your software has gone from bad to worse.
 
-**If your software harms people or harms the environment, making it faster will make it cause even more harm.**
-So if your work causes harm, you shouldn't be reading this book, you should be looking for a new project or a new job.
+**If your software harms people or harms the environment, making it faster will amplify the harm.**
+So if your work does cause harm, you shouldn't be reading this book, you should be looking for a new project or a new job.
 
-For the rest of this book I will assume you are working on software that, at minimum, does no harm.
-It's up to you to make sure you follow this rule.
+## Make sure you are the target audience
 
-## Step 1. Make sure you actually have a computational bottleneck
+* **Who you are:** You're a scientist, data scientist, or software developer who uses Python to do numeric computing or other computationally intensive data processing.
+* **What you need:** You need faster software, but in particular faster _throughput of bulk data_ rather than time to process individual items.
+  If you're processing a giant CSV and only care about the time it takes to finish processing all the data, this book will be more helpful.
+  If you're working on a REST API that needs to be consistently responsive to millions of tiny parallel requests, this book will be less helpful.
+* **What you need to know:** Experience with Python is sufficient; knowing low-level compiled languages is not necessary.
+
+## Validate you actually have a computational bottleneck
 
 Most of this book focuses on speeding up computation.
 But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in making your calculations faster.
@@ -90,24 +92,3 @@ Keep in mind that profilers can distort the results somewhat, so low overhead is
 If you want this style of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
 
 If you discover your bottleneck is not computation, this book won't help you, and you will need to find other resources.
-
-## Step 2. Pick the relevant practice
-
-Assuming your bottleneck is computation, you need to pick which practices to apply.
-Process is always important; this chapter is part of the Practice of Process.
-Beyond that:
-
-### You're using an existing compiled extension library like NumPy or Pandas
-
-### 
-## Step 3. Start by reading just the essential chapters
-
-To help you get started faster, useful but optional chapters look like this: *⋯ An optional chapter ⋯*.
-If you have limited time, I would suggest skipping these on your first reading, and then going back and reading them later.
-
-## Step 4. Apply what you've learned
-
-
-## Step 5. Revisit if you need more speed
-
-If your code is still too slow, go back to step 1 and repeat the process from the start.
