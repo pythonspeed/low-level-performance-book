@@ -25,12 +25,65 @@ Here's an example of the Jupyter `%timeit` magic:
 %timeit sum(range(1_000))
 ```
 
-Later in the book we'll have a whole chapter on the pitfalls of microbenchmarking.
-For now I'll just cover one particular problem you might hit you if you try running the code examples in this book yourself.
+## Benchmark the right thing
 
-## Make sure you don't include Numba's compilation time in microbenchmarks
+Microbenchmarking is an important tool in measuring the impact of performance optimizations.
+But while it's seemingly quite simple, it also has the potential for false or misleading results.
+So next we'll go over some of the potential problems and how to avoid them.
 
-Most of the examples in this book use Numba.
+To begin with, no matter how accurate the result, if you measure the wrong thing you won't get useful information.
+
+### Focus on optimizing the main bottleneck
+
+If the code you are looking at only uses 2% of your program's run time, making it twice as fast will make your program 1% faster.
+That's not very helpful.
+So before you spend any time trying to optimize some code, you should make sure it's actually something worth optimizing.
+
+**What to do:** Before optimizing your code, use a profiler to figure out where the actual bottlenecks are.
+
+### Use realistic data
+
+Both the size of your data and its contents should be as realistic as possible:
+
+* If your data is usually a 100MB CSV, benchmarking with a 10-row CSV file will likely give you misleading results.
+* If you benchmark with a blank white image, you may get different speed results with a real image from a microscope.
+
+**What to do:** If possible, use real data.
+If you can't use real data, at least generate some data that is similar to real data.
+
+### Make sure to include Python overhead
+
+The presumption in this book is that you will eventually call any compiled low-level code from Python.
+Assuming that is true, some of the time spent by your code will involve:
+
+* The overhead of calling a compiled extension from Python.
+* The overhead of converting arguments and result between the Python representation and the low-level language representation.
+  For example, a Python list of strings (`list[str]`) might be converted into a Rust `Vec<String>`, and vice-versa.
+  Passing a NumPy array will typically be so fast so as to not matter; converting between Python and Rust strings is much more expensive.
+
+If your underlying function is fast enough, the overhead of calling from Python might drown out the run time of the function.
+Optimizing your function is pointless at that point.
+
+**What to do:** If the arguments and result of your function are expensive to convert to/from Python, this is something you need to include in your measurements, because it will impact real-world performance.
+As is the case for examples in this book, consider measuring the performance of your code by calling it from Python, rather than purely measuring the speed of the low-level code without the Python interface.
+
+### Avoid benchmarking code compiled for development
+
+Many compilers support different compilation modes or profiles:
+
+* **Development or debug mode:** Lots more assertions and checks are added, no optimizations are applied by the compiler.
+  The code is much slower, but easier to debug.
+* **Release mode:** The code is compiled with optimizations, so it runs as fast as possible.
+  This is what you'll use in production or release to users.
+
+If you benchmark code compiled in debug mode, you might vastly understate your code's performance.
+This is a common problem with Rust; `maturin develop` or `pip install -e .` will result in your code being compiled in Rust's much slower debug profile.
+
+**What to do:** Make sure to compile your code in release mode, for example `pip install .` for Rust projects.
+
+### Be aware of platform-specific issues
+
+These are by their nature quite varied, but Numba is a good example since it used in this book.
 The first time you run a function decorated with `@numba.jit` with a new set of types, the code will be compiled.
 This is slow, and it's a one time cost, so you usually want to ignore this compilation time when benchmarking: after all, it doesn't reflect the speed of running the function the second, third, or millionth time.
 
@@ -81,59 +134,6 @@ print("\nThe second and third run, compilation doesn't happen:")
 You'll notice every code example in the book does this.
 This ensures the compilation time doesn't distort the benchmarks.
 
-## Benchmark the right thing
-
-Microbenchmarking is an important tool in measuring the impact of performance optimizations.
-But while it's seemingly quite simple, it also has the potential for false or misleading results.
-So next we'll go over some of the potential problems and how to avoid them.
-
-To begin with, no matter how accurate the result, if you measure the wrong thing you won't get useful information.
-
-### Focus on optimizing the main bottleneck
-
-If the code you are looking at only uses 2% of your program's run time, making it twice as fast will make your program 1% faster.
-That's not very helpful.
-So before you spend any time trying to optimize some code, you should make sure it's actually something worth optimizing.
-
-**What to do:** Before optimizing your code, use a profiler to figure out where the actual bottlenecks are.
-
-### Make sure to include Python overhead
-
-The presumption in this book is that your low-level code will eventually be called by Python.
-Assuming that is true, some of the time spent by your code will involve:
-
-* The overhead of calling a compiled extension from Python.
-* The overhead of converting arguments and result between the Python representation and the low-level language representation.
-  For example, a Python list of strings (`list[str]`) might be converted into a Rust `Vec<String>`, and vice-versa.
-  Passing a NumPy array will typically be so fast so as to not matter; converting between Python and Rust strings is much more expensive.
-
-If your underlying function is fast enough, the overhead of calling from Python might drown out the run time of the function.
-Optimizing your function is pointless at that point.
-
-**What to do:** If the arguments and result of your function are expensive to convert to/from Python, this is something you need to include in your measurements, because it will impact real-world performance.
-As is the case for examples in this book, consider measuring the performance of your code by calling it from Python, rather than purely measuring the speed of the low-level code without the Python interface.
-
-### Avoid benchmarking code compiled for development
-
-Many compilers support different compilation modes or profiles:
-
-* **Development or debug mode:** Lots more assertions and checks are added, no optimizations are applied by the compiler.
-  The code is much slower, but easier to debug.
-* **Release mode:** The code is compiled with optimizations, so it runs as fast as possible.
-  This is what you'll use in production or release to users.
-
-If you benchmark code compiled in debug mode, you might vastly understate your code's performance.
-This is a common problem with Rust; `maturin develop` or `pip install -e .` will result in your code being compiled in Rust's much slower debug profile.
-
-**What to do:** Make sure to compile your code in release mode, for example `pip install .` for Rust projects.
-
-### Be aware of platform-specific issues
-
-This is by its nature difficult to generalize, but to give one example, in this book we've mostly been using Numba for our examples.
-By default Numba compiles its code the first time a function is called with specific types.
-This can significantly distort benchmarking!
-You'll notice that all the examples in this book call a function at least once _before_ doing any performance measurements.
-
 ## Minimize noise from the CPU
 
 Running code on the CPU can take different amounts of time depending on a variety of factors.
@@ -176,7 +176,7 @@ This is particularly true of x86-64 CPUs, which are much less power efficient th
 **What to do:** If you're using a laptop, always run benchmarks when plugged in.
 Or, use a desktop computer instead.
 
-### Make sure your CPU is throttled due to overheating
+### Make sure your CPU isn't throttled due to overheating
 
 A CPU may also be throttled to keep your computer from overheating.
 This tends to be more of a problem with laptops, since the form factor makes them harder to keep cool.
