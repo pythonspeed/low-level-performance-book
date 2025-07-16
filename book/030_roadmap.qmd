@@ -4,22 +4,39 @@ How you read this book will depend on your immediate goal, and on how much time 
 
 ## Goal: Improve your skills
 
-Reading a book can be helpful to build a mental map of performance bottlenecks, and how you can solve them.
-This map can both help you write faster code from the start, and help you know what to do when you do hit a specific performance problem.
-Depending how much time and interest you have, you can:
+Reading this book from start to finish can help you build a mental map of performance bottlenecks, and how you can solve them.
+You can then try to write faster code from the start, and you will have an easier time when you do hit a specific performance problem.
 
-1. Read the whole book, start to finish.
-2. Or, read from start to finish, but skip optional chapters.
-   Optional chapters are marked with "⋯" symbols, so they will have titles that look like this: *⋯ An optional chapter ⋯*.
+Depending how much time and interest you have, consider skipping optional chapters on your first read through.
+Optional chapters are marked with "⋯" symbols, so they will have titles that look like this: *⋯ An optional chapter ⋯*.
 
 ## Goal: Fix a specific performance bottleneck
 
 ### Step 1. Figure out how you will measure speed
 
+To know whether your code is faster or not, you need some way to measure its speed.
+That means:
+
+1. Choosing an appropriate metric (see chapter XXX).
+2. Implementing a benchmarking setup that minimizes noise and distortion (see chapter XXX).
+
 ### Step 2. Apply the Practice of Algorithmic Efficiency
 
-Algorithmic efficiency won't necessarily give you the biggest boost to speed.
-Beyond the speed benefits, it can also help you _understand_ your code better, which is very helpful in applying other practices.
+Algorithmic efficiency won't always give you the biggest boost to speed.
+But beyond the speed benefits you will get, it can also help you _understand_ your code better.
+This is very helpful in applying other practices.
+If you haven't done so recently, I would recommend at least skimming all the chapters in that part of the book, and then seeing how these general principles apply to your code.
+
+If your function is now fast enough, you're done!
+
+### Step 3. Think about the Practice of Parallelism
+
+Now that you understand your code a bit better, and if your code is single-threaded, it's now worth thinking about parallelism: where exactly will you apply it, if you do?
+I say "think" because you may or may not want to _implement_ parallelism at this point.
+For example, if you end up porting to a compiled language that might enable parallelism within a function, but you'd have to do that first.
+But you want to at least have a plan for parallelism in mind, as that might impact how you implement other changes.
+
+To inform your decision, I would recommend reading chapters XXX and YYY.
 
 ### Step 3. Apply additional practices as needed
 
@@ -28,3 +45,6 @@ Beyond the speed benefits, it can also help you _understand_ your code better, w
 #### Using an existing compiled extension library like NumPy or Pandas
 
 #### You're using 
+
+### Step 4. Apply parallelism, if you haven't already
+
