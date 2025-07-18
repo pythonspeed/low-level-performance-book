@@ -14,7 +14,7 @@ book:
     - 030_roadmap.qmd
     - part: "The Practice of Algorithmic Efficiency"
       chapters:
-        # TODO make clear that this is about language-agnostic optimizations
+        - part_1_efficiency/000_what_is.qmd
         - part_1_efficiency/030_algorithms.qmd
         - part_1_efficiency/031_faster_algorithms.qmd
         - part_1_efficiency/035_documentation.qmd
