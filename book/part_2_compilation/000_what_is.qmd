@@ -1,0 +1,14 @@
+---
+title: "What is the Practice of Compilation?"
+---
+
+Python code usually runs slowly, at least when using the default interpreter.
+So one way to speed up Python code is to replace it with code written in a faster compiled language: the Practice of Compilation.
+
+This can include:
+
+* Using compiled APIs that are already part of Python.
+* Using pre-existing Python libraries written in compiled languages.
+* Writing your own compiled code.
+
+If you're doing the latter, you also need to understand the limitations of the compiler's optimizations, and how to work around those limitations.
