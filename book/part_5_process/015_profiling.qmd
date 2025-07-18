@@ -1,0 +1,13 @@
+---
+title: "Use a profiler to find bottlenecks in your code"
+---
+
+## Know what the profiler is measuring
+
+## Choose the right visualization (line-based, flamegraph, timeline)
+
+## Minimize overhead
+
+## Understand the limitations for compiled code
+
+## ...
