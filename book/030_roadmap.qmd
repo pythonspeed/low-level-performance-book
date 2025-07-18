@@ -12,24 +12,26 @@ Optional chapters are marked with "⋯" symbols, so they will have titles that l
 
 ## Goal: Fix a specific performance bottleneck
 
-### Step 1. Figure out how you will measure speed
+### Step 1. Identify the general bottleneck with a profiler
 
-To know whether your code is faster or not, you need some way to measure its speed.
-That means:
+### Step 2. Figure out how you will measure speed
 
-1. Choosing an appropriate metric (see chapter XXX).
-2. Implementing a benchmarking setup that minimizes noise and distortion (see chapter XXX).
+To know whether your code is getting faster or not, you need some way to measure its speed.
+That means you need to:
 
-### Step 2. Apply the Practice of Algorithmic Efficiency
+1. Choose an appropriate metric, for example if you're processing a large CSV you might choose a throughput measure of rows/second (see chapter XXX).
+2. Implement a benchmarking setup to measure that metric, while minimizing noise and distortion (see chapter XXX).
+
+### Step 3. Apply the Practice of Algorithmic Efficiency
 
 Algorithmic efficiency won't always give you the biggest boost to speed.
 But beyond the speed benefits you will get, it can also help you _understand_ your code better.
 This is very helpful in applying other practices.
 If you haven't done so recently, I would recommend at least skimming all the chapters in that part of the book, and then seeing how these general principles apply to your code.
 
-If your function is now fast enough, you're done!
+If your function is now fast enough, skip to step 5.
 
-### Step 3. Think about the Practice of Parallelism
+### Step 4. Think about the Practice of Parallelism
 
 Now that you understand your code a bit better, and if your code is single-threaded, it's now worth thinking about parallelism: where exactly will you apply it, if you do?
 I say "think" because you may or may not want to _implement_ parallelism at this point.
@@ -38,7 +40,7 @@ But you want to at least have a plan for parallelism in mind, as that might impa
 
 To inform your decision, I would recommend reading chapters XXX and YYY.
 
-### Step 3. Apply additional practices as needed
+### Step 4. Apply additional practices as needed
 
 #### Pure Python code
 
@@ -46,5 +48,7 @@ To inform your decision, I would recommend reading chapters XXX and YYY.
 
 #### You're using 
 
-### Step 4. Apply parallelism, if you haven't already
+### Step 5. Apply parallelism, if you haven't already
+
+### Step 6. Consider why your code ended up being slow
 
