@@ -18,15 +18,19 @@ To demonstrate the intersection of undefined behavior and the compiler's optimiz
 Cython is a bit like Numba, in that it lets you compile a Python-like language to machine code, but unlike Numba it first gets converted to C or C++, and then that get compiled into machine code.
 The following is based on [an example by Paul J. Lucas](https://dev.to/pauljlucas/undefined-behavior-in-c-and-c-3a20).
 
-Consider the following code, which has a seemingly minor bug:
+Consider the following code, which has two significant bugs:
 
 ```{python}
 %%cython
+
+# This is a major bug: we never actually define the contents of this array, we
+# just say "it should exist somewhere in memory":
 cdef int external_array[4];
 
 def in_array(int value):
     cdef int i = 0
-    # This is a bug, it should really be `i < 4`:
+    # This should really be `i < 4`; as written it can lead to out-of-bounds
+    # memory reads:
     while i <= 4:
         if external_array[i] == value:
             return True

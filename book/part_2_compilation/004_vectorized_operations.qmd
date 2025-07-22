@@ -308,12 +308,8 @@ def compiled_rescale_intensity(img, min_value, max_value):
     height, width = img.shape
     for y in range(height):
         for x in range(width):
-            # old_value is between 0 and 255 (inclusive) since input is a uint8
-            # array:
             old_value = img[y, x]
-            # Clip:
             if old_value < min_value:
-                # Make sure we don't create negative values:
                 clipped = min_value
             elif old_value > max_value:
                 clipped = max_value
