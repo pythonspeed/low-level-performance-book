@@ -1,6 +1,10 @@
 # Remove data dependencies to enable instruction-level parallelism
 
-Your CPU is capable of transparently running multiple instructions at the same time on the same core, making your code run that much faster... but only if your code structure enables it.
+Your CPU is capable of transparently running multiple instructions in parallel on the same core, making your code run that much faster.
+
+Your first though when you see the word "parallelism" is using multiple threads or processes, in order to take advantage of multiple CPU cores.
+But that's not what I'm talking about in this chapter.
+Rather, I'm talking about the CPU's ability to implement parallelism within a single CPU core, in a single thread, which is possible if your code structure enables it.
 
 ## Data dependencies are a bottleneck for instruction-level parallelism
 

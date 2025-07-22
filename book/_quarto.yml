@@ -43,7 +43,7 @@ book:
         - part_2_compilation/120_overflow.qmd
     - part: "The Pratice of Mechanical Sympathy"
       chapters:
-        - part_3_mechanical_sympathy/000.qmd
+        - part_3_mechanical_sympathy/000_what_is.qmd
         - part_3_mechanical_sympathy/010_instruction_level_parallelism.qmd
         - part_3_mechanical_sympathy/020_simd.qmd
         - part_3_mechanical_sympathy/030_more_about_simd.qmd
