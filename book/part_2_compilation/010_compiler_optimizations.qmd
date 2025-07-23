@@ -206,15 +206,64 @@ os.environ["NUMBA_DUMP_OPTIMIZED"] = "1"
 You can then search for `OPTIMIZED DUMP your_functions_name` in the output (replace `your_functions_name` with your function's name as relevant).
 :::
 
-## Don't assume the compiler is magic
+## The compiler can't replace the Practice of Algorithmic Efficiency
 
-The compiler will not, and sometimes cannot, always optimize your code.
-In theory a compiler could apply some optimizations that you might, if you were applying the Practice of Algorithmic Efficiency.
-In practice, many such optimizations are not going to happen automatically.
+Some of what the compiler is doing when it applies optimization passes can overlap, at least a little, with what you would do manually if you were applying the Practice of Algorithmic Efficiency.
+But that doesn't mean a compiler can replace those optimizations:
 
-For one thing, compilers can't read your mind; they can only read your code.
-Some optimizations rely on understanding intent, or on knowing what input data will look like.
+* Compilers can't read your mind, nor can they observe how your code actually runs in practice[^pgo]; they can only read your code.
+  Some optimizations rely on understanding intent, or on knowing what input data will look like.
+* Compilers need to guarantee that optimizations don't break your code.
+  Lacking understanding of your intent, the compiler will usually assume that _any_ change to code behavior is unacceptable.
+  As a result, in cases where the optimization might change your code's behavior even in tiny ways, the compiler won't apply seemingly obvious optimizations.
+* Compiler optimizations are pre-programmed heuristics, so there is simply a limit to how much they can do, compared to a human being actually thinking about a problem.
 
-There is also a critical correctness requirement that optimizing compilers follow.
-**To an outside observer, the results of running optimized code must be indistinguishable from running the original code.**
-As a result, in cases where the optimization might change your code's behavior, the compiler won't apply seemingly obvious optimizations.
+In a previous chapter I showed some algorithmic efficiency optimizations applied to the Sieve of Eratosthenes, with the examples implemented in Python.
+To demonstrate that those optimizations still help even with a compiled language, I will switch to using Numba; I ported the original version and the final, optimized version.
+
+```{python}
+@jit
+def find_primes_1(up_to_value):
+    # Create an array of booleans, with default value being True:
+    is_prime = np.ones((up_to_value,), dtype=np.bool_)
+    is_prime[0] = False
+    is_prime[1] = False
+
+    for i in range(2, up_to_value):
+        if not is_prime[i]:
+            continue
+        for j in range(i*2, up_to_value, i):
+            is_prime[j] = False
+
+    return is_prime
+
+@jit
+def find_primes_4(up_to_value):
+    is_prime = np.ones((up_to_value,), dtype=np.bool_)
+    is_prime[0] = False
+    is_prime[1] = False
+
+    for i in range(4, up_to_value, 2):
+        is_prime[i] = False
+
+    for i in range(3, up_to_value, 2):
+        if not is_prime[i]:
+            continue
+        for j in range(i*i, up_to_value, 2 * i):
+            is_prime[j] = False
+
+    return is_prime
+
+assert np.array_equal(find_primes_1(100), find_primes_4(100))
+```
+
+Comparing the speed of the two implementations, you can see the Practice of Algorithmic Efficiency is still speeding things up, even though I've switched to a compiled language:
+
+```{python}
+#| echo: false
+%%compare_timing
+find_primes_1(5_000)
+find_primes_4(5_000)
+```
+
+[^pgo]: This is not strictly true. Techniques like Profiler-Guided Optimization can provide some runtime information to the compiler, but not in a way that invalidates the general claim. [`awesome-pgo`](https://github.com/zamazan4ik/awesome-pgo) is an extensive resource on the topic.
