@@ -1,19 +1,23 @@
 # What is the Practice of Mechanical Sympathy?
 
-Consider the following situation: you're on a bike, stopped at a traffic light.
-Then it's your turn to go, you start pedaling, and you realize you're in a high gear, so it takes lots of work to get moving.
-You ought to be in a low gear, but you aren't.
+Consider the following situation: Jo is on a bike, stopped at a traffic light.
+When it's their turn to go, they start pedaling, and they realize they're in a high gear, which means it takes lots of extra effort to get moving.
+And this _keeps happening_ every time they start biking from a stop in an intersection.
 
-And then you notice this _keeps happening_: every time you start biking from a stop in an intersection, you're in the wrong gear.
-What is going wrong?
+Why aren't they in the correct, low gear?
 
-1. When you approach an intersection, you're probably in a high gear.
-2. You stop at the traffic light, still in a high gear.
-3. If you have a bike with a derailleur, the default where I live, changing gears requires pedaling.
-4. Now that you've stopped, you can't change gears any more until you start pedaling again, and so you're forced to start in a high gear.
+1. When approaching an intersection, they're probably going at a decent speed, so they will be in a high gear.
+2. They stop at the traffic light, still in a high gear.
+3. If they have a bike with a derailleur, the default where I live, changing gears _requires pedaling_.
+   But they've already stopped, so now they're stuck with the wrong gear.
 
-To solve this problem, you need to plan ahead and adjust your behavior to the way the bicycle works.
-As you approach the intersection, you start lowering your gears, so by the time you've stopped you're in the correct low gear to easily start biking again.
+To solve this problem, they need to adjust their behavior to the way the bicycle works.
+As they approach the intersection, they need to start lowering their gears, so by the time they've stopped they are in the correct low gear to easily start biking again.
 
-As with bicycles, so with computers: if you have a better mental model of how the CPU works, you can adjust your code so that takes advantage of the CPU's performance features, rather than fighting them.
+As with bicycles, so with computers:
+
+* If your mental model of how the CPU works is missing certain critical behaviors, you will end up writing code that is in conflict with the way the CPU was designed to work.
+  Your code will still run, but it will be slower than it needs to be.
+* On the other hand, as you improve your mental model of the CPU, you can write code that not only doesn't fight the CPU, but also takes advantage of the CPU's fast paths.
+
 This is the Practice of Mechanical Sympathy.
