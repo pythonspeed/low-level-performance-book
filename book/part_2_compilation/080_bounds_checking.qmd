@@ -27,6 +27,7 @@ Bounds checking behavior depends on the language you're using:
 * C and C++ have no built-in bounds checking; they will happily corrupt memory or crash your program in the name of performance.
     However, some data structures will provide them, and more broadly you can use [sanitizers and other tools](https://developers.redhat.com/blog/2021/05/05/memory-error-checking-in-c-and-c-comparing-sanitizers-and-valgrind) to catch problems when testing your code.
 * Numba and Cython (the latter with some caveats, since it compiles to C or C++) allow you to turn bounds checking on or off.
+  By default it is off.
 * Rust always has bounds checking on[^rust].
 
 [^rust]: Technically Rust also has additional `unsafe` APIs to do lookups without bounds checking. Using `unsafe` is tricky, and misuse invalidates all of Rust's safety guarantees, so I would suggest pretending these APIs don't exist.

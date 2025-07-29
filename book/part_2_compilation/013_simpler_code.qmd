@@ -1,0 +1,82 @@
+# Write simpler code
+
+The simpler your code, the easier it is for the compiler to optimize.
+That's because the compiler relies on heuristics and pattern matching, and extra complexity that a human can look past won't necessarily match the patterns programmed in to the compiler.
+Simplicity in this context means being easy to reason about locally in an automated fashion.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+Here's an example where code that seems identical to a human is not optimized identically by the compiler:
+
+```{python}
+import numpy as np
+from numba import int64, jit
+
+@jit
+def heap_writes(arr, n, max_value):
+    max_value = max_value
+    # i, n, and max_value are on the stack. arr is on the heap:
+    for i in range(n):
+        if arr[0] > max_value:
+            break
+        arr[0] += 1
+
+@jit
+def stack_writes(arr, n, max_value):
+    # value, i, n, and max_value are on the stack. arr is on the heap:
+    value = arr[0]
+    for i in range(n):
+        if value > max_value:
+            break
+        value += 1
+    arr[0] = value
+
+
+def make_array():
+    return np.zeros((1,), dtype=np.uint32)
+
+# Validate the two function variations give identical results:
+def check(n, max_value):
+    arr1 = make_array()
+    arr2 = make_array()
+    # Make sure max_value and n have the same type as the arrays,
+    # which makes it easier for Numba to produce fast code:
+    max_value = arr1.dtype.type(max_value)
+    n = arr1.dtype.type(n)
+    heap_writes(arr1, n, max_value)
+    stack_writes(arr2, n, max_value)
+    assert arr1[0] == arr2[0]
+
+check(1_000, 500)
+check(10_000, 20_000)
+```
+
+The compiler is able to optimize the `stack_writes()` version much more aggressively, ending up with an implementation that runs in constant time regardless of the inputs:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=instructions
+heap_writes(make_array(), 100_000, 100_000)
+heap_writes(make_array(), 10_000_000, 100_000_000)
+stack_writes(make_array(), 100_000, 100_000)
+stack_writes(make_array(), 10_000_000, 100_000_000)
+```
+
+Why is `stack_writes()` easier to optimize?
+I can hypothesize multiple reasons that the compiler might not optimize the code; they may or may not be correct:
+
+**Stack vs heap allocations:** Data that is stored on the stack is tied to the running function call; data on the heap might be accessed from elsewhere (see the chapter on aliasing).
+That means it's easier for the compiler to reason about, and easier for the compiler to aggressively transform it without impacting the outcome of the function.
+
+**More complex data structure:** A NumPy array as exposed to Numba adds complexity to the reads and writes, perhaps enough that the compiler might not be able to pattern match the relevant optimization.
+
+To actually determine the cause, you would have to look at how Numba calls into LLVM, the compiler toolkit that does most of the work.
+Then, you could find the relevant LLVM optimization pass, see what it matches, and figure out why it's not matching.
+I've never done this personally, but it is possible.
+The result would be a bug report filed against Numba or LLVM, or perhaps an understanding of why the compiler can't safely optimize `heap_writes()`.
+
+It's quite possible that some future version of Numba might do better and optimize the `heap_writes()` function too.
+But no compiler is perfect, and the simpler the code, the easier it is for the compiler to optimize it.
