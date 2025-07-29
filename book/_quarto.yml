@@ -9,7 +9,7 @@ book:
   date: "7/1/2025"
   chapters:
     - index.qmd
-    - 020_useful.qmd
+    - 020_harm.qmd
     - 025_overview.qmd
     - 030_roadmap.qmd
     - part: "The Practice of Algorithmic Efficiency"

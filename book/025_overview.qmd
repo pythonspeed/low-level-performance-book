@@ -1,334 +1,55 @@
-# Overview: The practices of Python performance {.unnumbered}
+# Our software is slow—but it doesn't have to be! {.unnumbered}
 
-There are five different approaches or practices you can apply to speed up computational code:
+Modern computers are unimaginably fast, but quite a lot of software is annoyingly slow.
+And slow software has a cost beyond mere annoyance: it costs money, time, frustration, not to mention greenhouse gas emissions.
+So if computers are so fast, why isn't our software faster by default?
 
-* **The Practice of Algorithmic Efficiency:** Your code shouldn't waste time recalculating work, or calculating things you don't care about.
-  Optimizations in this practice are language agnostic.
-  They will be helpful, albeit to varying degrees, both in Python and in compiled languages.
-* **The Practice of Compilation:** Using a compiled language can speed up your code, especially if you understand the limits of the compiler and compensate accordingly.
-* **The Practice of Mechanical Sympathy:** Instead of fighting your CPU and other hardware, take advantage of how they work.
-  This is far more relevant once you've switched to a compiled language.
-* **The Practice of Parallelism:** Your computer has multiple CPU cores, you should use them all.
-* **The Practice of Process:** Your software development process should encompass speed, and you should use appropriate processes to speed up your code.
+Sometimes the slowness is a considered choice, with the programmer deliberately choosing to prioritize some other goal at the expense of speed, like ease-of-use or flexibility.
+But sometimes the slowness is the result of the programmer not noticing or not realizing they were writing slow code.
+I've certainly made these sort of mistakes.
 
-Each one of these practices can make your code faster _in a distinct way_, because each relies on different approaches and mechanisms.
-So while you can just start with one, you can often apply multiple practices to go even faster.
-When the five practices combine, the full power of the computer can be yours!
+I believe that this second reason is much more common: most software is unnecessarily slow, and we all can and should do better.
+So my goal with this book isn't just to help you speed up software that you know is unacceptably slow.
+My goal is also to help you write software that is fast from the start.
+
+## Five practices to speed up your Python software
+
+If you're going to write faster software, you need to understand the different bottlenecks that keep your code slow, and the different ways you can speed it up.
+It's helpful to organize these techniques into _practices_: each practice is a set of techniques that provide a distinct source of speed.
+Because they are distinct, you can apply multiple practices to get even more speed.
+For the purposes of this book, I will be covering five practices.
+
+First, there are some techniques to speed up your code that work no matter what programming language you're using.
+I call this the **Practice of Algorithmic Efficiency**: your code shouldn't waste time recalculating work, or calculating things you don't care about.
+
+Second, as a Python programmer, you face an additional bottleneck, Python itself.
+So a common way to speed Python code is with the **Practice of Compilation**, switching to a compiled language to write a Python extension.
+
+Importantly, a compiler can't always make your code as fast as you'd like.
+For example, compilers are much worse at optimizing float calculations compared to integer calculations.
+So if you want to make your code as fast as possible, it's not enough to just switch to a compiled language.
+You also need to know the limits of what the compiler can do.
+
+Third, because Python is so slow, you can get away with a simple mental model of how CPUs work.
+But once you switch to a compiled language, hardware features like instruction-level parallelism and branch prediction can significantly impact your code's speed.
+Writing code that takes advantage of the CPU—and doesn't fight it—is what's involved in the **Practice of Mechanical Sympathy**.
 
 > What about GPUs?
 > This book doesn't cover GPUs at all, but the same practices, with somewhat different techniques, apply there as well.
 > It's also worth keeping in mind that a lot of software is slow not because it's running on a CPU, but because it's written in a vastly inefficient way.
 > Which means you might be able to achieve a two or three orders of magnitude speedup even without switching to a GPU.
 
+Fourth, there's all the many cores in your CPU: you want to use all of them.
+This is the **Practice of Parallelism**.
+
+Finally, it's worth considering that software development isn't just about your code, it's also about your software development processes.
+When it comes to correctness it's common practice, for example, to prevent code from being merged until its tests pass.
+Similarly, good development processes are necessary if you want your software to stay fast: the **Practice of Process**.
+
+## By your powers combined
+
 This book will introduce you to, and is organized around, these five practices.
-In the following sections, I'll give some examples of the ways these practices can help you speed up your software.
-The rest of the book covers these practices in more depth.
+Each one of these practices can make your code faster _in a distinct way_, because each relies on different approaches and mechanisms.
+So while you can just start with one, you can often apply multiple practices to go even faster.
 
-```{python}
-#| echo: false
-
-# Disable SIMD, just so it doesn't obscure branch prediction effects.
-import os
-os.environ["NUMBA_SLP_VECTORIZE"] = "1"
-os.environ["NUMBA_LOOP_VECTORIZE"] = "1"
-del os
-
-%load_ext book_magics
-```
-
-## The Practice of Algorithmic Efficiency: An example
-
-Consider the following algorithm for counting odd and even numbers:
-
-```{python}
-def even_and_odd(values: list[int]) -> tuple[int, int]:
-    even = 0
-    odd = 0
-    for value in values:
-        if value % 2 == 0:
-            even += 1
-        else:
-            odd += 1
-    return (even, odd)
-```
-
-::: {.callout-important}
-### How to read code examples in this book
-
-In many of the book's chapters I will end up rewriting a function step-by-step in order to speed it up.
-That means some of the code will change, and some will stay the same.
-To make it easier to notice what has changed:
-
-* Scan the code for comments, which I have added anywhere I change the code or where you need to notice an important point.
-* Code without comments should be the same as previous versions of a function.
-* Comments starting with a 😎 indicate a performance speedup.
-:::
-
-With a little bit of work, you can implement a more efficient variant:
-
-```{python}
-def even_and_odd_optimized(values: list[int]) -> tuple[int, int]:
-    # 😎 Only count even numbers, instead of counting both odds and evens:
-    even = 0
-    for value in values:
-        if value % 2 == 0:
-            even += 1
-    odd = len(values) - even
-    return (even, odd)
-
-VALUES = list(range(999))
-assert even_and_odd(VALUES) == even_and_odd_optimized(VALUES)
-```
-
-And this optimized version is faster:
-
-```{python}
-#| echo: false
-%%compare_timing
-even_and_odd(VALUES)
-even_and_odd_optimized(VALUES)
-```
-
-## The Practice of Compilation: An example
-
-Compilers will heuristically transform your code into a (hopefully) faster implementation before it gets transformed into machine code.
-Often this means that your code can run faster, with no additional effort on your part.
-
-### The compiler will optimize your code...
-
-For example, in this book most code examples use Numba, a compiled language based on Python.
-The Numba compiler turns a function into compiled code by using the `@numba.jit` decorator:
-
-```{python}
-from numba import jit
-
-# A compiled function that takes two int64 arguments and returns an int64
-# result:
-@jit("int64(int64, int64)")
-def add_n_times(value, n):
-    result = 0
-    for _ in range(100_000):
-        for _ in range(n):
-            result += value
-    return result
-```
-
-When the compiler compiles this code, it will optimize it so that it is much faster, equivalent to a function that looks like this:
-
-```{python}
-@jit("int64(int64, int64)")
-def multiply(value, n):
-    return 100_000 * value * n
-
-assert add_n_times(17, 3) == multiply(17, 3)
-```
-
-One way to check if they're equivalent, at least as far as performance goes, is to benchmark both of them.
-The elapsed time is mostly just function call and argument parsing overhead, it's not really doing any computational work:
-
-```{python}
-#| echo: false
-%%compare_timing
-add_n_times(17, 3)
-multiply(17, 3)
-```
-
-### ...except when the compiler can't optimize your code
-
-The compiler's ability to optimize your code has an important caveat: the optimized code must behave identically to the original code.
-You may be perfectly willing to accept a minor difference in behavior in return for a much faster program, but the compiler has no way of knowing that.
-That means you can make your code faster by spotting these problems, and either transforming your code so the compiler can optimize it, or just doing the optimization yourself.
-
-For example, changing the order of floating-point calculations can change the results.
-That means compilers have a much harder time optimizing floating-point calculations than they do integer calculations.
-
-The following pair of functions is almost the same as the previous pair, just using floats instead of integers:
-
-```{python}
-@jit("float64(float64, int64)")
-def add_n_times_float(value, n):
-    result = 0.0
-    for _ in range(100_000):
-        for _ in range(n):
-            result += value
-    return result
-
-@jit("float64(float64, int64)")
-def multiply_float(value, n):
-    return 100_000 * value * n
-
-assert add_n_times_float(12.0, 3) == multiply_float(12.0, 3)
-```
-
-Unlike the integer version, the Numba compiler cannot optimize the float version of `add_n_times_float()` into the equivalent of `multiply_float()`.
-As a result, you can see a significant difference in speed:
-
-```{python}
-#| echo: false
-%%compare_timing
-add_n_times_float(12.0, 3)
-multiply_float(12.0, 3)
-```
-
-For floating point calculations, you may need to implement the optimizations yourself.
-
-## The Practice of Mechanical Sympathy: An example
-
-Modern CPUs work in ways that can speed up your code significantly, if you make sure to write your code appropriately.
-But if you're writing regular Python, the general slowness of the Python interpreter mean these particular effects are usually not worth thinking about.
-Once you're writing faster compiled code, however, you can take advantage of these features to run even faster.
-
-Consider the following code:
-
-```python
-a += 1;
-b += 2;
-```
-
-In Python, you would expect those two operations to happen sequentially.
-First `a` gets incremented, then `b`.
-
-But while the code itself is sequential, the CPU may run the relevant instructions _in parallel_ on the same core.
-This is completely unrelated to the parallelism provided by threads or processes.
-This is parallelism at the level of CPU instructions, on a single CPU core—and the CPU does it automatically.
-
-Consider these two functions:
-
-```{python}
-# Adds one number in each iteration:
-@jit
-def add_once(number):
-    result = 0.0
-    for _ in range(1_000_000):
-        result += number
-    return result
-
-# Adds three numbers in each iteration:
-@jit
-def add_thrice(number):
-    result1 = 0.0
-    result2 = 0.0
-    result3 = 0.0
-    for _ in range(1_000_000):
-        result1 += number * 0.7
-        result2 += number * 0.5
-        result3 += number * 0.2
-    return (result1, result2, result3)
-```
-
-```{python}
-#| echo: false
-# Run once so Numba compiles the code; see discussion in later chapters.
-_ = add_once(3.3)
-_ = add_thrice(3.3)
-```
-
-Even though `add_thrice()` uses twice times as many CPU instructions, it finishes in the same amount of time, likely thanks to instruction-level parallelism:
-
-```{python}
-#| echo: false
-%%compare_timing --measure=instructions
-add_once(3.3)
-add_thrice(3.3)
-```
-
-You can sometimes significantly speed up your code by ensuring the CPU can take advantage of instruction-level parallelism.
-
-## The Practice of Parallelism: An example
-
-Modern CPUs have multiple cores, allowing multiple threads or processes to run at the same time.
-For example, here is an array of random numbers created by the NumPy library:
-
-```{python}
-import numpy as np
-
-# Create an array with 1 million random integers between 0 and 1000:
-RANDOM = np.random.randint(0, 1_000, 1_000_000, dtype=np.uint64)
-assert len(RANDOM) == 1_000_000
-```
-
-I can calculate the sum of squares using NumPy:
-
-```{python}
-def sum_of_squares(arr):
-    # Square on each individual value separately, then sums them all together:
-    return (arr ** 2).sum()
-```
-
-This function only uses one CPU core, but my computer has many more.
-To take advantage of those cores, I can also create a pool of threads, sum different chunks in parallel, and then sum the resulting partial sums:
-
-```{python}
-from concurrent.futures import ThreadPoolExecutor
-
-THREAD_POOL = ThreadPoolExecutor()
-
-def parallel_sum_of_squares(arr, n_chunks):
-    # Split the array into a number of chunks; this API won't copy the data, so
-    # it's very fast:
-    chunks = np.array_split(arr, n_chunks)
-    # 😎 Sum-of-squares each chunk in the thread pool:
-    partial_sums = THREAD_POOL.map(sum_of_squares, chunks)
-    # Add the partial sums to get the final result:
-    return np.sum(list(partial_sums))
-
-assert sum_of_squares(RANDOM) == parallel_sum_of_squares(RANDOM, 4)
-```
-
-This new version will use up to 4 CPU cores in parallel, leading to faster results:
-
-```{python}
-#| echo: false
-%%compare_timing
-sum_of_squares(RANDOM)
-parallel_sum_of_squares(RANDOM, 4)
-```
-
-## The Practice of Process: An example
-
-The development processes or activities you use to optimize your code is just as important as the optimizations you apply.
-For example, if the way you measure performance is incorrect, you will get misleading results or misunderstand how your code will work in the real world.
-
-Compilers, as discussed earlier, can optimize your code.
-If you're implementing a potential optimization and measuring its speed, you need to make sure the compiler isn't being _too_ smart.
-In particular, if you give it a closed-form calculation with all or most of its inputs available at compile time, it might be able to optimize the code based on this extra information.
-But if this extra information won't be available in real-world usage, and is just an artifact of a benchmarking attempt, you will be measuring an unrealistic result.
-
-For example, a function that does generic division can calculate the same result as a function that has a hard-coded divide by 2:
-
-```{python}
-#| echo: false
-import numpy as np
-DATA = np.ones((100_000,), dtype=np.float64)
-```
-
-```{python}
-@jit
-def divide_by_x(arr, x):
-    result = 0.0
-    for value in arr:
-        result += value / x
-    return result
-
-@jit
-def divide_by_2(arr):
-    result = 0.0
-    for value in arr:
-        result += value / 2
-    return result
-
-# Given an array DATA (definition not shown):
-assert divide_by_2(DATA) == divide_by_x(DATA, 2)
-```
-
-Measuring the speed of the two functions, `divide_by_2()` is much faster:
-
-```{python}
-#| echo: false
-%%compare_timing
-divide_by_2(DATA)
-divide_by_x(DATA, 2)
-```
-
-If you will be using the generic `divide_by_x()` function in the real world, benchmarking the version with hard-coded 2 might give you misleading results.
-You will notice in all the examples in this book that inputs are passed in from Python, ensuring the compiler doesn't know them at compile time, and therefore that benchmarks match real-world behavior at least in this aspect.
+When the five practices combine, the full power of the computer can be yours!

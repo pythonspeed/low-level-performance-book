@@ -1,0 +1,10 @@
+#  First, do no harm {.unnumbered}
+
+Imagine you are working on an application that makes someone sick every time you run it.
+This is bad.
+
+Then, you make it 10× faster: now you can make ten people sick in the same amount of time!
+Your software has gone from bad to worse.
+
+**If your software harms people or harms the environment, making it faster will amplify the harm.**
+So if your work does cause harm, you shouldn't be reading this book, you should be looking for a new project or a new job.
