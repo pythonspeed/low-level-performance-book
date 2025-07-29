@@ -2,9 +2,9 @@
 
 If you're doing the same calculation multiple times, you can speed up your code by reusing the results and only doing the calculation once.
 
-The key is that looking up the previous calculation should be faster than doing the calculation itself.
+This only help if looking up the previous calculation is faster than doing the calculation itself.
 Because Python is slow, there are situations where you won't be able to use this technique when writing Python.
-If you switch to a faster compiled language, the opportunities for caching will increase.
+If you switch to a faster compiled language, the opportunities for reuse will increase.
 
 ```{python}
 #| echo: false

@@ -2,7 +2,7 @@
 
 In all the optimization examples so far the optimized code gave the exact same result as the original code.
 Sometimes you can achieve additional speedups by returning different results; they might be almost indistinguishable, or they might be noticeably worse, depending how you achieved the speedup.
-Whether that trade off is worth it depends very much on the actual costs, the actual benefits, and your specific situation.
+Whether that tradeoff is worth it depends very much on the actual costs, the actual benefits, and your specific situation.
 
 ```{python}
 #| echo: false

@@ -27,12 +27,13 @@ for item in large_amount_of_data:
 do_some_cleanup()
 ```
 
-Given large amounts of data, and data structures like NumPy `ndarray`s that are designed for fast access from low-level languages, the bulk of your processing will happen inside the loop.
-Code that runs a lot is sometimes called "hot" code.
+Given large amounts of data, the bulk of your processing will happen inside the loop, the so-called "hot" part of your code[^hot].
 You can speed up code running in a loop by:
 
 1. Reducing the number of loop iterations. Perhaps there's data you don't need to process at all?
 2. Speeding up the work you repeatedly do inside the loop, the code you will be calling over and over again.
+
+[^hot]: Your CPU will actually get hotter when you're spinning in a loop doing computation!
 
 If you have nested loops, the innermost loop will have the most iterations, and therefore is the most impactful place to fix inefficient code.
 For example:
@@ -200,7 +201,7 @@ find_primes_3(5_000)
 find_primes_4(5_000)
 ```
 
-## Handle edge-cases in advance
+## Handle edge cases outside the loop
 
 Some `if` statements are there to handle a rare edge case.
 If it's rare, ideally you shouldn't have to check for it over and over again.
