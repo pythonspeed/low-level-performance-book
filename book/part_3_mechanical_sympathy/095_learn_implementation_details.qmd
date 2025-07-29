@@ -1,6 +1,8 @@
-# Understand how abstractions lay out their memory
+# ⋯ Understand how abstractions lay out their memory ⋯
 
-In the previous chapter we saw how linearly traversing memory is faster.
+> {{< var optional >}}
+
+In a previous chapter we saw how linearly traversing memory is faster.
 This suggests a broader point: you need to understand how data structures structure their memory, in order to get the most performance.
 Put another way, while abstractions are critical to writing software, for the best performance you will need to peer behind the curtain and see how the code really works.
 

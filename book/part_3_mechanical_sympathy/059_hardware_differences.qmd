@@ -1,4 +1,6 @@
-# Different CPUs will have different behavior
+# ⋯ Different CPUs will have different behavior ⋯
+
+> {{< var optional >}}
 
 One key question when optimizing your code is how portable the optimizations are:
 
