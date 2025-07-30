@@ -64,6 +64,7 @@ book:
     - part: "The Practice of Parallelism"
       chapters:
         - part_4_parallelism/010_notes.qmd
+        - part_4_parallelism/020_race_conditions.qmd
     - part: "The Practice of Process"
       chapters:
         - part_5_process/010_choosing_a_programming_language.qmd
