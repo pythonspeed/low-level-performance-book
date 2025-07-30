@@ -62,8 +62,8 @@ def parallel_summer(arr, num_chunks=1000):
             square = val ** 2
             cube = square * val
             # 😱 This is a bug, leading to incorrect results:
-            result[0] += square
-            result[1] += cube
+            result[0] = result[0] + square
+            result[1] = result[1] + cube
 
     # Split the array into a number of chunks; this API won't copy the
     # data, so it's very fast:
@@ -167,7 +167,7 @@ def parallel_summer_locking(arr, num_chunks=1000):
             # This is fine, we're adding to a local variable only accessed by
             # the current thread:
             square += val ** 2
-            cube += square * val
+            cube += val ** 3
         return square, cube
 
     def process_chunk(result, chunk):
@@ -194,7 +194,7 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing --units=Numbers:len(DATA)
+%%compare_throughput --unit=Numbers:len(DATA)
 squares_and_cubes(DATA),
 parallel_summer_locking(DATA)
 ```
@@ -225,8 +225,8 @@ def parallel_summer_mapreduce(arr, num_chunks=1000):
     # All modifications to `result` only happen in a single thread:
     result = np.array([0, 0], dtype=arr.dtype)
     for (part_square, part_cube) in THREAD_POOL.map(process_chunk, chunks):
-        result[0] += partial_square
-        result[1] += partial_cube
+        result[0] += part_square
+        result[1] += part_cube
 
     return result
 
@@ -238,7 +238,7 @@ assert np.array_equal(
 
 ```{python}
 #| echo: false
-%%compare_timing --units=Numbers:len(DATA)
+%%compare_throughput --unit=Numbers:len(DATA)
 squares_and_cubes(DATA),
 parallel_summer_mapreduce(DATA)
 ```
