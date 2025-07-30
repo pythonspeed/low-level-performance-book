@@ -1,0 +1,248 @@
+# Avoid race conditions
+
+Parallelism offers the promise of faster results, by utilizing the multiple cores in your CPU.
+If parallelism means you get wrong results, however, the extra speed is useless.
+So it's critical to ensure parallel calculations don't corrupt your data.
+
+In particular, as soon as you have more than one thread writing to the same address in memory, you will start having problems.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## An example: Parallel summing
+
+I have a large NumPy array, and I want to calculate the sum of squares and sum of cubes:
+
+```{python}
+import numpy as np
+from numba import jit
+
+DATA = np.random.randint(0, 10, 1_000_000, dtype=np.int64)
+
+# 😎 `nogil=True` enables multiple threads to call this in parallel; I'll cover
+# the GIL in a later chapter.
+@jit(nogil=True)
+def squares_and_cubes(arr):
+    result = np.array([0, 0], dtype=arr.dtype)
+    for i in range(len(arr)):
+        val = arr[i]
+        square = val ** 2
+        cube = square * val
+        result[0] += square
+        result[1] += cube
+    return result
+
+assert np.array_equal(
+    squares_and_cubes(np.array([1, 2, 3], dtype=np.int64)),
+    np.array([14, 36], dtype=np.int64)
+)
+```
+
+To speed this up, I am going to use a thread pool to sum different chunks in parallel.
+You can submit tasks to a thread pool to be run in one of the threads, and the operating system will (hopefully) spread those threads out so they run on different CPU cores.
+Hopefully this will return results faster.
+
+```{python}
+from concurrent.futures import ThreadPoolExecutor
+
+# I'm going to reuse the thread pool so the cost of starting it up doesn't
+# impact our benchmarks. By default it will start a number of threads equal to
+# the number of cores.
+THREAD_POOL = ThreadPoolExecutor()
+
+def parallel_summer(arr, num_chunks=1000):
+    result = np.array([0, 0], dtype=arr.dtype)
+
+    @jit(nogil=True)
+    def process_chunk(result, chunk):
+        for i in range(len(chunk)):
+            val = chunk[i]
+            square = val ** 2
+            cube = square * val
+            # 😱 This is a bug, leading to incorrect results:
+            result[0] += square
+            result[1] += cube
+
+    # Split the array into a number of chunks; this API won't copy the
+    # data, so it's very fast:
+    chunks = np.array_split(arr, num_chunks)
+
+    # 😎 For each chunk, process it in a thread in the thread pool:
+    for _ in THREAD_POOL.map(process_chunk, [result] * num_chunks, chunks):
+        pass
+
+    return result
+```
+
+Let's try it out!
+
+```{python}
+print("Single-threaded:", list(squares_and_cubes(DATA)))
+print("Parallel:       ", list(parallel_summer((DATA))))
+```
+
+This code has a bug.
+It might be obvious in the output above, if the results are different.
+Or it might not be obvious in the output above, because this bug is not consistent.
+This is common with concurrency bugs: they can be hard to reproduce.
+
+I will try to make the bug more likely to occur by running the calculation multiple times:
+
+```{python}
+unique_results = set()
+while len(unique_results) < 2:
+    unique_results.add(tuple(parallel_summer(DATA)))
+print("Different results found:", unique_results)
+```
+
+There are two different results for the same calculation.
+This is bad.
+
+## Avoid data races
+
+The problem with the parallel code above is that it writes to a single location in memory, `result`, from multiple threads.
+In particular:
+
+```python
+result[0] += square
+```
+
+Here's what may happen:
+
+1. Thread 1 reads `result[0]`, stores it in what I'll call `t1_result`.
+2. Thread 2 reads `result[0]`, stores it in what I'll call `t2_result`.
+3. Thread 1 sets `result[0]` to `t1_result` plus its local increment.
+4. Thread 2 sets `result[0]` to `t3_result` plus its local increment.
+
+The end result is that all the work from thread 1 gets wiped out and never recorded.
+
+## Protect access to shared variables with a lock
+
+TODO what is a lock.
+
+Protecting just the write with a lock is insufficient.
+You can still have the exact same data race if you do:
+
+```python
+# 😱 Race condition still exists:
+old_result = result[0]
+with lock:
+    result[0] = old_result + squares
+```
+
+Nor does it help to protect the read and write with separate locking:
+
+```python
+# 😱 Race condition still exists:
+with lock:
+    old_result = result[0]
+with lock:
+    result[0] = old_result + squares
+```
+
+Rather, you need the whole part of the calculation that needs to be atomic to happen while the lock is held.
+
+From a performance perspective:
+
+* To maximize parallelism, The amount of work done under the lock is minimal.
+* To minimize overhead, you should avoid acquiring the lock frequently.
+
+Here is how you can use a lock to implement a correct and fast parallel algorithm:
+
+```{python}
+from threading import Lock
+
+def parallel_summer_locking(arr, num_chunks=1000):
+    result = np.array([0, 0], dtype=arr.dtype)
+    lock = Lock()
+
+    @jit(nogil=True)
+    def process_chunk_core(chunk):
+        square = 0
+        cube = 0
+        for i in range(len(chunk)):
+            val = chunk[i]
+            # This is fine, we're adding to a local variable only accessed by
+            # the current thread:
+            square += val ** 2
+            cube += square * val
+        return square, cube
+
+    def process_chunk(result, chunk):
+        # Rather than acquiring the lock for every value, we first create a
+        # partial sum and then only hold the lock once, at the end:
+        square, cube = process_chunk_core(chunk)
+        # Acquire the lock only once per chunk:
+        with lock:
+            result[0] += square
+            result[1] += cube
+
+    chunks = np.array_split(arr, num_chunks)
+
+    for _ in THREAD_POOL.map(process_chunk, [result] * num_chunks, chunks):
+        pass
+
+    return result
+
+assert np.array_equal(
+    squares_and_cubes(DATA),
+    parallel_summer_locking(DATA)
+)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --units=Numbers:len(DATA)
+squares_and_cubes(DATA),
+parallel_summer_locking(DATA)
+```
+
+## Avoid writing to shared data from multiple threads
+
+Looking at the calculation above, you may notice that the partial results are just being added one chunk at a time to the final result.
+Instead of having the threads modify the final result, they can just return the partial chunk sums, and the main thread can do the work of adding this all up.
+Since the number of partial results is small, doing this is fast, and you don't have to worry about locks.
+
+This is a variation of the map/reduce pattern: the threads map a function over chunks of data without mutating any shared state, and then the partial results are reduced into a final result.
+
+```{python}
+def parallel_summer_mapreduce(arr, num_chunks=1000):
+    @jit(nogil=True)
+    def process_chunk(chunk):
+        # This never writes to `result`:
+        square = 0
+        cube = 0
+        for i in range(len(chunk)):
+            val = chunk[i]
+            square += val ** 2
+            cube += square * val
+        return (square, cube)
+
+    chunks = np.array_split(arr, num_chunks)
+
+    # All modifications to `result` only happen in a single thread:
+    result = np.array([0, 0], dtype=arr.dtype)
+    for (part_square, part_cube) in THREAD_POOL.map(process_chunk, chunks):
+        result[0] += partial_square
+        result[1] += partial_cube
+
+    return result
+
+assert np.array_equal(
+    squares_and_cubes(DATA),
+    parallel_summer_mapreduce(DATA)
+)
+```
+
+```{python}
+#| echo: false
+%%compare_timing --units=Numbers:len(DATA)
+squares_and_cubes(DATA),
+parallel_summer_mapreduce(DATA)
+```
+
+## Use atomic variables
+
+A third alternative is atomics
