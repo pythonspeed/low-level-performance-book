@@ -25,14 +25,13 @@ DATA = np.random.randint(0, 10, 1_000_000, dtype=np.int64)
 # the GIL in a later chapter.
 @jit(nogil=True)
 def squares_and_cubes(arr):
-    result = np.array([0, 0], dtype=arr.dtype)
+    square = 0
+    cube = 0
     for i in range(len(arr)):
         val = arr[i]
-        square = val ** 2
-        cube = square * val
-        result[0] += square
-        result[1] += cube
-    return result
+        square += val ** 2
+        cube += val ** 3
+    return np.array([square, cube], dtype=arr.dtype)
 
 assert np.array_equal(
     squares_and_cubes(np.array([1, 2, 3], dtype=np.int64)),
@@ -45,32 +44,32 @@ You can submit tasks to a thread pool to be run in one of the threads, and the o
 Hopefully this will return results faster.
 
 ```{python}
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 # I'm going to reuse the thread pool so the cost of starting it up doesn't
-# impact our benchmarks. By default it will start a number of threads equal to
-# the number of cores.
-THREAD_POOL = ThreadPoolExecutor()
+# impact our benchmarks. I set a number of threads equal to the number of
+# cores.
+THREAD_POOL = ThreadPoolExecutor(max_workers=os.cpu_count())
 
-def parallel_summer(arr, num_chunks=1000):
+@jit(nogil=True)
+def bad_process_chunk(result, chunk):
+    for i in range(len(chunk)):
+        val = chunk[i]
+        # 😱 This is a bug, leading to incorrect results:
+        result[0] = result[0] + val ** 2
+        result[1] = result[1] + val ** 3
+
+
+def parallel_summer(arr, num_chunks=10):
     result = np.array([0, 0], dtype=arr.dtype)
-
-    @jit(nogil=True)
-    def process_chunk(result, chunk):
-        for i in range(len(chunk)):
-            val = chunk[i]
-            square = val ** 2
-            cube = square * val
-            # 😱 This is a bug, leading to incorrect results:
-            result[0] = result[0] + square
-            result[1] = result[1] + cube
 
     # Split the array into a number of chunks; this API won't copy the
     # data, so it's very fast:
     chunks = np.array_split(arr, num_chunks)
 
     # 😎 For each chunk, process it in a thread in the thread pool:
-    for _ in THREAD_POOL.map(process_chunk, [result] * num_chunks, chunks):
+    for _ in THREAD_POOL.map(bad_process_chunk, [result] * num_chunks, chunks):
         pass
 
     return result
@@ -154,26 +153,14 @@ Here is how you can use a lock to implement a correct and fast parallel algorith
 ```{python}
 from threading import Lock
 
-def parallel_summer_locking(arr, num_chunks=1000):
+def parallel_summer_locking(arr, num_chunks=10):
     result = np.array([0, 0], dtype=arr.dtype)
     lock = Lock()
-
-    @jit(nogil=True)
-    def process_chunk_core(chunk):
-        square = 0
-        cube = 0
-        for i in range(len(chunk)):
-            val = chunk[i]
-            # This is fine, we're adding to a local variable only accessed by
-            # the current thread:
-            square += val ** 2
-            cube += val ** 3
-        return square, cube
 
     def process_chunk(result, chunk):
         # Rather than acquiring the lock for every value, we first create a
         # partial sum and then only hold the lock once, at the end:
-        square, cube = process_chunk_core(chunk)
+        square, cube = squares_and_cubes(chunk)
         # Acquire the lock only once per chunk:
         with lock:
             result[0] += square
@@ -195,7 +182,7 @@ assert np.array_equal(
 ```{python}
 #| echo: false
 %%compare_throughput --unit=Numbers:len(DATA)
-squares_and_cubes(DATA),
+squares_and_cubes(DATA)
 parallel_summer_locking(DATA)
 ```
 
@@ -205,26 +192,14 @@ Looking at the calculation above, you may notice that the partial results are ju
 Instead of having the threads modify the final result, they can just return the partial chunk sums, and the main thread can do the work of adding this all up.
 Since the number of partial results is small, doing this is fast, and you don't have to worry about locks.
 
-This is a variation of the map/reduce pattern: the threads map a function over chunks of data without mutating any shared state, and then the partial results are reduced into a final result.
+This is a variation of the map/reduce pattern: the threads map a function over chunks of data without mutating any shared state, and then the partial results are reduced (i.e. combined) into a final result.
 
 ```{python}
-def parallel_summer_mapreduce(arr, num_chunks=1000):
-    @jit(nogil=True)
-    def process_chunk(chunk):
-        # This never writes to `result`:
-        square = 0
-        cube = 0
-        for i in range(len(chunk)):
-            val = chunk[i]
-            square += val ** 2
-            cube += square * val
-        return (square, cube)
-
+def parallel_summer_mapreduce(arr, num_chunks=10):
     chunks = np.array_split(arr, num_chunks)
-
     # All modifications to `result` only happen in a single thread:
     result = np.array([0, 0], dtype=arr.dtype)
-    for (part_square, part_cube) in THREAD_POOL.map(process_chunk, chunks):
+    for (part_square, part_cube) in THREAD_POOL.map(squares_and_cubes, chunks):
         result[0] += part_square
         result[1] += part_cube
 
@@ -239,10 +214,7 @@ assert np.array_equal(
 ```{python}
 #| echo: false
 %%compare_throughput --unit=Numbers:len(DATA)
-squares_and_cubes(DATA),
+squares_and_cubes(DATA)
 parallel_summer_mapreduce(DATA)
 ```
 
-## Use atomic variables
-
-A third alternative is atomics
