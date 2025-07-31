@@ -1,0 +1,79 @@
+# Choose your strategy for parallelism
+
+Parallelism offers the promise of faster results by utilizing the multiple cores in your CPU.
+If you have 4 CPU cores, 4 different threads can do computation at the same time.
+But at what level should you add this parallelism?
+
+## Strategy 1: No parallelism (at this abstraction level)
+
+Sometimes parallelism is someone else's problem.
+Consider, for example, a low level library algorithm that either can't easily be trivialized, or alternatively is trivial to parallelize.
+`numpy`'s `sum()` is a good example.
+In this situation, you expect your API to be plugged into other people's libraries and applications, each with potentially their own approach to parallelism.
+Running without parallelism in this case is fine, as you assume the higher-level caller with deal with that.
+
+The important thing here is ensuring you don't prevent parallelism.
+That means avoiding writing to shared data so that running multiple copies won't conflict, and making sure you release the GIL.
+
+## Strategy 2: Single-threaded parallel pipelines
+
+With this strategy you take a single-threaded pipeline and replicate it.
+A common simple data processing pipeline looks like this:
+
+::: {.content-hidden when-format="markdown"}
+```{mermaid}
+flowchart TD
+ A("Input") --> B("Processing")
+ B --> C("More processing")
+ C --> D("Output")
+```
+:::
+
+::: {.content-hidden unless-format="markdown"}
+```
+  Input
+    ↓
+Processing
+    ↓
+More processing
+    ↓
+  Output
+```
+:::
+
+You can achieve parallelism by just running the whole pipeline multiple times, in parallel.
+
+::: {.content-hidden when-format="markdown"}
+```{mermaid}
+flowchart TD
+ A("Inputs 1, 2, 3, ..., N") --> B("Processing")
+ B --> C("More processing")
+ C --> D("Output")
+ A --> B2("Processing")
+ B2 --> C2("More processing")
+ C2 --> D2("Output")
+```
+:::
+
+::: {.content-hidden unless-format="markdown"}
+```
+     
+  Inputs 1, 2, 3, ..., N
+               |
+              / \
+             /   \
+            /     \
+           ↓       ↓ 
+Processing         Processing     
+    ↓                  ↓          
+More processing    More processing
+    ↓                  ↓          
+  Output             Output       
+```
+:::
+
+For Python code, you can run the parallel pipelines in a thread pool.
+For a program you run on the command-line, you can run the program multiple times.
+
+## Strategy 3: Parallelism inside functions
+
