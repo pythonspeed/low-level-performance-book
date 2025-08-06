@@ -271,4 +271,21 @@ But it does catch the worst kind of problems, the ones that cause undefined beha
 
 ## Avoid global side-effects
 
-TODO
+Any time you may be writing to the same location from multiple threads or processes, you are asking for trouble.
+Sometimes you may cause race conditions accidentally, by writing to shared variables like module globals:
+
+```python
+COUNTER = 0
+
+def do_work():
+    # ...
+    global COUNTER
+    # 😱 It's a data race!
+    COUNTER += 1
+    # ...
+```
+
+Or perhaps you always write to the same location in the filesystem.
+
+In general, if you expect your code to be called from multiple threads (which should be your default expectation) you should avoid writing to, modifying, or otherwise mutating any shared resource if you can avoid it.
+If you can't avoid it, make sure you're doing it in a way that avoids race conditions by following one of the strategies above.
