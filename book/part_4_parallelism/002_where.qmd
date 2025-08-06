@@ -1,31 +1,37 @@
 # Choose your strategy for parallelism
 
-Parallelism offers the promise of faster results by utilizing the multiple cores in your CPU.
-If you have 4 CPU cores, 4 different threads can do computation at the same time.
-But at what level should you add this parallelism?
+You may need to implement parallelism at different levels of abstraction—or in some cases not bother to implement it at all.
+
+TODO a flowchart? better explanations?
 
 ## Strategy 1: No parallelism (at this abstraction level)
 
 Sometimes parallelism is someone else's problem.
-Consider, for example, a low level library algorithm that either can't easily be trivialized, or alternatively is trivial to parallelize.
-`numpy`'s `sum()` is a good example.
-In this situation, you expect your API to be plugged into other people's libraries and applications, each with potentially their own approach to parallelism.
-Running without parallelism in this case is fine, as you assume the higher-level caller with deal with that.
+Consider, for example, a low level library algorithm that either can't be parallelized, or alternatively is trivial to parallelize.
+`numpy`'s `sum()` is a good example of the latter: to sum an array in parallel, you can sum chunks, and then sum the resulting partial results.
 
-The important thing here is ensuring you don't prevent parallelism.
-That means avoiding writing to shared data so that running multiple copies won't conflict, and making sure you release the GIL.
+In this situation, you may expect your API to be plugged into other people's libraries and applications, each with potentially their own approach to parallelism.
+Running without parallelism in this case is fine, as you assume the higher-level caller will deal with that.
+The important thing here is ensuring you don't _prevent_ parallelism.
+That means, as discussed in later chapters:
+
+* [Avoiding writing to shared data](020_race_conditions.qmd) so that running multiple copies in parallel won't conflict.
+* Making sure you release the GIL (XXX link) so multiple threads can run in parallel.
 
 ## Strategy 2: Single-threaded parallel pipelines
 
-With this strategy you take a single-threaded pipeline and replicate it.
-A common simple data processing pipeline looks like this:
+This strategy has you take a single-threaded pipeline and replicate it, running multiple copies in parallel.
+That means parallelization just happens at the entry point, and is quite simple.
+This works well in cases where you are processing many data files that can each be processed in isolation, or your data can be trivially split into parts that you can process separately.
+
+Imagine you have a single-threaded data processing pipeline looks like this:
 
 ::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
- A("Input") --> B("Processing")
+ A(["Input"]) --> B("Processing")
  B --> C("More processing")
- C --> D("Output")
+ C --> D(["Output"])
 ```
 :::
 
@@ -41,39 +47,98 @@ More processing
 ```
 :::
 
-You can achieve parallelism by just running the whole pipeline multiple times, in parallel.
+You can achieve parallelism by just running the whole pipeline multiple times, in parallel:
 
 ::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
- A("Inputs 1, 2, 3, ..., N") --> B("Processing")
+ A(["Queue of inputs 1, 2, 3, ..., N"]) --> T("Thread 1")
+ T --> B("Processing")
  B --> C("More processing")
- C --> D("Output")
- A --> B2("Processing")
+ C --> D(["Output"])
+ A --> T2("Thread 2")
+ T2 --> B2("Processing")
  B2 --> C2("More processing")
- C2 --> D2("Output")
+ C2 --> D2(["Output"])
 ```
 :::
 
 ::: {.content-hidden unless-format="markdown"}
 ```
-     
-  Inputs 1, 2, 3, ..., N
+  Queue of inputs 1, 2, 3, ..., N
                |
               / \
              /   \
             /     \
-           ↓       ↓ 
-Processing         Processing     
-    ↓                  ↓          
+           ↓       ↓
+    Thread 1       Thread 2
+    ↓                  ↓
+Processing         Processing
+    ↓                  ↓
 More processing    More processing
-    ↓                  ↓          
-  Output             Output       
+    ↓                  ↓
+  Output             Output
 ```
 :::
 
-For Python code, you can run the parallel pipelines in a thread pool.
+For Python code, you can run the parallel pipelines in a [thread pool](005_thread_pool.qmd).
 For a program you run on the command-line, you can run the program multiple times.
+
+Notice that this strategy is pretty easy to split across not just multiple threads and processes, but also multiple computers.
 
 ## Strategy 3: Parallelism inside functions
 
+Sometimes you need much more control of parallelism than the parallel pipeline can give, because running your algorithm in parallel is not trivial.
+In other cases, you want to present an API that looks like a normal Python call, but uses parallelism behind the scenes.
+With this strategy, your library has its own internal thread pool, and parallelism is managed internally by you.
+
+An example of this pattern is the Polars library.
+When you run the following:
+
+```python
+import polars as pl
+
+YEAR = pl.col("year")
+
+pl.scan_csv("input.csv").select(YEAR > 2012).sink_csv("2012.csv")
+```
+
+Behind the scenes, Polars has an internal thread pool, and is likely to parallelize these operations, but the fact that it is parallel is not really exposed to you in the API.
+Polars may parallelize the work in ways that are more complex than just identical pipelines, since it supports many APIs which need to be parallelized in different ways, or may not support parallelism at all.
+
+::: {.content-hidden when-format="markdown"}
+```{mermaid}
+flowchart TD
+ A(["Input"]) --> B("API call")
+ B --> C("Split up work")
+ C --> T1("Thread 1")
+ C --> T2("Thread 2")
+ C --> TN("Thread N")
+ T1 --> D("Combine results")
+ T2 --> D
+ TN --> D
+ D --> E(["Output"])
+```
+:::
+
+Here's a diagram of what this looks like:
+
+::: {.content-hidden unless-format="markdown"}
+```
+             Input
+               ↓
+           Split up work
+              /|\
+             / | \
+            /  |  \
+           ↓   ↓   ↓
+      Thread 1, 2, ... N
+            \  |  /
+             \ | /
+              \|/
+               ↓
+       Combine results
+               ↓
+            Output
+```
+:::

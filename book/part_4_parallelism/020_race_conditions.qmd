@@ -1,9 +1,7 @@
 # Avoid race conditions
 
-Parallelism offers the promise of faster results by utilizing the multiple cores in your CPU.
-But if parallelism means you get wrong results, that extra speed is worse than useless.
-
-Unfortunately, parallelism significantly increases the opportunities for buggy code.
+If parallelism means you get wrong results, that extra speed is worse than useless.
+And unfortunately, parallelism significantly increases the opportunities for buggy code.
 In particular, as soon as you have more than one thread writing to the same address in memory, you will start having to worry about data races that can corrupt your data and cause undefined behavior.
 
 ```{python}
