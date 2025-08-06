@@ -1,0 +1,106 @@
+# Use a thread pool
+
+To run code on multiple CPU cores, you need to either use multiple threads or multiple processes.
+Threads, running within the same process, have a much easier time sharing data than different processes would, so they're what I'll be covering in this book.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## Use a thread pool
+
+You could launch a new thread for each task you need to do.
+For example, here we have a thread per chunk; if there are 1000 chunks, this code will launch 1000 threads:
+
+```{python}
+from threading import Thread
+import numpy as np
+
+def parallel_sum_1(arr, num_chunks):
+    results = []
+    threads = []
+    # Split the array into a number of chunks; this API won't copy the
+    # data, so it's very fast:
+    chunks = np.array_split(arr, num_chunks)
+
+    # Launch a thread for each chunk:
+    for chunk in chunks:
+        thread = Thread(target=lambda: results.append(np.sum(chunk)))
+        thread.start()
+        threads.append(thread)
+
+    # Wait for all threads to exit:
+    for thread in threads:
+        thread.join()
+    assert len(results) == len(chunks)
+    return sum(results)
+
+DATA = np.random.randint(0, 10, 1_000_000, dtype=np.int64)
+assert np.sum(DATA) == parallel_sum_1(DATA, 4)
+```
+
+There are multiple problems with this approach.
+First, launching a new thread takes time, so it adds extra overhead to every single task you want to run.
+
+Second, you may end up with too many threads.
+If your CPU has 4 cores, that means on the _hardware_ level you can only run 4 threads at once across all processes.
+So that might be two threads in process A and single-threaded processes B and C.
+If you have more than 4 threads in total running across all processes, the operating system's scheduler will run a thread for a short time, then switch to a different thread.
+
+Switching between threads has overhead, for example they might read different memory and so need to fetch that data into the local cache.
+If you have 4 CPU cores and 100 threads, you're only going to have 4 of them running at any given time, so all those extra threads don't speed things up... and the switching overhead will actually slow you down.
+
+Here's the speed of summing in parallel for different numbers of chunks, and therefore threads; notice that it gets much slower as the number of chunks increase:
+
+```{python}
+#| echo: false
+%%compare_timing
+parallel_sum_1(DATA, 1)
+parallel_sum_1(DATA, 2)
+parallel_sum_1(DATA, 4)
+parallel_sum_1(DATA, 8)
+parallel_sum_1(DATA, 16)
+parallel_sum_1(DATA, 32)
+parallel_sum_1(DATA, 64)
+parallel_sum_1(DATA, 128)
+```
+
+Instead of launching a thread per task, a better solution is to use a pool of threads with a fixed size.
+You don't have the overhead of launching a thread per task, and you can limit the number of threads so they're not competing for a limited number of cores.
+
+The Python standard library has a couple of thread pool implementations, with the recommended one being `concurrent.futures.ThreadPoolExecutor`.
+Here's a version of parallel summing that uses this thread pool:
+
+```{python}
+import os
+from concurrent.futures import ThreadPoolExecutor
+
+# I'm going to reuse the thread pool so the cost of starting it up doesn't
+# impact the benchmarks. I set a number of threads equal to the number of
+# CPU cores.
+THREAD_POOL = ThreadPoolExecutor(max_workers=os.cpu_count())
+
+def parallel_sum_2(arr, num_chunks):
+    chunks = np.array_split(arr, num_chunks)
+    results = THREAD_POOL.map(np.sum, chunks)
+    return sum(results)
+
+assert np.sum(DATA) == parallel_sum_2(DATA, 4)
+```
+
+
+```{python}
+#| echo: false
+%%compare_timing
+parallel_sum_2(DATA, 1)
+parallel_sum_2(DATA, 2)
+parallel_sum_2(DATA, 4)
+parallel_sum_2(DATA, 8)
+parallel_sum_2(DATA, 16)
+parallel_sum_2(DATA, 32)
+parallel_sum_2(DATA, 64)
+parallel_sum_2(DATA, 128)
+```
+
+## Choose the right number of threads
