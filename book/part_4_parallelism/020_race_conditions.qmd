@@ -45,9 +45,7 @@ Hopefully this will return results faster.
 import os
 from concurrent.futures import ThreadPoolExecutor
 
-# I'm going to reuse the thread pool so the cost of starting it up doesn't
-# impact the benchmarks. I set a number of threads equal to the number of
-# CPU cores.
+# I set a number of threads equal to the number of CPU cores.
 THREAD_POOL = ThreadPoolExecutor(max_workers=os.cpu_count())
 
 def parallel(arr, num_chunks=10):
@@ -57,10 +55,13 @@ def parallel(arr, num_chunks=10):
     # data, so it's very fast:
     chunks = np.array_split(arr, num_chunks)
 
-    # 😎 For each chunk, process it in a thread in the thread pool:
+    # 😎 For each chunk, process it in a thread in the thread pool by calling
+    # _bad_process_chunk(result, chunk).
     for _ in THREAD_POOL.map(
         _bad_process_chunk, [result] * num_chunks, chunks
     ):
+        # We ignore the results, foolishly relying on _bad_process_chunk to
+        # mutate shared global state, the `result` array.
         pass
 
     return result
@@ -74,7 +75,7 @@ def _bad_process_chunk(result, chunk):
         result[1] = result[1] + val ** 3
 ```
 
-Let's try it out!
+Surely this code will work!
 
 ```{python}
 print("Single-threaded:", list(squares_and_cubes(DATA)))
@@ -246,3 +247,28 @@ And again, the parallel version is faster:
 squares_and_cubes(DATA)
 parallel_mapreduce(DATA)
 ```
+
+### Solution #3: Atomic variables
+
+Sometimes you can use atomic variables, which can be safely used across thread.
+This is beyond the scope of this book; I recommend reading [_Rust Atomics and Locks_ by Mara Bos](https://marabos.nl/atomics/).
+Both Rust and C have borrowed the C++ atomics model, so the underlying concepts will translate across these languages.
+
+## Use Rust
+
+If you use the Rust programming language, the compiler will enforce a rule that for each piece of data, you can have just one of the following:
+
+1. A single writable (mutable) reference.
+2. One or more read-only references.
+
+The result is that if you were to try to write the original data race example code in Rust, the compiler will refuse to compile your code.
+You will be forced to use one of the two strategies needed to solve the problem.
+
+Rust doesn't solve all such problems, so for example the bad lock usages above might compile depending on the kind of data[^copy].
+But it does catch the worst kind of problems, the ones that cause undefined behavior, and it forces you to at least try to fix these problems.
+
+[^copy]: Anything with the `Copy` trait, or if you explicitly do a `clone()` anything with the `Clone` trait.
+
+## Avoid global side-effects
+
+TODO

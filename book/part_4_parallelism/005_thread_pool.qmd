@@ -87,6 +87,10 @@ THREAD_POOL = ThreadPoolExecutor(max_workers=4)
 
 def parallel_pool(arr, num_chunks):
     chunks = np.array_split(arr, num_chunks)
+    # This calls sum_of_square(chunk) for every chunk in chunks; the calls will
+    # be distributed across the threads of the thread pool, with only 4 running
+    # in parallel. It returns an iterable of results; the order may not match
+    # the order of the chunks!
     results = THREAD_POOL.map(sum_of_squares, chunks)
     return sum(results)
 
@@ -104,3 +108,4 @@ parallel_pool(DATA, 4)
 ```
 
 ## Choose the right number of threads
+
