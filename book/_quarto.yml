@@ -68,6 +68,7 @@ book:
         - part_4_parallelism/002_where.qmd
         - part_4_parallelism/005_thread_pool.qmd
         - part_4_parallelism/020_race_conditions.qmd
+        - part_4_parallelism/030_gil.qmd
     - part: "The Practice of Process"
       chapters:
         #- part_5_process/000_what_is.qmd - create me

@@ -1,0 +1,144 @@
+# Release the Global Interpreter Lock (GIL)
+
+In [a previous chapter](020_race_conditions.qmd) I talked about the problems caused by multiple threads accessing the same shared memory.
+These problems apply to the CPython interpreter as well, the default implementation of Python you're likely to be using.
+
+To solve the, CPython implemented a single, global lock that controls all access to the CPython internals.
+_Any_ interaction with the interpreter's C APIs, and therefore any interaction with Python objects (dicts, lists, functions, and so on) requires holding on to this Global Intepreter Lock or GIL.
+This means that by default, only one Python thread may be running at a given time.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## An example
+
+By default, Numba does not release the GIL.
+Consider the following function:
+
+```{python}
+import numpy as np
+from numba import jit
+
+# 🙁 Numba holds on to the GIL by default, so at most one call to this can run
+# at any given time.
+@jit
+def sum_of_squares(arr):
+    result = 0
+    for i in range(len(arr)):
+        result += arr[i] ** 2
+    return result
+
+DATA = np.random.randint(0, 10, 1_000_000, dtype=np.int64)
+assert sum_of_squares(DATA[:3]) == DATA[0] ** 2 + DATA[1] ** 2 + DATA[2] ** 2
+```
+
+Because parallelism cannot happen by default, if we run the function in four threads, the elapsed time should be approximately the same as if we ran it sequentially.
+
+```{python}
+from time import time
+from threading import Thread
+
+def run_many_times(func):
+    for _ in range(1000):
+        func()
+
+def run_in_parallel(func, n_threads):
+    print(f"{n_threads} calls in {n_threads} threads")
+    start = time()
+    threads = []
+
+    # Start N threads running the given function repeatedly:
+    for _ in range(n_threads):
+        t = Thread(target=lambda: run_many_times(func))
+        threads.append(t)
+        t.start()
+
+    # Wait for all threads to finish:
+    for t in threads:
+        t.join()
+
+    print("Elapsed (seconds):", time() - start)
+    print()
+
+run_in_parallel(lambda: sum_of_squares(DATA), 1)
+run_in_parallel(lambda: sum_of_squares(DATA), 4)
+```
+
+Notice that the elapsed time for running 4 threads in parallel is 4× as slow as running 1 thread.
+Because of the GIL, in practice there is no parallelism, as only one thread can hold the lock at any given time.
+
+## Rely on existing libraries to release the GIL
+
+Having only a single thread running at a time means you can't take advantage of multiple cores.
+This is not ideal if you want to use parallelism.
+Luckily, in many cases Python APIs and libraries will release the GIL, allowing for parallelism.
+This is possible whenever some potentially long-running operation doesn't need to interact with Python at all.
+
+For example:
+
+* When you read from a file, Python will release the GIL while calling the underlying operating system read operation, then reacquire it when it's time to create a `bytes` object.
+* When you call a NumPy operation on a NumPy array, it will usually release the GIL.
+  Because NumPy arrays' data can be accessed by any compiled language, without relying on Python APIs, operations on these arrays do not need the GIL.
+
+As a result, in many cases you will be able to achieve multi-core parallelism when using Python libraries, so long as you're using underlying data structures like NumPy or Arrow that allow bypassing Python.
+Anything that interacts with, say, a Python dict or list will not be able to release the GIL.
+
+If you're using a third-party library and you're not getting the parallelism you expect, check if it's actually releasing the GIL.
+As a starting point, a profiler with a timeline ([VizTracer](https://github.com/gaogaotiantian/viztracer) TODO or my own [Sciagraph](https://pythonspeed.com/articles/python-gil/)) can help you see which threads are running in parallel.
+
+## Release the GIL in your own code
+
+When you're writing your own code in a compiled language, you should manually release the GIL whenever possible.
+Because releasing and acquiring the GIL adds overhead, you want to release it for larger chunks of time, rather than repeatedly acquiring and releasing it for tiny units of work.
+
+Releasing the GIL in Numba involves adding an extra argument to `@numba.jit`:
+
+```{python}
+# 😎 By releasing the GIL, we enable parallelism:
+@jit(nogil=True)
+def sum_of_squares_nogil(arr):
+    result = 0
+    for i in range(len(arr)):
+        result += arr[i] ** 2
+    return result
+
+assert sum_of_squares(DATA) == sum_of_squares_nogil(DATA)
+```
+
+Now, when we run multiple copies of this function, we will get parallelism:
+
+```{python}
+run_in_parallel(lambda: sum_of_squares_nogil(DATA), 1)
+run_in_parallel(lambda: sum_of_squares_nogil(DATA), 4)
+```
+
+The elapsed time for 1 thread and for 4 threads is the same, because now the threads are able to use multiple CPU cores.
+
+## Beware race conditions and corrupting the Python interpreter
+
+The global interpreter lock doesn't guarantee correct behavior, but it does limit the damage caused by race conditions.
+Once you release the GIL, multiple threads can write to the same data at once, which as described elsewhere can lead to data races, memory corruption, and undefined behavior.
+Make sure to implement your own, more finer grained locking if necessary.
+
+In addition, once you have released the GIL you cannot interact with Python objects or Python APIs.
+If you do so anyway, you risk corrupting the interpreter memory.
+
+## Consider experimenting with free-threaded Python
+
+In Python 3.14 a new mode is introduced for Python: free-threading, essentially Python without a GIL.
+This means Python code can run in parallel no matter what it is doing: multiple threads can, for example, interact in parallel with Python objects like dicts and lists.
+
+In order to use free-threaded Python you need:
+
+* A version of Python compiled in this mode.
+* Compiled Python libraries that have been updated to support this mode.
+  `pip` and similar tools will automatically download them if you're using the free-threaded Python interpreter, but only if they've been made available by developers.
+
+Not all Python libraries have been ported yet; see [this list](https://hugovk.github.io/free-threaded-wheels/) of support among the top downloaded packages on PyPI to get a sense of package availability.
+
+Beyond library availability, there is also the question of correctness.
+Switching to a threading paradigm where developers need to worry far more about race conditions and cross-thread conflicts will likely involve a long tail of rare, hard-to-reproduce bugs.
+As an early adapter, you can help the community by finding and reporting these bugs.
+Or, you can choose to wait until other people have done this for you.
