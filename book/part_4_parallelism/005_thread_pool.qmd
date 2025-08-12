@@ -106,6 +106,3 @@ sum_of_squares(DATA)
 parallel_launch(DATA, 4)
 parallel_pool(DATA, 4)
 ```
-
-## Choose the right number of threads
-

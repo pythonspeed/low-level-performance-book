@@ -1,0 +1,143 @@
+# Choose an appropriate thread pool size
+
+How many threads should your thread pool have?
+It depends on what else is running on the computer, on your hardware, on your runtime environment, and how your software is designed.
+
+## Make thread pool size configurable, with a reasonable default
+
+Software should have good defaults.
+But less common configurations, unexpected situations, and debugging all benefit from the ability to override key settings.
+
+In the rest of this chapter I'll discuss choosing a reasonable default pool size.
+But beyond that, you should also make it configurable, so users who want to override it can do so.
+For libraries, a common way to do so is by checking an environment variable, so that end-users can easily configure any application using that library.
+For example, the Polars library lets you set the `POLARS_MAX_THREADS` environment variable to configure its maximum number of threads.
+
+## When threads do only computation, use the number of available CPU cores
+
+If your code only does computation, the number of available CPU cores is a key bottleneck.
+(I'll talk about what "only computation" means in a bit.)
+Assume your CPU has 10 cores: that means it can run the code in up to 10 threads at the same time.
+
+If you have more than 10 threads in total across your various processes, they will be scheduled to run by the operating system.
+Whenever a running thread that is only doing computation has had sufficient time, that thread is paused and another thread is resumed so it can run on the newly freed up CPU core.
+
+### If your program is the only one running
+
+As a result, if your program is the only computationally-intensive process running on the computer[^other], setting the thread pool size to the number of CPU cores is a good default.
+Less than that and some CPU cores will go idle.
+More than that and threads will compete for CPU cores; at best you'll get the same speed, at worst the switching will slow things down.
+
+[^other]: Yes, random required processes and the operating system kernel will need some CPU, but probably not much, so you can ignore them in practice.
+
+On Python you can get the number of CPU cores using [`os.cpu_count()`](https://docs.python.org/3/library/os.html#os.cpu_count).
+You create a single thread pool, with the number of workers limited to the number of CPU cores:
+
+```{python}
+import os
+from concurrent.futures import ThreadPoolExecutor
+
+THREAD_POOL = ThreadPoolExecutor(max_workers=os.cpu_count())
+```
+
+You want a single thread pool because if you create multiple pools, you will have too many threads and they will compete for limited CPU cores.
+
+A useful feature of `os.cpu_count()` is that you can override its value with the `PYTHON_CPU_COUNT` environment variable, so you get configurability for free.
+
+### More than one computationally-intensive process
+
+If you have multiple computationally-intensive programs running on the same computer, the available hardware isn't necessarily the best measure of CPU availability.
+One option is to rely on operating system facilities to assign different processes different amounts of CPU.
+For example, there's CPU affinity: the operating system can limit a process to run only on 3 specific cores.
+In this case, the process should only start 3 threads, but `os.cpu_count()` won't tell you that.
+
+In Python, the [`os.process_cpu_count()`](https://docs.python.org/3/library/os.html#os.process_cpu_count) API is an alternative to `os.cpu_count()` takes into account CPU affinities.
+Like `os.cpu_count()`, `os.process_cpu_count()` can be overriden with the `PYTHON_CPU_COUNT` environment variable.
+
+On Linux there is also the ability to limit CPU availability via `cgroups`, the Linux APIs which are the basis for container systems like Docker and Kubernetes.
+The Rust crate [`num_cpus`](https://docs.rs/num_cpus/latest/num_cpus/) allows you to get the number of available CPUs taking into account both affinity and `cgroups`.
+
+## When your threads don't just do computation
+
+Utilizing multiple CPU cores is one use case for threads.
+The other use case is the ability to _wait_ for something, while still allowing your program to do other work in other threads.
+
+For example, if you do `time.sleep(1.5)`, your thread doesn't need to do doing anything for a second and a half.
+The operating system will therefore pause the thread, only resuming it 1.5 seconds later (or more).
+Meanwhile, some other thread can run on the CPU core the sleeping thread temporarily relenquished.
+
+Additional situations involving waiting include:
+
+* Acquiring a lock held by another thread[^spinlock].
+* Reading from or writing to a filesystem; sometimes this is fast, but it can be slow, especially if they filesystem is on another computer.
+  In a cloud environment this later case is quite common.
+* Reading from a network using a "blocking" API, i.e. an API that doesn't return until the data is available.
+
+[^spinlock]: A spinlock is a kind of lock that spins, i.e. keeps running, until the lock will be acquired, so it is still doing computation and not waiting. However, most locking libraries only spin for a short period of time and then switch to waiting.
+
+In all of these cases, the thread will be paused, and won't be running CPU instructions until it gets woken up by the operating system (when the lock is freed, the data has been read, the sleep is over, etc).
+And iff a thread is deliberately paused, that frees up a CPU core to run another thread.
+
+If your threads are often waiting, paused, the thread pool size need not be limited to the number of available CPU cores.
+Rather, the pool size should be based on how many waiting requests you want to support in parallel.
+For example, maybe you are forced to use a blocking (waiting) API to download data records, and you want to download 100 in parallel.
+That means you need a thread pool with 100 threads; this number is likely different than the number of available CPU cores!
+
+So how do you size the thread pool given two competing optimal sizes?
+
+### Solution #1: Separate thread pools for computation and non-computation
+
+One way to approach this mismatch is to have different thread pools, each running different kinds of work:
+
+1. **A computation thread pool:** This is limited to the number of CPU cores, and the code running in this pool only does computation.
+2. **Other thread pool(s) for non-computation uses:** These are used for blocking APIs like reading from the filesystem or network operations, and the size can be tied to number of desired parallel requests.
+
+### Solution #2: Use an async framework
+
+If you're doing networking, TCP or UDP or protocols like HTTP that build on top of them, you can use an event loop (aka "async framework") like Python's [`asyncio`](https://docs.python.org/3/library/asyncio.html) to avoid blocking APIs and the need for threads for networking.
+That means you have:
+
+1. **A computation thread pool:** Sized to the number of CPU cores.
+2. **A single thread running an event loop:** This handles all network interactions so that no blocking APIs are needed.
+
+Filesystem interactions may still need their own thread pool, or in some cases the async framework will also support non-blocking filesystem reads and writes.
+
+### Solution #3: Restrict computation parallelism with a semaphore
+
+In this approach you have a single, giant thread pool, with number of threads set based on number of parallel aiting requests you support.
+If you want to be able to download up to 200 files in parallel with a blocking API, you start a thread pool with 200 threads.
+
+Then, you restrict computational work to the number of CPU cores using a semaphore, a thread coordination mechanism similar to locks.
+A lock allows only one thread to hold the lock at a time; a semaphore allows up to N threads to hold the semaphore.
+
+Here's a sketch of how this would look in Python:
+
+```python
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+THREAD_POOL = ThreadPoolExecutor(max_workers=200)
+
+# This is a global semaphore, used anywhere signficant computation is done
+# to limit computating threads to the number of available CPU cores.
+LIMIT_FOR_COMPUTE = threading.Semaphore(os.process_cpu_count())
+
+def example_task(address):
+    # This is a blocking, waiting API that needs to be run in a thread pool
+    # with many threads:
+    data = download_data(address)
+
+    # Acquire the semaphore and run some computation. If more than
+    # os.process_cpu_count() threads are doing computation, this thread will
+    # need to wait.
+    with LIMIT_FOR_COMPUTE:
+        result = intensive_computation(data)
+
+    # The semaphore has been released, now write the result:
+    save_data(result)
+
+for address in get_addresses():
+    THREAD_POOL.submit(example_task, address)
+```
+
