@@ -52,11 +52,13 @@ print(
 )
 ```
 
-If processing a chunk takes 100µs and the additional overhead is 20µs, that means 16% of processing time will be wasted purely on pushing chunks through the thread pool.
+If processing a chunk takes 100µs and the additional overhead is 20µs, that means 16% of the total time will be wasted purely on pushing chunks through the thread pool.
 If you have fewer, larger chunks such that processing each chunk takes 1000µs, then just 2% of processing time is wasted.
 Thus you want fewer, larger chunks in order to minimize processing overhead from the thread pool.
 
-Separately, a lower-overhead thread pool can also help; bypassing Python and using a compiled language to dispatch to the thread pool is one way to do that.
+Separately, a lower-overhead thread pool can also help.
+Bypassing Python and using a compiled language to dispatch to the thread pool is one way to do that.
+Not only are compiled languages faster, but even worse, a Python thread pool will also suffer from the GIL: only one Python thread at a time can retrieve its next chunk.
 If the overhead is low enough, the number of chunks can often be ignored.
 
 ## Reduce memory cache pressure by choosing smaller (and therefore more) chunks
@@ -68,5 +70,54 @@ If the data access pattern is random, the immediately accessed data won't fit in
 
 If each chunk is 1MiB of data, the total data across all threads will be 12MiB, which will fit in the L3 cache with room to spare for other necessary memory.
 This means faster calculations as less time will be spent waiting for reads from RAM.
-
 Thus as far as memory caches are concerned, it is better to have smaller chunks, which means you will have more chunks to process.
+
+It's also worth noting there are two reasons reads or writes to RAM can be slow:
+
+* Latency, the time it takes for the data to arrive.
+* Bandwidth, how much data can be copied at once.
+
+While latency is always a problem, multiple threads reading or writing large amounts of data from RAM makes it easier to hit the bandwidth limit.
+
+Let's see an example where increasing the chunk size makes processing slower.
+We'll use an operation that doesn't just read memory linearly, to increase pressure on caches: we'll look at a shuffled random sample of the data.
+
+```{python}
+from numba import jit
+import numpy as np
+
+@jit(nogil=True)
+def mean_of_sample(arr):
+    # An operation that means we're not just doing linear memory read:
+    sample = np.random.choice(arr, len(arr) // 100)
+    return sample.mean()
+
+DATA = np.random.randint(0, 10, 100_000_000, dtype=np.uint8)
+# We're generating random numbers with average of 4.5:
+assert abs(mean_of_sample(DATA) - 4.5) < 0.01
+```
+
+This single-threaded function can be turned into a parallel version, that runs a thread pool with varying chunk sizes:
+
+```{python}
+import os
+
+THREAD_POOL = ThreadPoolExecutor(max_workers=os.cpu_count())
+
+def run_with_chunk_size(arr, chunk_size):
+    num_chunks = int(round((len(arr) / chunk_size)))
+    # This uses views, so no memory copies or access happens:
+    chunks = np.array_split(arr, num_chunks)
+    return sum(THREAD_POOL.map(mean_of_sample, chunks)) / len(chunks)
+
+assert abs(run_with_chunk_size(DATA, 10_000_000) - 4.5) < 0.01
+```
+
+When run with sufficiently larger chunks, I get slower results:
+
+```{python}
+#| echo: false
+%%compare_timing --measure=memory_cache_miss
+run_with_chunk_size(DATA, 1_000_000)
+run_with_chunk_size(DATA, 10_000_000)
+```
