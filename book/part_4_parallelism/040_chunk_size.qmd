@@ -1,0 +1,72 @@
+# Choose an appropriate chunk size
+
+In some parallelism strategies you will end up taking a single large piece of data, and processing it in chunks in parallel.
+For example, if you have a 123,000,000 row CSV, you may break it up into chunks by handing 1,000 rows at a time to a thread pool, meaning there will be 123,000 chunks.
+Or maybe you want chunks of 123,000 rows, meaning there will only be 1,000 chunks?
+
+As it turns out, there are factors pushing chunk size (or conversely, the number of chunks) in opposite directions:
+
+1. The overhead of the thread pool pushes you to have larger and fewer chunks.
+2. Memory cache usage pushes you to have smaller and greater number of chunks.
+
+The ideal chunk size is somewhere in the middle: small enough so memory caches aren't a problem, large enough so thread pool overhead isn't a concern.
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+## Reduce overhead by choosing fewer (and therefore larger) chunks
+
+Handing work off to a thread pool adds overhead.
+This overhead may be smaller in a compiled language, but it still exists.
+The more chunks you have, the more overhead.
+Fewer chunks means less overhead.
+
+One way to get a sense of the overhead involved is to see how many operations a second you can process in a single-threaded thread pool.
+The operation will do nothing, so you're just measuring overhead:
+
+```{python}
+from time import time
+from concurrent.futures import ThreadPoolExecutor
+
+def noop(*args, **kwargs):
+    # Do nothing.
+    pass
+
+THREAD_POOL = ThreadPoolExecutor(max_workers=4)
+# Make sure the thread is started:
+THREAD_POOL.submit(noop).result()
+
+start = time()
+num_ops = 100_000
+for _ in THREAD_POOL.map(noop, range(num_ops)):
+    pass
+elapsed = time() - start
+overhead = int(round((elapsed / num_ops) * 1_000_000))
+print(f"Thread pool overhead per operation: {overhead} µs"
+)
+print(
+    "Operations per second that will saturate a single CPU core:",
+    int(num_ops / elapsed)
+)
+```
+
+If processing a chunk takes 100µs and the additional overhead is 20µs, that means 16% of processing time will be wasted purely on pushing chunks through the thread pool.
+If you have fewer, larger chunks such that processing each chunk takes 1000µs, then just 2% of processing time is wasted.
+Thus you want fewer, larger chunks in order to minimize processing overhead from the thread pool.
+
+Separately, a lower-overhead thread pool can also help; bypassing Python and using a compiled language to dispatch to the thread pool is one way to do that.
+If the overhead is low enough, the number of chunks can often be ignored.
+
+## Reduce memory cache pressure by choosing smaller (and therefore more) chunks
+
+My current computer's CPU has 12 cores, and the following memory caches, and a 25MiB L3 cache shared by all the cores.
+
+If I am running my code with 12 threads, in order to utilize all the cores, and each chunk I process in the thread pool is 10MiB of data, that means the threads are accessing 250MiB of data.
+If the data access pattern is random, the immediately accessed data won't fit in the L3 cache (25MiB) and there will be lots of time spent waiting for reads from RAM.
+
+If each chunk is 1MiB of data, the total data across all threads will be 12MiB, which will fit in the L3 cache with room to spare for other necessary memory.
+This means faster calculations as less time will be spent waiting for reads from RAM.
+
+Thus as far as memory caches are concerned, it is better to have smaller chunks, which means you will have more chunks to process.
