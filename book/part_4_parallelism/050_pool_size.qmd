@@ -141,3 +141,19 @@ for address in get_addresses():
     THREAD_POOL.submit(example_task, address)
 ```
 
+## Adjust libraries' thread pool sizes to match your parallelism strategy
+
+Imagine you decided to add parallelism to a program by using parallel linear pipelines, each one running single-threaded.
+You launch multiple processes in parallel, each processing a different file.
+Given a computer with $C$ CPU cores, how many processes should you launch?
+Based on the discussion above, you might choose to launch $C$ different processes.
+
+But there's a potential problem here.
+Many Python libraries will have their own internal thread pool, with the number of threads often defaulting to the number of CPU cores.
+In fact, some libraries are inconsistent about their threading model, notably NumPy: most of the time it is single-threaded, but when doing linear algebra operations it uses multi-threaded BLAS library as a backend.
+As a result, some (but not all!) of your operations may be using $C$ threads.
+Given $C$ processes each with $C$ threads, overall you might have $C^2$ different threads running in parallel, which is going to slow things down.
+
+To prevent this from happening, you should make sure any libraries you depend on are configured appropriately to match your application's parallelism strategy.
+If your application will manage the amount of parallelism, set the libraries' thread pool sizes to 1.
+If you want to rely on the libraries' existing parallelism, don't implement parallelism yourself.
