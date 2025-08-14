@@ -2,7 +2,7 @@
 
 If parallelism means you get wrong results, that extra speed is worse than useless.
 And unfortunately, parallelism significantly increases the opportunities for buggy code.
-In particular, as soon as you have more than one thread writing to the same address in memory, you will start having to worry about data races that can corrupt your data and cause undefined behavior.
+In particular, as soon as you have more than one thread writing to the same address in memory, you will start having to worry about nondeterministic behavior that can corrupt your data or even cause undefined behavior.
 
 ```{python}
 #| echo: false
@@ -264,11 +264,34 @@ If you use the Rust programming language, the compiler will enforce a rule that 
 The result is that if you were to try to write the original data race example code in Rust, the compiler will refuse to compile your code.
 You will be forced to use one of the two strategies needed to solve the problem.
 
-Rust doesn't solve all such problems, so for example the bad lock usages above might compile depending on the kind of data[^copy].
-But it does catch the worst kind of problems, the ones that cause undefined behavior, and it forces you to at least try to fix these problems.
+Rust doesn't solve all such problems, so for example the bad lock usages above might compile depending on the kind of data you're accessing[^copy].
+But it does catch the worst kind of problems, the ones that cause undefined behavior.
 
-[^copy]: Anything with the `Copy` trait, or if you explicitly do a `clone()` anything with the `Clone` trait.
+[^copy]: Anything with the `Copy` trait, or, if you explicitly do a `clone()`, anything with the `Clone` trait.
 
-## Avoid global side-effects
+## Avoid race conditions outside of shared memory
 
-TODO
+Even if you're not using threads, you can still cause race conditions.
+Any time you are concurrently writing to a shared location you can have these sorts of problems.
+For example:
+
+* If you have multiple processes writing files to disk, you can lose data if multiple processes choose the same output file path and stomp on each other's ouput.
+* In relational databases like PostgreSQL, in [certain isolation levels](https://www.postgresql.org/docs/current/transaction-iso.html) you can have data change out from under you in the middle of a transaction, which can lead to incorrect results.
+
+Because these problems are universal, be careful any time you are writing to shared locations.
+
+## "Works for me" is not sufficient guarantee of correctness
+
+Because race conditions rely on specific timing of operations, they can sometimes be very difficult to reproduce, and may only occur intermittently or under very specific conditions.
+The fact your code seemingly runs correctly on your computer does not mean it is free of race conditions.
+
+Some approaches to ensuring your parallel logic is actually correct include:
+
+* Using tools and architectures that reduce the risks; Rust is one example metnioned above.
+  This won't solve everything, but it can help.
+* Systemically testing all thread interleaving options; see for example the [Loom crate](https://docs.rs/loom/latest/loom/) for Rust.
+  This can be slow.
+* Modeling with formal methods, for example using [TLA+](https://learntla.com/index.html).
+  You still need to worry about whether your implementation matches the formal model.
+* Runtime correctness checks like [ThreadSanitizer](https://github.com/google/sanitizers/wiki/threadsanitizercppmanual), available in gcc and clang.
+  Because this only does checks at runtime, and given that race conditions can be hard to reproduce, this won't catch everything.
