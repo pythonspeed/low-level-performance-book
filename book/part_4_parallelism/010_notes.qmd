@@ -1,14 +1,19 @@
 # TODO
 
-* Threads vs processes
-* Maximize cores used
-     * _Computing_ thread per core _across the whole operating system_
-     * Hyperthreading
-     * Use separate threads for I/O and for compute: blocking network and disk APIs can reduce utilization
+* Hyperthreading
+
+
+# MAYBE DONE
+
+* Memory bandwidth limitations; mentioned at least, maybe merits its own section, or is that too in dpeth?
+* Models of parallelism, probably needs more work?
+
+# DONE
+
 * Make sure you understand libraries' existing threading models and don't fight them (or configure appropriately)
+* Threads vs processes
 * Release the GIL
 * Avoid race conditions
-* Models of parallelism:
-    * Full isolation
-    * Worker pool (with fixed size queue for backpressure)
-* Memory bandwidth limitations?
+* Maximize cores used
+     * _Computing_ thread per core _across the whole operating system_
+     * Use separate threads for I/O and for compute: blocking network and disk APIs can reduce utilization

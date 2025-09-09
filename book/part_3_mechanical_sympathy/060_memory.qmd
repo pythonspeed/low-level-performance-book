@@ -55,7 +55,7 @@ Given data size can impact performance results, it's useful to know how memory c
 To give a sense of scale, the i7-12700 has 12 physical CPU cores; 8 "performance" (faster) and 4 "efficiency" (slower) cores.
 The 8 performance CPU cores in my i7-12700K have:
 
-1. 48KiB L1 data cache and 32KiB L1 instruction cache.
+1. 48KiB L1 data cache and 32KiB L1 instruction cache per core.
 2. 1280KiB L2 cache for each core; this includes both data and instructions.
 3. 25MiB L3 cache shared by all the cores, including both the performance cores and the 4 efficiency cores.
 
