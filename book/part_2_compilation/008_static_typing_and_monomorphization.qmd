@@ -11,8 +11,6 @@ But of course the Python interpreter itself is also written in a compiled langua
 
 One way that compiled languages enable faster run times is by providing the information the compiler needs to convert your source code to machine code in a very specialized, and therefore more efficient, way.
 
-In the previous chapter TODO each step
-
 ## Static typing enables the compiler to generate faster code
 
 Consider the following Python function:
@@ -61,18 +59,12 @@ Unsurprisingly, the Rust function is much faster!
 
 ## How compiled languages deal with generic code
 
-TODO in Python, everything is a Python object, and what each operation does is dispatched at runtime, as we saw above.
+In some compiled languages the same compiler functionality that generates specialized code for functions can also generate specialized data structures.
+Consider a hash map, which internally maps objects to integers using a _hashing function_.
 
-If you hardcode specific types, the compiler can clearly generate optimized code.
+Python's hash map, the `dict` type, supports keys that can be any Python object.
+Therefore to calculate the hash of the object, the Python interpreter first needs to lookup which specific hash function to use for this particular type of object, and do this over and over for every single key.
 
-But in our Rust code we saw e.g. `HashMap` used for different types, so how does that work?
-
-The terminology and implementation varies, but in general generic code like this only appears generic to the human writing code.
-
-As part of compilation, the compiler will figure out "oh this is a HashMap where the key is integer" and generate a _copy_ of all the code.
-
-So the HashMap that has keys that are integers uses different compiled function than the HashMap that have keys that are Python objects.
-And it can therefore use the static typing to generate more efficient code.
-
-Still, all this abstraction may seem like it'd slow things.
-But the compiler doesn't just translate your code directly into machine code: it also optimzies it, as we'll see in the next chapter. 
+In contrast, in Rust the `HashMap` class is _generic_: you need specify the types of the keys and values, and the compiler generates a custom copy of the code depending on those types.
+If you create a `HashMap<i32, i64>`, the compiler knows the keys are only ever 32-bit signed integers, and it can generate the hashing code appropriately.
+This combines well the fact the compiler then optimizes the generated code, as I will discuss in later chapters.
