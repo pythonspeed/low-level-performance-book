@@ -1,10 +1,8 @@
-# Fine-tune algorithms to your particular data
+# A more complex example: Median-based local thresholding
 
 Libraries like NumPy and SciPy are general purpose: they need to run correctly for many different users, with a variety of different requirements.
 When you are writing a custom application, for a specific kind of data, your problem is more constrained.
 And that means opportunities to speed up your code, by customizing your calculations, algorithms, and data structures specifically for your particular situation and data.
-
-## Example: Median-based local thresholding
 
 Let's say we have an image, a photo of some text from a book.
 We want to turn it into an image with only two colors, black and white, perhaps as a preliminary to running it though an OCR library that can turn an image into text.
