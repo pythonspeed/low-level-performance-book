@@ -1,7 +1,8 @@
-# Make sure you're using modern SIMD instructions
+# ⋯ Make sure you're using modern SIMD instructions ⋯
+
+> {{< var optional >}}
 
 While Numba makes using SIMD automatic and transparent, using SIMD in other programming languages can take some configuration and thought.
-Since this is a more advanced topic, I suggest skipping this chapter on first reading the book and returning to it later if relevant.
 
 ```{python}
 #| echo: false
