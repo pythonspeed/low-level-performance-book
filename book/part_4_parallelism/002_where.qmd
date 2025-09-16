@@ -2,8 +2,6 @@
 
 You may need to implement parallelism at different levels of abstraction—or in some cases not bother to implement it at all.
 
-TODO a flowchart? better explanations?
-
 ## Strategy 1: No parallelism (at this abstraction level)
 
 Sometimes parallelism is someone else's problem.
@@ -106,6 +104,8 @@ pl.scan_csv("input.csv").select(YEAR > 2012).sink_csv("2012.csv")
 Behind the scenes, Polars has an internal thread pool, and is likely to parallelize these operations, but the fact that it is parallel is not really exposed to you in the API.
 Polars may parallelize the work in ways that are more complex than just identical pipelines, since it supports many APIs which need to be parallelized in different ways, or may not support parallelism at all.
 
+Here's a diagram of what this looks like:
+
 ::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
@@ -120,8 +120,6 @@ flowchart TD
  D --> E(["Output"])
 ```
 :::
-
-Here's a diagram of what this looks like:
 
 ::: {.content-hidden unless-format="markdown"}
 ```
