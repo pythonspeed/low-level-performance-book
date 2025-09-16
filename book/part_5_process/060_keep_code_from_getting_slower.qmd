@@ -1,5 +1,5 @@
 ---
-title: "Keep your code from getting slower"
+title: "Prevent your code from getting slower"
 ---
 
 If you speed up your code, what's to keep future changes from making it slower again?
