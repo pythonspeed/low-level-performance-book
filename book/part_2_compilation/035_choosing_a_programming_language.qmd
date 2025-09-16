@@ -1,4 +1,6 @@
-# Choose an appropriate compiled programming language
+# ⋯ Choose an appropriate compiled programming language ⋯
+
+> {{< var optional >}}
 
 If you've determined that computation is a performance bottleneck, and switching to a compiled language is your best approach, you need to choose which programming language to use.
 This is a very contextual decision, and your choices may be constrained in various ways that make the decision easier.

@@ -39,6 +39,7 @@ book:
         - part_2_compilation/015_floating_point.qmd
         - part_2_compilation/025_undefined_behavior.qmd
         - part_2_compilation/030_aliasing.qmd
+        - part_2_compilation/035_choosing_a_programming_language.qmd
     - part: "Tweaking compiler output and behavior"
       chapters:
         - part_2_compilation/040_reducing_type_conversions.qmd
@@ -73,7 +74,6 @@ book:
     - part: "The Practice of Process"
       chapters:
         - part_5_process/000_what_is.qmd
-        - part_5_process/010_choosing_a_programming_language.qmd
         - part_5_process/015_profiling.qmd
         - part_5_process/020_choosing_a_metric.qmd
         - part_5_process/030_microbenchmarking.qmd
