@@ -83,3 +83,5 @@ histogram_list(GRADES)
 ```
 
 In a compiled language I would expect the difference to be even larger.
+
+This is of course just an example, but the general principle applies more broadly: there are often faster alternatives that won't compromise your scalability.
