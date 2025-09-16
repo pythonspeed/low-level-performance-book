@@ -72,7 +72,7 @@ book:
         - part_4_parallelism/050_pool_size.qmd
     - part: "The Practice of Process"
       chapters:
-        #- part_5_process/000_what_is.qmd - create me
+        - part_5_process/000_what_is.qmd
         - part_5_process/010_choosing_a_programming_language.qmd
         - part_5_process/015_profiling.qmd
         - part_5_process/020_choosing_a_metric.qmd

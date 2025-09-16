@@ -1,0 +1,16 @@
+# What is the Practice of Process?
+
+> "... most industrial enterprises contain an aesthetic of products—a language, a set of concepts, and a framework for judging the beauty of products—but few contain an equally well developed _aesthetic of process_."
+>
+> —_What Machines Can't Do_, by Robert J. Thomas
+
+All other things being equal, faster software is better software.
+It gets you results faster, it uses less resources, it's more efficient: all good qualities to have in a product.
+
+To achieve a faster product you also need to consider your software development processes.
+Why did your software end up slow in the first place?
+How will you measure your software's speed and validate it actually is getting faster?
+How will you keep your software from getting slow again in the future as it continues to evolve?
+
+These are all questions not about your code, but about your development process.
+The Practice of Process covers the processes you use to make your software fast, and to keep it fast.
