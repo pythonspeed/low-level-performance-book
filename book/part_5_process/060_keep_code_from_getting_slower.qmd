@@ -1,0 +1,77 @@
+---
+title: "Keep your code from getting slower"
+---
+
+If you speed up your code, what's to keep future changes from making it slower again?
+Just like it's good practice to write a reproducer test for bugs you fix, to prevent future changes from recreating that bug, it's also a good idea to have infrastructure in place that will catch performance regressions.
+
+## Run expensive benchmarks daily or weekly
+
+If you have some benchmarks that take a significant amount of time or resources to run, you might not be able to run them on every pull request.
+But if you only run this once a month, say, you'll have a whole month's worth of code changes to try to pin the regression on.
+Ideally you should run them as frequently as you can afford to, to catch performance regressions as quickly as possible.
+
+## Run fast benchmarks on every pull request
+
+A standard workflow for many software projects is to run automated tests on every pull request or merge request.
+You don't merge the code until all tests pass.
+
+Similarly, you can run benchmarks on every pull request, and decide whether to accept the code based on the performance results.
+If for example a minor bug fix results in a 10% decrease in speed, you will probably want dig in and try to come up with an alternative solution.
+
+## Choose a reliable benchmarking setup
+
+It's common to run tests in cloud virtual machines or containers, provided by services like GitHub Actions.
+But if you want to integrate running benchmarks into this sort of system, you face the problem that benchmark results will be very inconsistent across runs.
+There is no guarantee that a run today will use the same hardware (CPU model, memory, etc) as the run tomorrow: any slowdown or speedup you see might well be the result of hardware changes, rather than changes to your software.
+
+### Solution #1: Use a fixed hardware machine for benchmarks
+
+Services like GitHub Actions typically have the option to register custom worker machines for specific jobs.
+That means you can buy a computer, hook it up your network, and register it to run benchmark jobs.
+Then all benchmarks will run on consistent hardware, and hopefully give consistent results.
+There are also vendors that offer dedicated hardware as a service.
+
+This provides limited scalability, but can work fine for small teams, and allows you to track benchmark results over time.
+
+### Solution #2: Measure simulated CPU instructions
+
+Valgrind is a profiling and debugging tool that effectively simulates a whole CPU.
+One way you can use it is to measure how many CPU instructions running some code takes, but specifically instructions on the simulated CPU.
+Because the CPU is simulated, the results are consistent over time, regardless what real hardware you're using.
+
+The benefits:
+
+* Consistent results over time, regardless of hardware.
+
+The downsides:
+
+* It's very slow, because of the need to emulate a CPU.
+* It won't work well for compiled code, since the number of CPU instructions doesn't take into account instruction-level parallelism, memory caches, and branch misprediction.
+  As such it's probably only for Python, or maybe for measuring algorithmic efficiency of compiled code.
+
+For more details see [my article on the subject](https://pythonspeed.com/articles/consistent-benchmarking-in-ci/); [Codspeed](https://codspeed.io) is a company that implements this as a service.
+
+### Solution #3: Run benchmarks twice ("relative benchmarks")
+
+Imagine you are asking to merge a change from a feature branch into the `main` branch.
+To check its speed, your benchmarking setup can:
+
+1. Check out the `main` branch, and run the benchmarks.
+2. On the same machine, as part of the same build action, check out your feature branch, and run the benchmarks.
+3. Compare the two results and tell you if things got better or worse.
+
+Benefits:
+
+* More realistic than simulating a CPU, you'll be able to measure speedups from instruction-level parallelism and the like.
+  That means you can use it for compiled code, not just Python.
+* Probably faster than simulating a CPU.
+
+Downsides:
+
+* Assuming you're using a cloud service that provisions machines on demand, like GitHub Actions, you won't have any meaningful performance history over time.
+  You can't compare the run from today to the run from yesterday since the runs may have used different hardware.
+* You run the whole benchmark suite twice for every pull request.
+
+See [this article](https://labs.quansight.org/blog/2021/08/github-actions-benchmarks) for an example of using this technique in the real world.
+The Python `cryptography` package [also uses this technique](https://github.com/pyca/cryptography/blob/main/.github/workflows/benchmark.yml).
