@@ -120,6 +120,7 @@ def generate_random_numbers(n):
 
 ```{python}
 #| echo: false
+# Important to this after the NUMBA_SLP_VECTORIZE=0 etc.
 %load_ext book_magics
 ```
 
