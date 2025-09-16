@@ -1,23 +1,38 @@
-# Get rid of branches with branchless programming
+# Reduce the costs of branch misprediction
 
-One potential solution to the performance costs of branches is branchless programming, where we restructure code to get rid of branches altogether.
+`if` statements, `for` loops, `while` loop, and other less obvious code structures can result in branches in your code.
+Branches can have an unexpected performance impact at runtime, due to interactions with instruction-level parallelism (ILP).
+As we discussed in a previous chapter, ILP allows the CPU to run multiple instructions in parallel if it knows they don't depend on each other.
 
-```{python}
-#| echo: false
-%load_ext book_magics
-```
+Branches present a problem for ILP: given there are two possible sets of future instructions, for example the two branches of an `if` statement, how can the CPU know which set it should be executing in parallel?
 
-## A simple example of branch misprediction
+Instead of just stopping execution until the `if` statement can be calculated, the CPU will instead make a guess, a "branch prediction."
+Based on this prediction, the CPU speculatively keeps executing code in parallel _as if_ that prediction is correct.
 
-Let's see an example of code where branch misprediction slows down your code.
+* If the chosen branch turns out to be correct, all is well, and your code will run faster.
+* If the guess turns out to be wrong—a branch misprediction—then the work done so far has to be undone.
+  And that can slow down your code significantly.
+
+In practice, many conditionals have very consistent answers for long stretches of time, in which case branch prediction will end up being very accurate, and this effect won't impact your code.
+Consider a `for` loop over a large array: the conditional that checks whether you've hit the end of the array will be very predictable.
+
+The main performance issue you need to worry about, then, is when branches are unpredictable.
+
+## Example: The cost of branch misprediction
 
 Imagine you're acquiring 16-bit images from a digital microscope, and you only care about the bright parts of the image.
 Dark areas have no information, and have lots of noise.
-To clean those areas up, a simplistic but often useful algorithm is setting all values below a certain threshold to complete darkness, i.e. 0.
+To clean those areas up, a simplistic but often useful algorithm is setting all values below a certain threshold to complete darkness, namely 0.
 
-To test our algorithms, let's generate two simulated images:
+To test the algorithm, I will generate two simulated images:
 
 ```{python}
+# For educational purposes, tell Numba to disable SIMD, so it doesn't hide
+# other effects:
+import os
+os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
+os.environ["NUMBA_SLP_VECTORIZE"] = "0"
+
 import numpy as np
 from numba import jit
 
@@ -30,6 +45,12 @@ NOISY_IMAGE = noise | signal
 
 # An image with the same value, 0, for all pixels:
 PREDICTABLE_IMAGE = np.zeros((4096, 4096), dtype=np.uint16)
+```
+
+```{python}
+#| echo: false
+# Important to do this _after_ setting NUMBA_LOOP_VECTORIZE.
+%load_ext book_magics
 ```
 
 Here's a first pass implementation:
@@ -80,13 +101,14 @@ If the CPU mispredicts which branch is taken, it will using instruction-level pa
 Eventually the branch will finish executing, the CPU will realize it made a bad prediction, and it will have to undo its work and then run the other branch.
 All of this takes time, leading to slower execution.
 
-### Switching to branchless programming
+## Replace unpredictable branches with branchless programming
 
-In this particular example, the branch is inherently difficult to predict for certain inputs.
+In the example above, the branch is inherently difficult to predict for certain inputs.
 So one way to run faster, or at least more predictably, is to avoid branches.
 
 In branchless programming, we come up with a way to express the same logic in a way that doesn't involve branches.
 In this case, instead of doing nothing, we can change the code so it _always_ writes a new value.
+
 We use an arithmetic to trick to pick which value to write:
 
 ```{python}
@@ -95,7 +117,7 @@ def remove_noise_branchless_1(arr, noise_threshold):
     result = arr.copy()
     for i in range(result.shape[0]):
         for j in range(result.shape[1]):
-            # False/True becomes 0 or 1 respectively when converted to a
+            # False and True become 0 and 1 respectively when converted to a
             # number:
             above_threshold = np.uint16(result[i, j] >= noise_threshold)
             # 😎 If we're above the threshold, we keep the value, otherwise
@@ -110,7 +132,9 @@ assert np.array_equal(
 )
 ```
 
-As an alternative, we can express the same thing with a ternary operator; in Numba, at least, the compiler is smart enough to turn this expression into non-branching code.
+As a more readable alternative, we can express the same thing with a ternary operator; in Numba, at least, the compiler is smart enough to turn this expression into non-branching code.
+This is still branchless, though, because unlike the original version the code writes to `result[i, j]` in both cases.
+Previously it only wrote values that were being thresholded down to zero.
 
 ```{python}
 @jit
@@ -130,7 +154,7 @@ assert np.array_equal(
 )
 ```
 
-We'll focus on the ternary version just because it's easier to read.
+I'll focus on the ternary version just because it's easier to read.
 Here's the difference in performance:
 
 ```{python}
@@ -144,14 +168,14 @@ remove_noise_branchless_2(NOISY_IMAGE, 1000)
 
 Notice that:
 
-1. The branchless version is faster.
-   This may or may not be the case, depending on the implementation.
-2. The branchless version is consistent across images.
-   This is the key advantage of branchless code: it doesn't lose performance due to branch misprediction.
+1. The branchless version is about the same speed as the original implementation's best case.
+   This may or may not be the case, depending on the implementation: it could also be faster or slower.
+2. The branchless version has fewer branches, and much less branch misprediction.
+3. The branchless version takes a consistent amount of time to process different images.
+   This is the key advantage of branchless code.
 
 The branchless function is seemingly doing more work: it writes to every pixel in the result image, not just some of them.
 But that extra work is worth it, because it gets rid of an expensive branch misprediction.
-Even better, it reduces the number of branches, probably by enabling the compiler to use SIMD more extensively.
 
 ### Bonus optimization: Getting rid of the copy
 
@@ -184,6 +208,52 @@ remove_noise_naive(PREDICTABLE_IMAGE, 1000)
 remove_noise_naive(NOISY_IMAGE, 1000)
 remove_noise_branchless_3(PREDICTABLE_IMAGE, 1000)
 remove_noise_branchless_3(NOISY_IMAGE, 1000)
+```
+
+
+## Understand what constitutes a branch
+
+A branch in your code is a place where two different CPU instructions might end up running.
+Consider the following example—depending on the value of `x`, execution will take different paths through the function, executing different code:
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import jit
+
+@jit
+def abs(x):
+    if x > 0: # <-- this is a branch
+        x = -x
+    return x
+```
+
+Merely having a conditional expression doesn't mean the code is a branch; the key is executing different CPU instructions depending on the conditional.
+For example, the following function does not have a branch:
+
+```python
+@jit
+def abs_branchless(x):
+    # is_negative will be either 0 or 1:
+    is_negative = np.int64(x > 0)  # <-- this is NOT a branch
+    # choose appropriate multiplier:
+    multiplier = (1, -1)[is_negative]
+    # convert x to a positive version:
+    return x * multiplier
+```
+
+But the following function does have a branch, because the `while` may or may not continue in each iteration:
+
+```python
+@jit
+def loop(x):
+    while x > 0: # <-- this is a branch
+        x = transform(x)
+    return x
 ```
 
 ## Don't assume branchless programming is faster

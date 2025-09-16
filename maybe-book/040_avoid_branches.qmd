@@ -3,50 +3,6 @@
 `if` statements, `for` loops, `while` loop, and other less obvious code structures can result in branches in your code.
 These branches can cause performance problems, for a number of reasons.
 
-## Understand what constitutes a branch
-
-A branch in your code is a place where two different CPU instructions might end up running.
-Consider the following example—depending on the value of `x`, execution will take different paths through the function, executing different code:
-
-```{python}
-#| echo: false
-%load_ext book_magics
-```
-
-```{python}
-import numpy as np
-from numba import jit
-
-@jit
-def abs(x):
-    if x > 0: # <-- this is a branch
-        x = -x
-    return x
-```
-
-Merely having a conditional expression doesn't mean the code is a branch; the key is executing different CPU instructions depending on the conditional.
-For example, the following function does not have a branch:
-
-```python
-@jit
-def abs_branchless(x):
-    # is_negative will be either 0 or 1:
-    is_negative = np.int64(x > 0)  # <-- this is NOT a branch
-    # choose appropriate multiplier:
-    multiplier = (1, -1)[is_negative]
-    # convert x to a positive version:
-    return x * multiplier
-```
-
-But the following function does have a branch, because the `while` may or may not continue in each iteration:
-
-```python
-@jit
-def loop(x):
-    while x > 0: # <-- this is a branch
-        x = transform(x)
-    return x
-```
 
 ## Branches can make it harder to compile efficient code
 

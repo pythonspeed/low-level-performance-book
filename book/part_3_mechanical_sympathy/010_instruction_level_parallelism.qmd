@@ -11,8 +11,8 @@ Rather, I'm talking about the CPU's ability to implement parallelism within a si
 Consider the following function:
 
 ```{python}
-# Tell Numba to disable SIMD, so it doesn't hide other effects; we'll talk
-# about SIMD in the next chapter.
+# For educational purposes, tell Numba to disable SIMD, so it doesn't hide
+# other effects; we'll talk about SIMD in the next chapter.
 import os
 os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
 os.environ["NUMBA_SLP_VECTORIZE"] = "0"
