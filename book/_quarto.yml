@@ -81,7 +81,7 @@ book:
         - part_5_process/050_document_your_code.qmd
         - part_5_process/060_keep_code_from_getting_slower.qmd
         - part_5_process/070_next_steps.qmd
-        #- part_1_efficiency/07_research.qmd - mention Huang, DP algorithm
+    - afterword.qmd
 
   appendices:
     - appendices/010_prerequisites.qmd

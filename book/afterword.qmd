@@ -1,0 +1,7 @@
+# Afterword
+
+TODO
+
+Finally, I'd love to hear from you—[send me an email](mailto:itamar@pythonspeed.com) and share your thoughts.
+
+—Itamar Turner-Trauring, Cambridge MA, USA
