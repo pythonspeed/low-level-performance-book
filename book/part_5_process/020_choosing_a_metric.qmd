@@ -24,20 +24,30 @@ But what metric should you use to summarize the result?
 You could measure elapsed time.
 And that's probably fine for individual optimization session, where you repeatedly measure the speed of the same input.
 
-This metric is less useful over the long term.
-If you change the input size used in your benchmarks, the results won't be comparable.
+However, to be thorough, you will want to measure multiple different inputs, and elapsed time can be problematic in this case.
+Imagine you get the following result:
+
+* 7,000-row CSV: 130 milliseconds.
+* 13,000-row CSV: 237 milliseconds.
+
+Is the speed for both files the same?
+You can do some math in your head, but that is error-prone and cumbersome.
 
 ### Throughput
 
-A better metric is throughput, in this case addresses/second.
-This works for both a individual API handling individual requests (where it's the server throughput under load), and for a batch API handling many addresses at once.
-If you switch to uploading a CSV with 1 million addresses instead of 2 million addresses, the throughput should still be comparable between the two CSVs.
+A better metric for batch processing is throughput, in this case addresses/second.
+If I translate the elapsed time in the two files above to throughput, I get:
 
-For the individual API, this metric is useful but insufficient.
+* 7,000-row CSV: 53,846 addresses/second.
+* 13,000-row CSV: 54,852 addresses/second.
+
+It's much easier to see that both files were processed with the same speed.
+
+For a server handling individual API requests, throughput is useful but insufficient.
 Imagine that for 1% of addresses, processing is 100× slower than the other 99% of requests.
 For the batch API, this doesn't matter.
-But for the individual API, this means 1% of user requests will have super-slow response times, and users might not like that!
-Unfortunately if you just measure addresses/second, these outliers will be invisible.
+But for the server API, this means 1% of user requests will have super-slow response times, and users might not like that!
+If you just measure addresses/second, these outliers will be invisible.
 
 ### Latency
 
@@ -47,11 +57,3 @@ For example, you can calculate 50th, 95th, and 99th percentile latencies.
 
 For a batch API, the latency of an individual address is irrelevant.
 A user won't care how long it took to process any individual address, they just care about how long it takes until the full batch of results comes back.
-
-## This book's default metric: Throughput
-
-Because this book focuses on bulk data processing, throughput is usually the most useful metric.
-However, sometimes I'll use elapsed time because throughput won't make sense for the particular example.
-
-To reduce noise, the benchmarking system runs code snippets multiple times, and reports the average result and the range. TODO
-The inputs should be large enough that the branch predictor and lower level caches should not be significantly affected by previous runs.
