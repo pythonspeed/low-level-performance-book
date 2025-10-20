@@ -11,7 +11,6 @@ book:
     - index.qmd
     - 020_relevant.qmd
     - 025_overview.qmd
-    - 030_roadmap.qmd
     - part: "The Practice of Algorithmic Efficiency"
       chapters:
         - part_1_efficiency/000_what_is.qmd
