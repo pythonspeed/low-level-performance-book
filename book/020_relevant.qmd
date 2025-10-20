@@ -1,0 +1,27 @@
+#  Is this book for you? {.unnumbered}
+
+Before reading this book, you should make sure it's relevant to your needs.
+
+## First, do no harm
+
+Imagine you are working on an application that makes someone sick every time you run it.
+This is bad.
+
+Then, you make it 10× faster: now you can make ten people sick in the same amount of time!
+Your software has gone from bad to worse.
+
+**If your software harms people or harms the environment, making it faster will amplify the harm.**
+So if your work does cause harm, you shouldn't be reading this book, you should be looking for a new project or a new job.
+
+## Other criteria
+
+When writing this book I assumed that:
+
+* You're a scientist, data scientist, or software developer who uses Python to do numeric computing or other computationally intensive data processing.
+* You need to speed up the time it takes to process bulk data: throughput rather than latency.
+  For example, you're processing a giant CSV and only care about the time it takes to finish processing all the data.
+  On the other hand, if you're working on a REST API that needs to be consistently responsive to millions of tiny parallel requests, this book will be less helpful.
+
+This book can of course be useful more broadly, but the further you are from the intended audience the less helpful it will be.
+
+One thing I _didn't_ assume is that you know a low-level compiled language; it will help, but knowing Python should be sufficient.

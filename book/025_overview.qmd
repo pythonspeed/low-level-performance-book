@@ -34,17 +34,17 @@ Third, because Python is so slow, you can get away with a simple mental model of
 But once you switch to a compiled language, hardware features like instruction-level parallelism and branch prediction can significantly impact your code's speed.
 Writing code that takes advantage of the CPU—and doesn't fight it—is what's involved in the **Practice of Mechanical Sympathy**.
 
-> What about GPUs?
-> This book doesn't cover GPUs at all, but the same practices, with somewhat different techniques, apply there as well.
-> It's also worth keeping in mind that a lot of software is slow not because it's running on a CPU, but because it's written in a vastly inefficient way.
-> Which means you might be able to achieve a two or three orders of magnitude speedup even without switching to a GPU.
-
 Fourth, there's all the many cores in your CPU: you want to use all of them.
 This is the **Practice of Parallelism**.
 
 Finally, it's worth considering that software development isn't just about your code, it's also about your software development processes.
 When it comes to correctness it's common practice, for example, to prevent code from being merged until its tests pass.
 Similarly, good development processes are necessary if you want your software to stay fast: the **Practice of Process**.
+
+> What about GPUs?
+> This book doesn't cover GPUs at all, but the same practices, with somewhat different techniques, apply there as well.
+> It's also worth keeping in mind that a lot of software is slow not because it's running on a CPU, but because it's written in a vastly inefficient way.
+> Which means you might be able to achieve a two or three orders of magnitude speedup even without switching to a GPU.
 
 ## By your powers combined
 

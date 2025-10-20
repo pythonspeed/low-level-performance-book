@@ -2,18 +2,6 @@
 
 How you read this book will depend on whether it's relevant to your immediate goals, and on how much time you have.
 
-## Make sure you're the book's audience
-
-When writing this book I assumed that:
-
-* You're a scientist, data scientist, or software developer who uses Python to do numeric computing or other computationally intensive data processing.
-* You need to speed up the time it takes to process bulk data: throughput rather than latency.
-  For example, you're processing a giant CSV and only care about the time it takes to finish processing all the data.
-  On the other hand, if you're working on a REST API that needs to be consistently responsive to millions of tiny parallel requests, this book will be less helpful.
-* You know Python, but don't necessarily know a low-level compiled language.
-
-This book can of course be useful more broadly, but the further you are from the intended audience the less helpful it will be.
-
 ## Validate you actually have a computational bottleneck
 
 Most of this book focuses on speeding up computation.
