@@ -29,3 +29,5 @@ The elapsed time for the code was different: sometimes faster on one CPU, someti
 And the relative improvements from optimizations also differed.
 But importantly, almost all the performance optimizations actually worked.
 The one or two exceptions where the code didn't get faster on the M1 were easily fixed, and attempted optimizations never made anything slower.
+
+> TODO This was done earlier in the book's creation, and needs to be revalidated before final release.
