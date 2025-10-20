@@ -254,15 +254,15 @@ Sometimes you can use atomic variables, which can be safely used across thread.
 This is beyond the scope of this book; I recommend reading [_Rust Atomics and Locks_ by Mara Bos](https://marabos.nl/atomics/).
 Both Rust and C have borrowed the C++ atomics model, so the underlying concepts will translate across these languages.
 
-## Use Rust
+## Use Rust to reduce the risk of race conditions
 
 If you use the Rust programming language, the compiler will enforce a rule that for each piece of data, you can have just one of the following:
 
 1. A single writable (mutable) reference.
 2. One or more read-only references.
 
-The result is that if you were to try to write the original data race example code in Rust, the compiler will refuse to compile your code.
-You will be forced to use one of the two strategies needed to solve the problem.
+The result is that if you were to try to write the original data race example code in Rust, the compiler would refuse to compile your code.
+That is, the compiler would force you use one of the strategies needed to solve the problem.
 
 Rust doesn't solve all such problems, so for example the bad lock usages above might compile depending on the kind of data you're accessing[^copy].
 But it does catch the worst kind of problems, the ones that cause undefined behavior.

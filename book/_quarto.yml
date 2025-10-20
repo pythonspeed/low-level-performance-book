@@ -79,8 +79,7 @@ book:
         - part_5_process/040_dont_break_your_code.qmd
         - part_5_process/050_document_your_code.qmd
         - part_5_process/060_keep_code_from_getting_slower.qmd
-        - part_5_process/070_next_steps.qmd # rename to learning
-        - part_5_process/080_fast_from_the_start.qmd
+        - part_5_process/070_keep_learning.qmd
     - afterword.qmd
 
   appendices:

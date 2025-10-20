@@ -1,6 +1,6 @@
 # Keep learning
 
-This book is just the start at building your mental model of how CPUs work.
+This book is just the start at building your mental model of how to write fast code.
 There is much more you can learn if you want to optimize your code even more.
 Here are some books I can recommend as a starting point on low-level programming:
 

@@ -1,10 +1,11 @@
-# What is The Practice of Parallelism?
+# What is the Practice of Parallelism?
 
 All of the code you've seen until now runs on a single CPU core at a time.
 But modern CPUs typically have many cores, and to maximize your code's speed you'll want to take advantage of all these cores.
 This is the Practice of Parallelism.
 
 > You can also go beyond using a single computer, and spread your computation across multiple computers.
-> While in some ways this is an extension of the Practice of Parallelism, this adds a whole additional set of complications, from network latency to unreliable communications, so I would consider it a different practice, the Practice of Distributed Systems.
+> While in some ways this is an extension of the Practice of Parallelism, it also adds additional complications: from network latency to unreliable communications.
+> I would therefore consider it a different practice, the Practice of Distributed Systems.
 > As such, it is beyond the scope of this book.
 
