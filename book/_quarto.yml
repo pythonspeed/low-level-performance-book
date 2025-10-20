@@ -62,7 +62,7 @@ book:
         - part_3_mechanical_sympathy/095_learn_implementation_details.qmd
     - part: "The Practice of Parallelism"
       chapters:
-        #- part_4_parallelism/000_what_is.qmd - create me
+        - part_4_parallelism/000_what_is.qmd
         #- part_4_parallelism/010_notes.qmd - extract into chapters, then delete
         - part_4_parallelism/002_where.qmd
         - part_4_parallelism/005_thread_pool.qmd

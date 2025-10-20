@@ -11,10 +11,10 @@ Consider, for example, a low level library algorithm that either can't be parall
 In this situation, you may expect your API to be plugged into other people's libraries and applications, each with potentially their own approach to parallelism.
 Running without parallelism in this case is fine, as you assume the higher-level caller will deal with that.
 The important thing here is ensuring you don't _prevent_ parallelism.
-That means, as discussed in later chapters:
+That means you should, as discussed in later chapters:
 
-* [Avoiding writing to shared data](020_race_conditions.qmd) so that running multiple copies in parallel won't conflict.
-* Making sure you release the GIL (XXX link) so multiple threads can run in parallel.
+* [Avoid writing to shared data](020_race_conditions.qmd) so that running multiple copies in parallel won't conflict.
+* Make sure you [release the GIL](030_gil.qmd) so multiple threads can run in parallel.
 
 ## Strategy 2: Single-threaded parallel pipelines
 
