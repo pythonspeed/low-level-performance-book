@@ -3,11 +3,10 @@ title: "What is the Practice of Algorithmic Efficiency?"
 ---
 
 Some techniques change very slowly.
-An article in the [July 1984 issue of _Communications of the ACM_](https://dl.acm.org/doi/pdf/10.1145/358105.358192#page=12&search=linear%20search)[^cacm] shares an anecdote about speeding up some code by switching from a linear search to a binary search.
-
-40 years later, on modern CPUs and a compiler that knows how to take advantage of them, linear search will be faster if you have a very small array.
-But once you have enough data, it's still true that a binary search will be faster.
-You can safely assume it's faster for a CPU to compare 20 pairs of numbers than it is to compare 1,000,000 pairs of numbers; that was true 40 years ago, and it's still true now.
+For example, an article in the [July 1984 issue of _Communications of the ACM_](https://dl.acm.org/doi/pdf/10.1145/358105.358192#page=12&search=linear%20search)[^cacm] shares an anecdote about speeding up some code by switching from a linear search to a binary search.
+CPU architecture and speed have massively improved over the past 40 years.
+Nevertheless, even with all those changes it's still faster for a CPU to compare 20 pairs of numbers than it is to compare 1,000,000 pairs of numbers.
+As a result, once you have enough data, it's still true that a binary search will be faster than a linear search.
 
 [^cacm]: This example is quoted in Bentley's _Programming Pearls_ (1st edition), published in 1986. Since this edition is still worth reading, I assume the second one, published in 1999, is still worth reading as well.
 
@@ -19,4 +18,4 @@ That means:
 * Other improvements that rely on a very simplified model of how the CPU works, and therefore:
   * Work across different programming languages, compiled or not.
   * Are not tied to specific hardware features, like instruction-level parallelism or the parallelism you get from having multiple cores.
-  * Would probably work even if you traveled back in time [to the 1980s](https://www.youtube.com/watch?v=ur57IunS9To).
+  * Would probably work even if you [traveled back in time to the 1980s](https://www.youtube.com/watch?v=ur57IunS9To).

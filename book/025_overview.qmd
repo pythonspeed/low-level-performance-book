@@ -1,20 +1,20 @@
 # Our software is slow—but it doesn't have to be! {.unnumbered}
 
 Modern computers are unimaginably fast, but quite a lot of software is annoyingly slow.
-And slow software has a cost beyond mere annoyance: it costs money, time, frustration, not to mention greenhouse gas emissions.
-So if computers are so fast, why isn't our software faster by default?
+And slow software has a cost beyond mere annoyance: it costs money, time, frustration, not to mention greenhouse-gas emissions.
+So if computers are so fast, why isn't software faster by default?
 
 Sometimes the slowness is a considered choice, with the programmer deliberately choosing to prioritize some other goal at the expense of speed, like ease-of-use or flexibility.
 But sometimes the slowness is the result of the programmer not noticing or not realizing they were writing slow code.
 I've certainly made these sort of mistakes.
 
 I believe that this second reason is much more common: most software is unnecessarily slow, and we all can and should do better.
-So my goal with this book isn't just to help you speed up software that you know is unacceptably slow.
-My goal is also to help you write software that is fast from the start.
+As a result, my goal with this book isn't just to help you speed up software that you know is unacceptably slow.
+My goal is also to help you write software that is fast from the start, by default.
 
 ## Five practices to speed up your Python software
 
-If you're going to write faster software, you need to understand the different bottlenecks that keep your code slow, and the different ways you can speed it up.
+If you're going to write faster software, you need to understand the different computational bottlenecks that keep your code slow, and correspondingly the different techniques you can use speed to it up.
 It's helpful to organize these techniques into _practices_: each practice is a set of techniques that provide a distinct source of speed.
 Because they are distinct, you can apply multiple practices to get even more speed.
 For the purposes of this book, I will be covering five practices.

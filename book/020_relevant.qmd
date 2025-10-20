@@ -13,11 +13,24 @@ Your software has gone from bad to worse.
 **If your software harms people or harms the environment, making it faster will amplify the harm.**
 So if your work does cause harm, you shouldn't be reading this book, you should be looking for a new project or a new job.
 
+## A focus on computation
+
+When writing this book I assumed that:
+
+* **You're writing computationally-intensive data processing.**
+  That is, you're a scientist, data scientist, or software developer who uses Python to do numeric computing or other data processing.
+* **You need to speed up the time it takes to process bulk data.**
+  For example, you're processing a giant CSV and only care about the time it takes to finish processing all the data.
+  On the other hand, if you're working on a server with a REST API that needs to be consistently responsive to millions of tiny parallel requests, this book will be less helpful.
+  Put another way, this book focuses on optimizing throughput rather than latency.
+* **Your code is slow because of computation.**
+  This may or may not be the case, and it's something you can check empirically, as I'll discuss next.
+
 ## Validate you actually have a computational bottleneck
 
-Most of this book focuses on speeding up computation.
-But taking a step back, there are many other reasons your code could be slow: if the bottleneck is reading from the network, there is no point in making your calculations faster.
-So before you start optimizing your code, it's important to understand that other bottlenecks exist, and to do the work to identify which specific bottleneck is impacting your code.
+There are other bottlenecks besides computation that could cause your code to be slow.
+For example, perhaps the bottleneck is reading data from the network, in which case there is no point in making your calculations faster.
+So before you start optimizing your code, it's important to identify which specific bottleneck is impacting your code.
 
 ```{python}
 #| echo: false
@@ -33,29 +46,30 @@ If you are not familiar with Pandas, that's fine, it's the high-level part that 
 ```{python}
 import pandas as pd
 
-def read_data(file_or_url):
-    return pd.read_csv(file_or_url)
+def full_pipeline(file_or_url):
+    """
+    Read a file or URL, process it, and then generate a report.
+    """
+    # Step 1: Read the data.
+    input_df = pd.read_csv(file_or_url)
 
-def process_data(input_df):
-    # Return the distribution of the first letter of the first name; if you're
-    # unfamiliar with Pandas that's fine, you don't need to understand this
-    # particular code.
+    # Step 2: Process the data.
+    #
+    # In particular, return the distribution of the first letter of the first
+    # name; if you're unfamiliar with Pandas that's fine, you don't need to
+    # understand this particular code.
     first_letter = input_df["FIRST NAME"].dropna().apply(
         lambda s: s[0]
     )
-    return first_letter.value_counts()
+    result = first_letter.value_counts()
 
-def generate_report(output):
-    output.to_csv("result.csv")
-
-def full_pipeline(file_or_url):
-    input_df = read_data(file_or_url)
-    result = process_data(input_df)
-    generate_report(result)
+    # Step 3: Generate a report.
+    result.to_csv("result.csv")
 ```
 
 Next I'll profile this code to see where it's spending the most time.
 I'll use `line_profiler` to profile the code, as it's probably the simplest profiler you can use.
+
 You can use `line_profiler` on the command-line, or inside a Jupyter notebook or equivalent:
 
 ```{python}
@@ -67,33 +81,20 @@ You can use `line_profiler` on the command-line, or inside a Jupyter notebook or
 url = "https://archive.org/download/Missouri_Birth_Index_-_1980-1989/Reclaim_The_Records_-_Missouri_Birth_Index_-_1980-1989.csv"
 
 # Run the expression full_pipeline(url), and show profiled time for the
-# full_pipeline and process_data functions:
-%lprun -f full_pipeline -f process_data full_pipeline(url)
+# full_pipeline() function:
+%lprun -f full_pipeline full_pipeline(url)
 ```
 
-As you can see from looking at the output for `full_pipeline()`, reading in the CSV is the main bottleneck, using up 99% of the time.
+> **Note:** Keep in mind that profilers can distort the results somewhat, so low overhead is an important feature in a profiler.
+> If you want this style of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
+
+As you can see from looking at the output for `full_pipeline()`, reading in the CSV is the main bottleneck, using up more than 90% of the time.
 This presumably is some combination of bandwidth (downloading the file) and computation (parsing the CSV).
 Some profilers—like the [Sciagraph profiler](https://sciagraph.com) I created—can tell you whether code was spending it's time waiting or doing computation.
 Lacking that information, you'll need to figure this out from some combination of context, detailed profiling, and experiments.
 
-The profiling also suggests which parts of `process_data()` are slower.
-However, since loading the data uses the vast majority of the time there is no point in trying to optimize `process_data()`, at least initially.
+The profiling also suggests which parts of step 2—the computational data processing—are slower.
+However, since loading the data (step 1) uses the vast majority of the time, trying to optimize data processing (step 2) will not meaningfully improve run time.
 If I wanted faster results, I'd need to figure out a faster way to load the data.
 
-Keep in mind that profilers can distort the results somewhat, so low overhead is an important feature in a profiler.
-If you want this style of line-by-line profiling, a more sophisticated and lower-overhead profiler is [Scalene](https://github.com/plasma-umass/scalene).
-
-If you discover your bottleneck is not computation, this book won't help you, and you will need to find other resources.
-
-## Other criteria
-
-When writing this book I assumed that:
-
-* You're a scientist, data scientist, or software developer who uses Python to do numeric computing or other computationally intensive data processing.
-* You need to speed up the time it takes to process bulk data: throughput rather than latency.
-  For example, you're processing a giant CSV and only care about the time it takes to finish processing all the data.
-  On the other hand, if you're working on a REST API that needs to be consistently responsive to millions of tiny parallel requests, this book will be less helpful.
-
-This book can of course be useful more broadly, but the further you are from the intended audience the less helpful it will be.
-
-On the other hand, you do not need to know a low-level compiled language to read this book; it will help, but knowing Python should be sufficient.
+Since this book focuses on computation, if you discover your bottleneck is _not_ computation, this book won't help you, and you will need to find other resources.
