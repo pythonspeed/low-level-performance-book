@@ -29,8 +29,9 @@ book:
         - part_2_compilation/001_existing_compiled_code.qmd
         - part_2_compilation/004_vectorized_operations.qmd
         - part_2_compilation/005_speed_through_specialization.qmd
+        - part_2_compilation/006_memory_allocation.qmd
         - part_2_compilation/008_static_typing_and_monomorphization.qmd
-        - part_2_compilation/009_memory_allocation.qmd
+        - part_2_compilation/009_choosing_a_programming_language.qmd
     - part: "Compiler optimization and its limits"
       chapters:
         - part_2_compilation/010_compiler_optimizations.qmd
@@ -38,7 +39,6 @@ book:
         - part_2_compilation/015_floating_point.qmd
         - part_2_compilation/025_undefined_behavior.qmd
         - part_2_compilation/030_aliasing.qmd
-        - part_2_compilation/035_choosing_a_programming_language.qmd
     - part: "Tweaking compiler output and behavior"
       chapters:
         - part_2_compilation/040_reducing_type_conversions.qmd
