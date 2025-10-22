@@ -1,5 +1,8 @@
 # Reduce data size so it fits in CPU memory caches
 
+> TODO Expand to cover swapping as well.
+> TODO Brief mention of chunking, indexing, and compression as techniques?
+
 So far we've been mostly ignoring memory reads and writes, implicitly assuming that they're fast operations, and take a consistent amount of time to run.
 Neither assumption is completely true, so a more accurate mental model can help you speed up our code.
 
