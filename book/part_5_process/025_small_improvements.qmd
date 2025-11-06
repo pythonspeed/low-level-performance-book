@@ -1,0 +1,14 @@
+# Make small performance improvements too
+
+eventually run out of big changes
+
+sqlite example
+
+integrate ongoing performance work into your project work
+
+minimize noise
+
+noticing regressions
+
+advanced techniques to work around hardware impacts (interleaving)
+
