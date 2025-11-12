@@ -2,6 +2,11 @@
 title: "Use a profiler to find bottlenecks in your code"
 ---
 
+Most of the examples in this book are small functions; it's clear where the bottleneck is.
+Real-world code is often far more complex, with many functions, classes, modules, and libraries in use.
+That means you need some way to identify which part of all this is the bottleneck.
+One way to do that is with a profiler.
+
 ## Know what the profiler is measuring
 
 ## Choose the right visualization (line-based, flamegraph, timeline)
