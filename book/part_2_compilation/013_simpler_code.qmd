@@ -80,3 +80,8 @@ The result would be a bug report filed against Numba or LLVM, or perhaps an unde
 
 It's quite possible that some future version of Numba might do better and optimize the `heap_writes()` function too.
 But no compiler is perfect, and the simpler the code, the easier it is for the compiler to optimize it.
+
+### Next steps {.unnumbered}
+
+Another thing that can prevent the compiler from optimizing your code is using floating point calculations.
+The next chapter demonstrates the problem, and covers some solutions.

@@ -47,9 +47,10 @@ print(in_array(6))
 ```
 
 On Linux, at least, the function `in_array()` _always_ returns `True`.
+This may seem bizarre, but it's a bit more reasonable once you consider the compiler's assumptions.
+
 What's happening is that the compiler notices we're reading from `external_array[4]`, which is an out-of-bounds read: since the array is of size 4, only entries `external_array[0]`, `external_array[1]`, `external_array[2]`, and `external_array[3]` exist.
 The compiler considers out-of-bounds reads to be impossible, so we have introduced undefined behavior.
-
 Given out-of-bounds reads _do not exist_ as far as the C compiler is concerned, It can therefore assume that the 5th iteration of the loop will never reached.
 That means the loop "must" exit before that point... so the code can be optimized into always and only returning `True`.
 
@@ -71,3 +72,11 @@ To completely avoid undefined behavior, your options are:
    For example, Rust guarantees no undefined behavior so long as you avoid the `unsafe` feature.
 
 For more on the topic, ["Falsehoods programmers believe about undefined behavior"](https://predr.ag/blog/falsehoods-programmers-believe-about-undefined-behavior/) is a good start.
+
+### Next steps {.unnumbered}
+
+In addition to floating point calculations as covered in the previous chapter, another way in which your code can prevent optimizations is aliasing, covered in the next chapter.
+Following that are a number of chapters showing how to coax maximum performance out of the compiler in ways you should probably only focus on after you've implemented other performance improvements.
+
+On a first reading you can feel free to skip these chapters and move on to the next practice: given compiled code, the way the CPU behaves becomes much more important.
+So after the Practice of Compilation, the next section covers the [Practice of Mechanical Sympathy](../part_3_mechanical_sympathy/001_what_is.qmd).

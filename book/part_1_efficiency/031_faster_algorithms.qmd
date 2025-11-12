@@ -18,7 +18,7 @@ In short, looking at scalability is insufficient: you also need to see how fast 
 
 ## For small key ranges, consider a vector (Python `list`) instead of a hash map (Python `dict`)
 
-Consider two commonly used data structures:
+As an example, consider two commonly used data structures:
 
 * Reading and writing values from/to a hash map like Python's `dict` type is an amortized $O(1)$: on average it's constant time.
   In practice most of the time you can ignore the "amortized" part, as I will in this chapter[^bulk].
@@ -69,7 +69,7 @@ And both implementations are $O(n)$, where $n$ is the number of grades.
 Which one will be _faster_?
 
 `histogram_list()` will be faster.
-To read or write from a key, the `dict` hashed the key into an integer, map that to internal vector within the `dict`, and do an equality comparison.
+To read or write from a key, a `dict` hashes the key into an integer, maps that to an internal vector within the `dict`, and then does an equality comparison.
 If you're unlucky, it will have to do some or all of these operations multiple times.
 In contrast, when indexing into a `list`, there is no need to do any of those preliminary steps, so there's less work involved.
 
@@ -84,4 +84,7 @@ histogram_list(GRADES)
 
 In a compiled language I would expect the difference to be even larger.
 
+### Next steps {.unnumbered}
+
 This is of course just an example, but the general principle applies more broadly: there are often faster alternatives that won't compromise your scalability.
+But how do you find these alternatives?

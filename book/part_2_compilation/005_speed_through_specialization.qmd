@@ -252,3 +252,8 @@ Rust is able to access the data inside the NumPy array directly, with no convers
 frequent_rs.rust_calculations(DATA)
 frequent_rs.numpy(DATA_NUMPY)
 ```
+
+## Next steps
+
+Once you switch to compiled code, you encounter a new set of issues that are specific to these kinds of languages.
+The first is memory management, which we'll discuss in the next chapter, focusing specifically on the performance implications.

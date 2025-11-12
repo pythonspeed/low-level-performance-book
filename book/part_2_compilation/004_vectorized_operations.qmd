@@ -3,6 +3,8 @@
 As I covered in the previous chapter, there are often existing libraries written in compiled languages that you can use to solve your problem quickly.
 But those libraries have limits, and you may need to switch to compiled code you write yourself.
 
+To see why this might be necessary, and when you should choose to do so, I'll start with an example, after a brief but necessary educational interlude.
+
 ```{python}
 #| echo: false
 %load_ext book_magics
@@ -11,7 +13,7 @@ But those libraries have limits, and you may need to switch to compiled code you
 ## Introducing NumPy
 
 Before we can move on to the example, it's worth briefly discussing the NumPy library, which I'll be using for many of the examples in this book.
-For more details on this and other technologies used, [see the appendix](../appendices/01_prerequisites.qmd).
+For more details on this and other technologies used, [see the appendix](../appendices/010_prerequisites.qmd).
 
 ::: {.callout-important}
 ### This is not a book about NumPy
@@ -376,3 +378,8 @@ In a later chapter we'll optimize the Numba function above so it runs even faste
 Sometimes you _can't_ implement the algorithm with existing vectorized APIs.
 When this happens, the only solution is to switch to compiled code.
 This is why libraries like SciPy and scikit-image that build on NumPy have so much compiled code of their own: the building blocks in NumPy aren't always sufficient.
+
+### Next steps {.unnumbered}
+
+Switching from Python to compiled code can be more or less faster depending how much it continues to interact with Python.
+In the next chapter, I'll demonstrate the speedups you can get from leaving more and more Python behind.

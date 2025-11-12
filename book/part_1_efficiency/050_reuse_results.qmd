@@ -179,3 +179,8 @@ cosines_with_cache(NOISIER_DATA)
 Another factor to keep in mind is the relative cost of cache lookups vs calculation.
 The slower the calculation compared to the cache lookup, the more caching can help.
 In a compiled language, the cache has the potential to be relatively cheaper than in Python, so caching may be viable in more situations.
+
+### Next steps {.unnumbered}
+
+Caching, like the other techniques I've discussed so far, gives you the same results as the original calculation.
+Next you'll see how to get even faster results, so long as it's OK to tweak them slightly.

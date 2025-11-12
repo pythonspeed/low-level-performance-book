@@ -267,3 +267,8 @@ find_primes_4(5_000)
 ```
 
 [^pgo]: This is not strictly true. Techniques like Profiler-Guided Optimization can provide some runtime information to the compiler, but not in a way that invalidates the general claim. [`awesome-pgo`](https://github.com/zamazan4ik/awesome-pgo) is an extensive resource on the topic.
+
+### Next steps {.unnumbered}
+
+The compiler can't always optimize your code.
+In the next chapter we'll see how you can write code that is easier for the compiler to optimize.

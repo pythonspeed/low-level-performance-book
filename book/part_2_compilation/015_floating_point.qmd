@@ -157,3 +157,8 @@ And the new version is indeed faster:
 volume_liters_2(SIZES_INCHES)
 volume_liters_3(SIZES_INCHES)
 ```
+
+### Next steps {.unnumbered}
+
+When the compiler transforms your code, it tries to generate code that matches the expectations of the author.
+That requires the compiler to make some assumptions—assumptions that can be unexpectedly easy to violate, with unpleasant results, as you'll see next.

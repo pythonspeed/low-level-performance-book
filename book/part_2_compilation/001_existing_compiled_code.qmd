@@ -97,3 +97,9 @@ DATA_SERIES.apply(add_7)
 ```
 
 Repeatedly calling back into Python loses much of the benefit of using a compiled language.
+
+### Next steps {.unnumbered}
+
+What if there is no existing compiled function or library?
+When should you write your own?
+I'll cover that next.

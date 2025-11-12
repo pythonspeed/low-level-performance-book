@@ -266,3 +266,8 @@ This version is faster, by removing work from the main loop:
 moving_average(DATA)
 moving_average_2(DATA)
 ```
+
+### Next steps {.unnumbered}
+
+All the techniques in this chapter involve doing less work for a specific calculation.
+Another way you can get rid of repetitive work is by reusing calculation results, which I'll discuss in the next chapter.

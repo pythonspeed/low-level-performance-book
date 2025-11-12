@@ -168,8 +168,8 @@ In addition to changing how accurate a function's result is, you can also change
 Sometimes the format of your function's results is restricting your ability to speed it up.
 
 For my example I will do some simplistic natural language processing.
-Jane Austen is the author of five classic novels, and of the novel _Mansfield Park_.
-Do Austen's novels talk more about men, more about women, or more about groups of people?
+Jane Austen authored five classic novels, and also _Mansfield Park_.
+Describing a highly gendered society, do Austen's novels talk more about men, more about women, or more about groups of people?
 I'm going to look at her first novel, _Northanger Abbey_:
 
 ```{python}
@@ -290,3 +290,8 @@ gendered_sampled_words(WORDS)
 ```
 
 Whether or not sampling works for your particular problem is something you will need to decide.
+
+### Next steps {.unnumbered}
+
+Eventually you will hit the limits of the Practice of Algorithmic Efficiency.
+When you do, it's time to start using other practices.

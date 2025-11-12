@@ -1,6 +1,6 @@
 # Read the documentation
 
-The programming languages and libraries you use will usually have official documentation.
+One way to find faster implementations is reading the documentation provided by your programming languages and libraries.
 Sometimes this documentation can give you important hints to writing faster code.
 
 ```{python}
@@ -10,8 +10,8 @@ Sometimes this documentation can give you important hints to writing faster code
 
 ## Follow explicit suggestions
 
-The Rust standard library does a good job of providing performance hints.
-For example, imagine you want to remove an item from a specific index in a `Vec`, the equivalent of doing `del a_python_list[i]` in Python.
+The Rust programming language's standard library does a good job of providing performance hints.
+For example, imagine you want to remove an item from a specific index in a Rust `Vec`, the equivalent of doing `del a_python_list[i]` in Python.
 If you [read the documentation for `Vec.remove()`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.remove) it will:
 
 1. Warn you that the worst case run time is $O(n)$.
@@ -90,4 +90,9 @@ The difference in results can be meaningful: when I was doing image processing f
 But lower orders also gave me significantly faster results.
 
 There's no point in doing this level of experimentation and digging for every line of code you write.
-But if your profiling suggests a particular line or API call are having a significant performance impact, you'll want to dig deeper and see if there are parameters you can tweak, or alternative APIs you can use.
+But if your profiling suggests a particular line or API call are having a significant performance impact, you'll want to dig deeper and see if there are parameters you can tweak, or alternative APIs you can use that provide faster algorithms or datastructures.
+
+### Next steps {.unnumbered}
+
+Once you have a good algorithm, you're not done.
+As you'll see next, there is still more you can do to make it even faster.

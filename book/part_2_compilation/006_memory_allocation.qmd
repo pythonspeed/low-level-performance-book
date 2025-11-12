@@ -121,3 +121,8 @@ For example:
   C++ adds the `new` operator which also allocates on the heap.
 
 You can read the documentation for your particular language for more details.
+
+### Next steps {.unnumbered}
+
+The next two chapters cover a deeper dive into how compilers manage to make your code faster, and choosing a compiled language if you have that flexibility.
+If neither are of immediate interest, you can [skip ahead to the next topic](010_compiler_optimizations.qmd): learning how compilers optimize your code to make it faster, and the ways you can ensure that optimization actually happens.
