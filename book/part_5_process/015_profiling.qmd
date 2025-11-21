@@ -77,8 +77,81 @@ For these use cases, sampling profilers are usually the better choice.
 
 ## Choose the right visualization (line-based, flamegraph, timeline)
 
-## Minimize overhead
+```{python}
+#| echo: false
+%load_ext line_profiler
+%load_ext pyinstrument
+```
 
-## Understand the limitations for compiled code
+Profilers differ not just in what and how they measure, but also in the output they provide.
+Consider the following code:
 
-## ...
+```{python}
+import numpy as np
+
+def create_ones_array():
+    return np.ones((1_000_000,), dtype=np.int64)
+
+def do_some_math():
+    array = create_ones_array()
+    for i in range(1000):
+        array2 = create_ones_array()
+        array += array2 * array.sum()
+    return array
+```
+
+### Line-by-line profiling
+
+One way to visualize it is by profiling it line by line.
+For real world usage I'd suggest [using the Scalene profiler](https://github.com/plasma-umass/scalene), but for our purposes the simpler `line_profiler`[^lineprofiler] will suffice.
+Here is its output:
+
+```{python}
+%lprun -f do_some_math -f create_ones_array do_some_math()
+```
+
+This visualization focuses on one module at a time.
+As a result, it's harder to see the big picture of how much time each line spends waiting on calls to other functions.
+Scalene gives you more information, but the line-by-line visualization is inherently limiting in getting an overall view of the code.
+
+### Flamegraphs and other callgraph visualizations
+
+Another approach is to show a tree of function calls, or a "callgraph".
+To see what this might look like, here is the output from the PyInstrument profiler:
+
+```{python}
+#| echo: false
+%%pyinstrument --render-option=time=percent_of_total
+_ = do_some_math()
+```
+
+A common variant for this sort of tree is a "flamegraph"; the visualization above isn't quite the same as a flamegraph, but it should suffice to show the basic idea.
+Some things to notice:
+
+* There are multiple calls to `create_ones_array()`, but they are merged into one child of `do_some_math()` in the visualized tree.
+* You can see the calls into NumPy and how long they took, you're not just limited to lines of code within the module being profiled.
+* The tree doesn't preserve order of execution; you can't tell which functions were called first.
+
+As a result, these sorts of visualizations are better than line-by-line execution at giving the big picture of where time was spent.
+The visualization also has no concept of the passage of a time.
+
+### Timelines
+
+As mentioned above, tree views (including flamegraphs) merge multiple function calls: there's only one `create_ones_array()` entry in the tree even though it's called multiple times.
+Now, consider what happens if this merging happens across multiple threads.
+For a web server running lots of small, uniform queries, this is fine.
+
+But for data processing applications, with code that does very different things at different times—loading data, processing data, writing data—flamegraphs can hide quite a lot of critical information.
+Even if you are visualizing each thread separately with its own tree, since you can't tell when threads start or finish, you can't tell if your program is slow because threads are idle, or because your thread pool is too small.
+
+If this information is important, another useful visualization is a timeline, that can show you multiple threads and what they were doing.
+PyInstrument, at least in the version used in this chapter, unfortunately doesn't support a timeline for multiple threads, but you can use the [deterministic profiler VizTracer](https://github.com/gaogaotiantian/viztracer) to generate timelines for threaded applications.
+I have created a sampling profiler specifically for data processing applications, [Sciagraph](https://sciagraph.com), which produces both flamegraphs and timelines.
+
+## Understand the limitations of profiling for compiled code
+
+For compiled code, profilers have another barrier to finding bottlenecks.
+
+the code you are profiling is not exactly the same
+
+TODO
