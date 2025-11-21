@@ -14,7 +14,20 @@ As a result, there many different profilers, each with their own benefits and dr
 
 ## Understand what your profiler is measuring
 
-There are two basic ways a profiler can measure elapsed time: deterministically, and with sampling.
+If you don't understand what and how your profiler measures data, you may be misled by the results.
+
+### What gets included?
+
+Different profilers might choose to omit certain measurements by default.
+Thus by default the `py-spy` profiler omits threads that are idle, like those waiting for a lock.
+Sometimes that's what you want; sometimes, if you're not aware of this default, the result will massively distort your understanding of bottlenecks.
+
+Before using a profiler, you should therefore read its documentation, or lacking that the command-line options, just to get a better idea of what exactly it is choosing to measure.
+
+### Deterministic vs. sampling
+
+Beyond _what_ a profiler measures, it is also important _how_ a profiler measures.
+There are two basic ways a profiler can measure elapsed time: either deterministically, or with sampling.
 Consider for example a program with the following time spent per line:
 
 ```python
