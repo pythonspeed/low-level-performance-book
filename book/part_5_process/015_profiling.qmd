@@ -3,11 +3,64 @@ title: "Use a profiler to find bottlenecks in your code"
 ---
 
 Most of the examples in this book are small functions; it's clear where the bottleneck is.
-Real-world code is often far more complex, with many functions, classes, modules, and libraries in use.
-That means you need some way to identify which part of all this is the bottleneck.
-One way to do that is with a profiler.
+Real-world code is typically far more complex, with many functions, classes, modules, and dependencies.
+That means you need some way to identify which part or parts of all this code are the bottlenecks.
 
-## Know what the profiler is measuring
+One common way to identify bottlenecks is using profilers: tools that measure software performance.
+I gave a short example of using a profiler [at the start of the book](../020_relevant.qmd), used for exactly this purpose.
+
+Profilers are immensely useful, but suffer from the difficulty of measuring and summarizing performance data.
+As a result, there many different profilers, each with their own benefits and drawbacks, and it's important to understand the limits of whichever one you choose to use.
+
+## Understand what your profiler is measuring
+
+There are two basic ways a profiler can measure elapsed time: deterministically, and with sampling.
+Consider for example a program with the following time spent per line:
+
+```python
+for i in range(1_000_000): # ~10% of total elapsed time
+    do_something_quick(i)  # ~20% of total elapsed time
+do_something_slow()        # ~70% of total elapsed time
+do_something_very_quick()  # ~0.01% of total elapsed time
+```
+
+These numbers can't be observed directly, you need to measure them somehow.
+
+A _deterministic_ profiler would measure the start and stop time of every line of code.
+This adds overhead!
+And what's more the mechanism it's likely to use ([`PyEval_SetTrace()`](https://docs.python.org/3/c-api/init.html#c.PyEval_SetTrace)) adds additional overhead.
+This means your program might take a lot longer to run in some cases.
+
+The resulting measurements will also be somewhat distorted, as the profiler will overweight those lines of code that get called more often.
+For example, a 20% overhead per line would result in the following measurements:
+
+```python
+for i in range(1_000_000): # ~17% of total measured time
+    do_something_quick(i)  # ~25% of total measured time
+do_something_slow()        # ~58% of total measured time
+do_something_very_quick()  # ~0% of total measured time
+```
+
+Besides distorting the results, a deterministic profiler can also slow down runtime significantly.
+
+An alternative approach is a _sampling_ profiler.
+At intervals, it checks what the program is doing, and then uses the ratio of samples to calculate the profiling result.
+This reduces the overhead significantly, because instead of doing extra work on every line of code (or even more frequently), the measurement can be limited to a certain number of times a second.
+
+For the example above, the output might look like this:
+
+```python
+for i in range(1_000_000): # ~11% of measured time
+    do_something_quick(i)  # ~19% of measured time
+do_something_slow()        # ~70% of measured time
+do_something_very_quick()  # ~0% of measured time
+```
+
+A second run might give slightly different results, since sampling is being used, but the result will be fairly accurate for those parts of the code that take up the bulk of the run time.
+Since these are usually the ones you want to speed up, inaccuracy for rarer lines of codes and functions is acceptable.
+
+This book assumes you care about throughput, rather than latency.
+For these use cases, sampling profilers are usually the better choice.
 
 ## Choose the right visualization (line-based, flamegraph, timeline)
 
