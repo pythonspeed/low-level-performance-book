@@ -3,6 +3,8 @@
 To run code on multiple CPU cores, you need to either use multiple threads or multiple processes.
 Threads, running within the same process, have a much easier time sharing data than different processes would, so they're what I'll be covering in this book.
 
+TODO go a bit deeper on definitions, unless it's already covered in expansion of earlier chapter
+
 ```{python}
 #| echo: false
 %load_ext book_magics
@@ -106,3 +108,41 @@ sum_of_squares(DATA)
 parallel_launch(DATA, 4)
 parallel_pool(DATA, 4)
 ```
+
+## Use a compiled language (ideally Rust)
+
+To get a sense of the overhead of the thread pool, I am going to compare a thread pool with just one thread (so no actual parallelism) to doing the same operation in a single thread with no pool at all:.
+I will run the data through in 1000 chunks, a more likely chunking size than the 4 chunks used above:
+
+```{python}
+SINGLE_THREAD_POOL = ThreadPoolExecutor(max_workers=1)
+
+def not_parallel_pool(arr, num_chunks):
+    chunks = np.array_split(arr, num_chunks)
+    results = SINGLE_THREAD_POOL.map(sum_of_squares, chunks)
+    return sum(results)
+
+def not_parallel(arr, num_chunks):
+    chunks = np.array_split(arr, num_chunks)
+    return sum(sum_of_squares(c) for c in chunks)
+
+assert not_parallel(DATA, 1000) == not_parallel_pool(DATA, 1000)
+```
+
+Here's the comparative runtime:
+
+```{python}
+#| echo: false
+%%compare_timing
+not_parallel(DATA, 1000)
+not_parallel_pool(DATA, 1000)
+```
+
+There is a significant amount of overhead here from using a thread pool.
+At least part of that is simply that Python is slow.
+If you can have a thread pool managed by a compiled language, dispatching functions written in a compiled language, a lot of this overhead will go away.
+
+### Next steps {.unnumbered}
+
+As I'll discuss in the next chapter, using threads can result in corrupting your data... which can make parallelism worse than useless.
+Along the way, you'll also learn why I recommend Rust for writing parallel code.

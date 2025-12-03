@@ -140,3 +140,7 @@ flowchart TD
             Output
 ```
 :::
+
+### Next steps {.unnumbered}
+
+Both pipelines (when run inside a single process) and parallelism within functions typically involve the use of thread pools, so I'll discuss those in the next chapter.

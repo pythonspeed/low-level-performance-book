@@ -163,4 +163,4 @@ scan_x_first(two_d)
 ### Next steps {.unnumbered}
 
 In the next chapter, which you can skip on first reading, I dig deeper into NumPy array's memory layout and their impact on performance.
-Or, now that you have some understanding of the Practice of Mechanical Sympathy, you can move on to [The Practice of Parallelism](../part_4/000_what_is.qmd), which allows you to take advantage of multiple CPU cores.
+Or, now that you have some understanding of the Practice of Mechanical Sympathy, you can move on to [The Practice of Parallelism](../part_4_parallelism/000_what_is.qmd), which allows you to take advantage of multiple CPU cores.

@@ -138,4 +138,4 @@ So make sure to dig in to the details of your data is actually laid out, and see
 
 ### Next steps {.unnumbered}
 
-Now that you have some understanding of the Practice of Mechanical Sympathy, you can move on to [The Practice of Parallelism](../part_4/000_what_is.qmd), which allows you to take advantage of multiple CPU cores.
+Now that you have some understanding of the Practice of Mechanical Sympathy, you can move on to The Practice of Parallelism, which allows you to take advantage of multiple CPU cores.
