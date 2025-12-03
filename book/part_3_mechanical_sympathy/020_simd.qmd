@@ -1,15 +1,15 @@
 # Use SIMD (Single Instruction, Multiple Data) to speed up repetitive computations
 
-Single Instruction Multiple Data, or SIMD, are a type of CPU instructions that can execute the same operation on a sequence primitive values (integers or floats) that are stored next to each other in memory, using a single instruction.
-The compiler needs to explicitly generate these instructions, unlike the instruction-level parallelism we previously covered.
+Single Instruction Multiple Data, or SIMD, are a type of CPU instructions that can execute the same operation on multiple primitive values (integers or floats) at once.
+The compiler needs to explicitly generate these special instructions, unlike the instruction-level parallelism covered in the previous chapter.
 
-For example, if we want to multiply 4 integers by a constant, we can do that with a single SIMD CPU instruction instead of with 4 normal CPU instructions.
+For example, if you want to multiply 4 integers by a constant, you can do that with a single SIMD CPU instruction instead of with 4 normal CPU instructions.
 Reducing the number of instructions the CPU has to run by a factor of 4 can then lead to a significant speedup.
 This is sometimes referred to as "vectorization".
 
 ::: {.callout-note}
 This is a different meaning than typically used in Python programming, where "vectorization" means a batch operation implemented in a low-level language.
-Given we're speeding up Python, what "vectorization" means can be ambiguous, so make sure you understand which of the two meaning applies when reading documentation.
+Given this a book for Python developers, what "vectorization" means can be ambiguous, so make sure you understand which of the two meaning applies when reading documentation.
 :::
 
 ```{python}
@@ -19,13 +19,13 @@ Given we're speeding up Python, what "vectorization" means can be ambiguous, so 
 
 ## Unlike instruction-level parallelism, SIMD requires work by the compiler
 
-In the previous chapter we discussed instruction-level parallelism, where the CPU runs multiple instructions in parallel.
-And SIMD is also a way to execute work in parallel.
+In the previous chapter we discussed instruction-level parallelism, where the CPU core runs multiple instructions in parallel.
+SIMD is also a way to execute work in parallel.
 So what is the difference?
 
-* The decision to use instruction-level parallelism happens at runtime, and is made by the CPU.
-* The decision to use SIMD happens when the code is compiled.
-  If the compiler generate specialized SIMD machine code instructions, then SIMD will be used at runtime.
+* **Instruction-level parallelism:** The decision to use this happens at runtime, and is made by the CPU.
+* **SIMD:** The decision to use this happens when the code is compiled.
+    Only if the compiler generate specialized SIMD machine code instructions will SIMD be used at runtime.
 
 Consider the following code:
 
@@ -58,7 +58,7 @@ For our code example, rather than generating 4 CPU instructions with 4 adds, the
 That single instruction will do 4 additions with a single instruction:
 
 ```
-simd_add256 a[0:3] b[0:3] → out[0:3]
+simd_add256 a[0:4] b[0:4] → out[0:4]
 ```
 
 When the CPU core reaches that instruction, it will execute the instruction the machine code told it to execute: 4 additions at the same time.
@@ -71,8 +71,8 @@ Numba, for example, will automatically generate SIMD code optimized for your spe
 
 The compiler will notice you are doing the same operation on a series of items, and instead of doing the work item by item it will do it in batches of 4 or 8 or 16.
 
-We'll talk about how the batch size is decided in just a bit, but first let's see how SIMD speeds up some example code.
-In particular, we have two versions of the exact same code, one compiled with SIMD (the default) and one with SIMD disabled:
+I'll talk about how the batch size is decided in just a bit, but first let's see how SIMD speeds up some example code.
+In particular, I will compile two versions of the exact same code, one compiled with SIMD (the default) and one with SIMD disabled:
 
 ```{python}
 # Import the dependencies we'll need:
@@ -126,12 +126,12 @@ simd(DATA_FLOAT64)
 My CPU has 256-bit SIMD instructions.
 That means the instruction operates on 256 bits at once: the code packs as many numbers as will fit into 256 bits, and then the SIMD operation runs on that.
 
-* For 32-bit floats, $256 / 32 = 8$, so we can process 8 `float32` with each 256-bit SIMD instruction.
+* For 32-bit floats, $256 / 32 = 8$, so the CPU core can process 8 `float32` with each 256-bit SIMD instruction.
   $1,000,000 / 8 = 125,000$ instructions.
-* For 64-bit floats, $256 / 64 = 4$, so we can process 4 `float64` with each 256-bit SIMD instruction.
+* For 64-bit floats, $256 / 64 = 4$, so the CPU core can process 4 `float64` with each 256-bit SIMD instruction.
   Given an array of 1,000,000 64-bit values, processing it will take $1,000,000 / 4 = 250,000$ instructions.
 
-Notice that these numbers match what we empirically measured in the previous section!
+Notice that these numbers match what I empirically measured in the previous section!
 
 Using half as many instructions is likely part of the reason that processing `float32`s was faster than processing the equivalent number of `float64`.
 We'll talk about an additional reason, memory caches and bandwidth, in later chapters.
@@ -145,13 +145,15 @@ Auto-vectorization doesn't always happen: sometimes the compiler can't figure ou
 * **Complex functions that didn't get inlined.**
   The compiler likely won't pass 128/256/512-bit data batches across function call boundaries, so a function call can limit the ability to use SIMD.
 * **Branches.** SIMD instructions do the same thing to multiple pieces of data, which means branching for each item may be difficult.
-  Depending on the SIMD instructions your CPU has available, the compiler might have some tricks up its sleeve using "masked" operations, but the more branching your code has the less likely it is that auto-vectorization will work.
+  Depending on the SIMD instructions your CPU has available, the compiler might have some tricks up its sleeve using "masked" SIMD operations that can behave differently for different values.
+  Still, the more branching your code has the less likely it is that auto-vectorization will work.
 * **Floating point numbers.** Changing the order of floating point operations can give different calculation results, which may limit the compiler's ability to parallelize.
 * **The potential for memory being non-contiguous.**
-  This is particularly an issue with NumPy views, that can skip every N bytes for a variety of reasons, for example a slice across a dimension that doesn't match the data order in memory.
-  Code that is given memory that may or may not be contiguous will get optimized differently than code that can assume the data is contiguous.
+  This is particularly an issue with NumPy views, which can skip every N bytes for a variety of reasons, for example a slice across a dimension that doesn't match the data order in memory.
+  Code that operates on memory that may or may not be contiguous will get optimized differently by the compiler compared to code that can assume the data is contiguous.
 
-These issues can affect performance in additional ways, like preventing compiler optimizations and instruction-level parallelism, so we cover them in more detail in other chapters.
+These issues can affect performance in additional ways, like preventing compiler optimizations and instruction-level parallelism.
+So avoiding these issues is a good idea in general, and they are mostly covered in other chapters in the book.
 
 :::: {.callout-note}
 You can usually get your compiler to give you some hints about why it failed to auto-vectorize your code.
@@ -164,6 +166,13 @@ llvm.set_option('', '--debug-only=loop-vectorize')
 ```
 ::::
 
+## Use SIMD as an alternative to explicit branchless code
+
+In the previous chapter you learned about avoiding branches using branchless code.
+If you are using auto-vectorization, the compiler _might_ be able to optimize branches out of existence, using "masked" operations where the SIMD instruction can be applied to only some of the data.
+That is, it will automatically convert seemingly-branched code into being branchless without you having to change the code.
+If you're using less automatic methods to generate SIMD code, as discussed in the next chapter, you can also sometimes explicitly use these so-called "masked" SIMD operations to get rid of branches.
+
 ## Don't assume auto-vectorized code is always faster
 
 Unfortunately, not all code runs faster when auto-vectorized; in some cases it will be slower, depending on the inputs, the compiler version, and your specific CPU model.
@@ -173,3 +182,15 @@ So run code with and without auto-vectorization and see which version is faster.
 On Numba you can disable auto-vectorization by setting the [environment variables](https://numba.readthedocs.io/en/stable/reference/envvars.html) `NUMBA_LOOP_VECTORIZE` to `0` and `NUMBA_SLP_VECTORIZE` to `0`.
 Other compilers have their own specific options.
 :::
+
+### Next steps
+
+Different CPUs might support different SIMD instructions.
+This is not a problem for Numba, because compilation happens the first time a function is called.
+That means Numba knows exactly which CPU you're using, and can compile accordingly.
+Other programming languages are typically compiled in advance, so they can't just check the runtime CPU.
+
+This and other SIMD difficulties and approaches are discussed in the next chapter.
+The chapter after that briefly discusses the impact of specific CPU models on performance.
+On a first reading of the book you may wish to skip these chapters, and jump straight ahead to the chapter on [memory caches](060_memory.qmd).
+

@@ -21,3 +21,8 @@ As with bicycles, so with computers:
 * On the other hand, as you improve your mental model of the CPU, you can write code that not only doesn't fight the CPU, but also takes advantage of the CPU's fast paths.
 
 This is the Practice of Mechanical Sympathy.
+
+### Next steps {.unnumbered}
+
+The next few chapters will cover various features of CPUs that you can take advantage of—or at least avoid fighting with—to speed up your code.
+Then, the next section will take about some hardware features involving memory that can impact software performance.

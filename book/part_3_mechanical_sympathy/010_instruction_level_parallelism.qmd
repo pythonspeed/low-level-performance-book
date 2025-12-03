@@ -2,9 +2,9 @@
 
 Your CPU is capable of transparently running multiple instructions in parallel on the same core, making your code run that much faster.
 
-Your first though when you see the word "parallelism" is using multiple threads or processes, in order to take advantage of multiple CPU cores.
-But that's not what I'm talking about in this chapter.
-Rather, I'm talking about the CPU's ability to implement parallelism within a single CPU core, in a single thread, which is possible if your code structure enables it.
+Your first though when you see the word "parallelism" might be using multiple threads or processes, to take advantage of multiple CPU cores.
+But that's not what I'm talking about in this chapter; I'll cover that elsewhere, in [The Practice of Parallelism](../part_4_parallelism/000_what_is.qmd).
+Rather, I'm talking about the CPU's ability to implement parallelism within a single CPU core, in a single thread—if your code structure allows it.
 
 ## Data dependencies are a bottleneck for instruction-level parallelism
 
@@ -27,81 +27,88 @@ def pythagorean_theorem(x_length, y_length):
     return sqrt(x_squared + y_squared)
 ```
 
-Our expectation is that if we call `pythagorean_theorem(3, 4)`, we will get 5.
-We don't care how the CPU executes the resulting code: so long as we get the correct result, faster is better.
+I expect the result of calling `pythagorean_theorem(3, 4)` to be 5.
+When thinking about correctness, I don't care how the CPU executes the resulting code: so long as I get the correct result, faster is better.
+But when it comes to performance, it's helpful to understand at least a little about how the code is actually executed.
 
-In our original, simplistic mental model, we assumed the CPU core will execute each instruction in order.
-First a multiply, then another multiply, then an addition, then whatever instructions are necessary to calculate the square root:
+A common initial mental model of CPU cores is that they execute each instruction in order.
+In the case of `pythagorean_theorem()`, that would mean first a multiply, then another multiply, then an addition, then whatever instructions are necessary to calculate the square root:
 
 ::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
- A("x_squared = x_length ** 2") --> B("y_squared = y_length ** 2")
- B --> C("__temp = x_squared + y_squared")
+ A("x_sq = x_length ** 2") --> B("y_sq = y_length ** 2")
+ B --> C("__temp = x_sq + y_sq")
  C --> D("... result = sqrt(__temp) ...")
 ```
 :::
 
 ::: {.content-hidden unless-format="markdown"}
 ```
-x_squared = x_length ** 2
+x_sq = x_length ** 2
           ↓
-y_squared = y_length ** 2
+y_sq = y_length ** 2
           ↓
-__temp = x_squared + y_squared
+__temp = x_sq + y_sq
           ↓
 ... result = sqrt(__temp) ...
 ```
 :::
 
-However, modern CPUs, like those used in laptops, desktops, servers, and smartphones, can run your code faster by running multiple instructions in parallel—so long as that won't affect the result.
+To write faster code, you need a more accurate mental model of how CPUs work; it will still be imperfect, but closer to reality.
+In these model, modern CPUs can run your code more quickly by running multiple instructions in parallel—so long as that won't affect the result.
 
 Importantly, this is distinct from any benefit you get from using multiple CPU cores with threads or multiple processes.
 This is parallelism within a _single_ CPU core.
 If you later switch to a parallel implementation running with multiple threads or processes on multiple cores, each individual core will still be able to do instruction-level parallelism internally.
 
-In this case, calculating `x_squared` and `y_squared` is completely independent, so your CPU is likely to run both at once.
+In this case, calculating `x_sq` and `y_sq` is completely independent, so your CPU is likely to run both at once.
 This happens transparently: the compiler doesn't have to do anything special, the CPU will do this all on its own.
 
 ::: {.content-hidden when-format="markdown"}
 ```{mermaid}
 flowchart TD
- A("x_squared = x_length ** 2") --> C("__temp = x_squared + y_squared")
- B("y_squared = y_length ** 2") --> C
- C --> D("result = sqrt(__temp)")
+ A("x_sq = x_length ** 2") --> C("__temp = x_sq + y_sq")
+ B("y_sq = y_length ** 2") --> C
+ C --> D("... result = sqrt(__temp) ...")
 ```
 :::
 
 ::: {.content-hidden unless-format="markdown"}
 ```
-x_squared = x_length ** 2       y_squared = y_length ** 2
+x_sq = x_length ** 2       y_sq = y_length ** 2
           \                                /
            \______________________________/
                           ↓
-          __temp = x_squared + y_squared
+          __temp = x_sq + y_sq
                           ↓
           ... result = sqrt(__temp) ...
 ```
 :::
 
 Not all code can be transparently run in parallel.
-For one thing, a calculation can't be run if its inputs aren't yet available:
+For one thing, the CPU can't run a calculation if its inputs aren't yet available:
 
-* The CPU cannot run the instructions for `x_squared + y_squared` until both inputs have been calculated.
-* Similarly, the `sqrt()` can't be run until `x_squared + y_squared` finishes.
+* The CPU cannot run the instructions for `x_sq + y_sq` until both `x_sq` and `y_sq` have been calculated.
+* Similarly, the CPU can't calculate the square root until `x_sq + y_sq` finishes.
 
-We can say that these are "data dependencies" that prevent instruction-level parallelism, and therefore reduce the code's potential runtime speed.
+These are "data dependencies" that prevent instruction-level parallelism (ILP), and therefore reduce the code's potential runtime speed.
+
+Branches, as discussed in the next chapter, also interact with ILP.
+And there are a variety of hardware limits tied to specific CPU models: a CPU core can only add a limited number of integers in parallel, for example, depending on the model.
 
 ## Example #1: Removing data dependencies with interleaving
 
-To see the speed impact of ILP, let's look at an example: generating an array of random numbers.
-For educational purposes, we find [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and write the following code:
+To see the speed impact of ILP, consider the following example: generating an array of random numbers.
+For educational purposes, I found [an example of how to do this](https://nuclear.llnl.gov/CNP/rng/rngman/node4.html) and wrote the following code:
 
 ```{python}
 import numpy as np
 from numba import uint32, uint64
 
-# 64-bit linear congruent generator used to generate a 32-bit pseudo-random number.
+# 64-bit linear congruent generator of a 32-bit pseudo-random number. The
+# "uint32(uint32)" tells Numba the input is an unsigned 32-bit number as is the
+# output.
 @jit("uint32(uint32)")
 def lcg(seed):
     temp = uint64(seed) * 2862933555777941757 + 3037000493
@@ -124,8 +131,8 @@ def generate_random_numbers(n):
 %load_ext book_magics
 ```
 
-To get a sense of the randomness, we can visualize the result as an image.
-While a lack of patterns doesn't necessarily mean the data is random, if we do see patterns then it definitely is not random.
+To get a sense of the randomness, I will visualize the result as an image.
+While a lack of patterns doesn't necessarily mean the data is random, if you do see patterns then it definitely is not random.
 
 ```{python}
 def to_image(f):
@@ -134,7 +141,7 @@ def to_image(f):
 RAND1 = to_image(generate_random_numbers)
 ```
 
-Our first result looks like noise, which is what we want in a random number generator:
+The result of `generate_random_numbers()` looks like noise, which is what one would want in a random number generator:
 
 ```{python}
 #| echo: false
@@ -152,11 +159,11 @@ In short, each value in the array has a data dependency on the previous value in
 
 ### Experiment to find the impact of data dependencies
 
-How much speed are we losing because of the data dependencies above?
-To find out, we'll tweak the code to completely remove all data dependencies.
-The result won't be useful code, but it will let us see how much of a speed-up we can potentially get.
+How much speed am I losing because of the data dependencies above?
+To find out, I'll tweak the code to completely remove all data dependencies.
+The result won't be useful code, but it will show how much of a speed-up I can potentially get.
 
-We're going to calculate `result[i]` purely based on `i`:
+I'm going to calculate `result[i]` purely based on `i`:
 
 ```{python}
 @jit
@@ -171,19 +178,19 @@ def generate_not_so_random_numbers(n):
 RAND2 = to_image(generate_not_so_random_numbers)
 ```
 
-These calculations are completely unrelated and can be calculated in parallel:
+These calculations are completely unrelated and so a CPU core can calculate them in parallel:
 
 * `result[3] = lcg(3)`
 * `result[2] = lcg(2)`
 
-This version of the code is not a good random number generator, as we can see when we visualize the results:
+This version of the code is not a good random number generator, as you can see when I visualize the results:
 
 ```{python}
 #| echo: false
 %display_image RAND2
 ```
 
-But this experiment can give us a sense of how fast we could potentially go.
+But this experiment does give a sense of how fast the random number generator could potentially go.
 In the following performance comparison I've included the number of CPU instructions the code ran.
 Notice that the number of CPU instructions increased, even as the runtime decreased.
 That's because `generate_not_so_random_numbers()` allows the CPU to run those extra instructions in parallel, speeding up the actual run time.
@@ -197,16 +204,16 @@ generate_not_so_random_numbers(1_000_000)
 
 ### Use interleaving to reduce the impact of data dependencies
 
-Our performance experiment was informative, but not useful as a random number generator.
+This performance experiment was informative, but the result is not useful as a random number generator.
 But there are less naive approaches that should preserve the pseudo-randomness, while breaking the data dependency.
 
-Instead of having a single random number generator, we're going to have 4, and we're going to interleave their calculations.
+Instead of having a single random number generator, I'm going to have 4, and I'm going to interleave their calculations.
 The result will be slightly different, but it's a random number generator, so that's fine.
 
-For other algorithms we might be able to get the same kind of performance improvement by interleaving calculations from different areas of the data.
-For example, in a row-oriented algorithm processing 2D data we could interleave the calculations for multiple rows.
+For other algorithms you might be able to get the same kind of performance improvement by interleaving calculations from different areas of the data.
+For example, in a row-oriented algorithm processing 2D data you could interleave the calculations for multiple rows.
 
-Here's our new version:
+Here's the new version:
 
 ```{python}
 @jit
@@ -236,7 +243,7 @@ def generate_random_numbers_3(n):
 RAND3 = to_image(generate_random_numbers_3)
 ```
 
-Our image is random-looking again:
+The is resulting image is random-looking again:
 
 ```{python}
 #| echo: false
@@ -264,12 +271,12 @@ Now, you might ask why the compiler doesn't notice that the value it is writing 
 Can't it cache that value in a compiler-generated temporary variable, and skip the array reads and corresponding math?
 
 In theory, it probably could.
-In practice, we've told the compiler a write to `result[i * 4]` followed by `i += 1` followed by a read to `result[(i - 1) * 4]`, with a whole bunch of other array reads and writes in the middle.
+In practice, I've told the compiler a write to `result[i * 4]` followed by `i += 1` followed by a read to `result[(i - 1) * 4]`, with a whole bunch of other array reads and writes in the middle.
 This particular version of the compiler may simply not notice the possibility of omitting the extra calculations and extra reads.
 
-To try to reduce the number of instructions, instead of reading back intermediate values from the array, we can explicitly store them in temporary variables.
-This reduces the amount of arithmetic and array reads we're asking the compiler to do, so it should be faster on that account.
-And since the code we're giving the compiler is simpler, it may also enable the compiler to do additional optimizations:
+To try to reduce the number of instructions, instead of reading back intermediate values from the array, I will explicitly store them in temporary variables.
+This reduces the amount of arithmetic and array reads I'm asking the compiler to do, so it should be faster on that account.
+And since the code I'm giving the compiler is simpler, it may also enable the compiler to do additional optimizations:
 
 ```{python}
 @jit
@@ -307,7 +314,7 @@ This is how it looks:
 %display_image RAND4
 ```
 
-And now our code is much faster, with approximately the same number of instructions as our original version, but with significant parallelism:
+And now my code is much faster, with approximately the same number of instructions as the original version, but with significant parallelism:
 
 ```{python}
 #| echo: false
@@ -318,10 +325,7 @@ generate_random_numbers_4(1_000_000)
 
 ## Example #2: Removing accumulator data dependencies with MapReduce
 
-Let's look at another data dependency bottleneck: an accumulator.
-If we sum the values in an array, in every iteration of the loop we add values to the same variable, `total`.
-That variable acts as a data dependency, and prevents instruction-level parallelism:
-
+Here's another data dependency bottleneck: an accumulator, summing an array:
 ```{python}
 DATA = np.arange(0, 1_000_001, dtype=np.uint64)
 
@@ -337,8 +341,11 @@ def sum1(arr):
 _ = sum1(DATA)
 ```
 
-We can solve this by having multiple partial accumulators, that get data added in parallel.
-At the end of the function we add the accumulators to get the final sum:
+In every iteration of the loop the CPU add values to the same variable, `total`.
+That variable acts as a data dependency, and prevents instruction-level parallelism:
+
+This can be solved by having multiple partial accumulators, that get data added in parallel.
+At the end of the function I add the accumulators to get the final sum:
 
 ```{python}
 @jit
@@ -365,7 +372,7 @@ This is a variation of the MapReduce design pattern:
    In this case, the parallelism comes from CPU's ILP.
 2. **Reduce:** Combine all the partial results into one final result.
 
-And as we hoped, the second version allows more scope for parallelism:
+And as I'd hoped, the second version allows the CPU core more scope for parallelism:
 
 ```{python}
 #| echo: false
@@ -375,9 +382,9 @@ sum2(DATA)
 ```
 
 ::: {.callout-note}
-We'll discuss SIMD in the next chapter.
+I'll discuss SIMD in the next chapter.
 If you were to run the above code with SIMD enabled, the `sum1()` function might be faster than `sum2()`, or the same speed.
-This technique is still worth trying even if SIMD is enabled, as we'll see in an example in a later chapter.
+This technique is still worth trying even if SIMD is enabled, as it sometimes can help.
 :::
 
 ## Use higher-level abstractions when available
@@ -387,7 +394,7 @@ The resulting code is faster, yes, but that comes at the cost of maintainability
 
 In some compiled languages, this sort of refactoring can be done by a higher-level library, speeding up the code while still preserving readability.
 In Rust, the [`iterator_ilp`](https://docs.rs/iterator_ilp) crate implements APIs that are designed to take advantage of instruction-level parallelism.
-As an equivalent to our `sum1()/sum2()` example above, here's a normal sum function written in Rust:
+As an equivalent to the `sum1()/sum2()` example above, here's a normal sum function written in Rust:
 
 ```rust
 fn rust_sum1(arr: Vec<u64>) -> u64 {
@@ -395,7 +402,7 @@ fn rust_sum1(arr: Vec<u64>) -> u64 {
 }
 ```
 
-And here how you would write Rust code utilizing `iterator_ilp` to achieve the equivalent of the 4 accumulators we used in the `sum2()` example above:
+And here how you would write Rust code utilizing `iterator_ilp` to achieve the equivalent of the 4 accumulators I used in the `sum2()` example above:
 
 ```rust
 use iterator_ilp::IteratorILP;
@@ -406,3 +413,10 @@ fn rust_sum2(arr: Vec<u64>) -> u64 {
 ```
 
 This is more readable and less error-prone than the Numba examples in this chapter.
+
+### Next steps {.unnumbered}
+
+What happens if your code has a branch, for example an `if/else` statement?
+At first glance this would seem to prevent ILP: when the branch is hit, it's unclear which of two sets of instructions the CPU should execute, the ones in the `if` clause or the ones in the `else` clause.
+However, to maximize performance, CPUs will heuristically guess which branch the running program will take and speculatively execute those instructions.
+This can lead to faster code—or, as you'll learn in the next chapter, slower code.

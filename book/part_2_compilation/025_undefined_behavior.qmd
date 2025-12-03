@@ -79,4 +79,4 @@ In addition to floating point calculations as covered in the previous chapter, a
 Following that are a number of chapters showing how to coax maximum performance out of the compiler in ways you should probably only focus on after you've implemented other performance improvements.
 
 On a first reading you can feel free to skip these chapters and move on to the next practice: given compiled code, the way the CPU behaves becomes much more important.
-So after the Practice of Compilation, the next section covers the [Practice of Mechanical Sympathy](../part_3_mechanical_sympathy/001_what_is.qmd).
+So after the Practice of Compilation, the next section covers the [Practice of Mechanical Sympathy](../part_3_mechanical_sympathy/000_what_is.qmd).

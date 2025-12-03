@@ -2,7 +2,7 @@
 
 `if` statements, `for` loops, `while` loop, and other less obvious code structures can result in branches in your code.
 Branches can have an unexpected performance impact at runtime, due to interactions with instruction-level parallelism (ILP).
-As we discussed in a previous chapter, ILP allows the CPU to run multiple instructions in parallel if it knows they don't depend on each other.
+As we discussed in the previous chapter, ILP allows the CPU to run multiple instructions in parallel if it knows they don't depend on each other.
 
 Branches present a problem for ILP: given there are two possible sets of future instructions, for example the two branches of an `if` statement, how can the CPU know which set it should be executing in parallel?
 
@@ -28,7 +28,7 @@ To test the algorithm, I will generate two simulated images:
 
 ```{python}
 # For educational purposes, tell Numba to disable SIMD, so it doesn't hide
-# other effects:
+# other effects; SIMD will be discussed in the next chapter.
 import os
 os.environ["NUMBA_LOOP_VECTORIZE"] = "0"
 os.environ["NUMBA_SLP_VECTORIZE"] = "0"
@@ -171,7 +171,7 @@ Notice that:
 1. The branchless version is about the same speed as the original implementation's best case.
    This may or may not be the case, depending on the implementation: it could also be faster or slower.
 2. The branchless version has fewer branches, and much less branch misprediction.
-3. The branchless version takes a consistent amount of time to process different images.
+3. **The branchless version takes a consistent amount of time to process different images.**
    This is the key advantage of branchless code.
 
 The branchless function is seemingly doing more work: it writes to every pixel in the result image, not just some of them.
@@ -262,7 +262,10 @@ Branchless programming is a trade-off: in return for getting rid of the potentia
 That means branchless programming may well be slower, depending on how predictable your branch is, and how expensive the different branches are.
 And that can depend on the specifics of your data.
 
-In addition, SIMD auto-vectorization may or may not be happen depending on how the code is written.
-If the right SIMD instructions are available and used, the compiler might be able to optimize branches out of existence, using "masked" operations where the SIMD instruction can be applied to only some of the data.
-
 As always, it's critical to benchmark your code with real, or at least realistic, data that will match how the code will run in the real-world.
+
+### Next steps {.unnumbered}
+
+Instruction-level parallelism has the CPU core running standard CPU instructions in parallel, on its own, automatically.
+Another option is for the compiler to explicitly tell the CPU core to use special CPU instruction that operate on multiple pieces of data in parallel.
+This is known as SIMD, the topic of the next chapter.

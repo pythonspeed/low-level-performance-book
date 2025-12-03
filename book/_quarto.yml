@@ -50,9 +50,9 @@ book:
       chapters:
         - part_3_mechanical_sympathy/000_what_is.qmd
         - part_3_mechanical_sympathy/010_instruction_level_parallelism.qmd
+        - part_3_mechanical_sympathy/015_branchless.qmd
         - part_3_mechanical_sympathy/020_simd.qmd
         - part_3_mechanical_sympathy/030_more_about_simd.qmd
-        - part_3_mechanical_sympathy/050_branchless.qmd
         - part_3_mechanical_sympathy/059_hardware_differences.qmd
     - part: "The Pratice of Mechanical Sympathy: Memory"
       chapters:

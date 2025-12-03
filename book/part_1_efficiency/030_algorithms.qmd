@@ -246,7 +246,7 @@ But once inputs are large enough, the `linear_filter_python()` function becomes 
 
 ## Use a scalable algorithm, if you can
 
-As we saw in the above examples, once input lengths gets large enough, a slow implementation of a scalable algorithm can beat a fast implementation of a non-scalable algorithm.
+As you saw in the above examples, once input lengths gets large enough, a slow implementation of a scalable algorithm can beat a fast implementation of a non-scalable algorithm.
 Of course, a fast implementation of scalable algorithm is even better.
 And in some situations there is no scalable algorithm, and the only thing you can do is focus on speed of implementation:
 

@@ -13,19 +13,18 @@ While Numba makes using SIMD automatic and transparent, using SIMD in other prog
 
 If you want to use SIMD, there are different ways you can get the compiler to generate these specialized CPU instructions:
 
-1. **Auto-vectorization:** Compilers can sometimes generate SIMD instructions automatically, especially if you structure your code appropriately.
+1. **Auto-vectorization:** As you saw in the last chapter, compilers can sometimes generate SIMD instructions automatically, especially if you structure your code appropriately.
    Because this relies on compiler heuristics you have less control over the results, and different compiler versions might give different results.
-   This is what we focused on in the previous chapter.
 2. **Intrinsics:** You can directly tell the compiler to use specific CPU instructions, using special compiler features called "intrinsics".
    This doesn't work in all languages, for example it's not easily supported by Numba, and the resulting code is not portable: x86-64 CPU instructions are different than ARM CPU instructions.
-   Worse, different x86-64 CPU models support different instructions, as we'll discuss next.
+   Even if you're targeting a single architecture, different x86-64 CPU models support different instructions, as I'll discuss next.
 3. **SIMD abstraction libraries:** Many languages have libraries available providing datastructures that will use SIMD for their mathematical operations.
    This gives you more abstraction than intrinsics, while being more reliable and explicit than auto-vectorization.
 
 ## When auto-vectorizing, make sure you're actually using SIMD
 
 Keep in mind that some compilers in some configurations don't auto-vectorize at all.
-Notably, if you're compiing C/C++/Cython extensions for Python, by default no auto-vectorization happens at all.
+For example, if you're compiling C/C++/Cython extensions for Python, by default no auto-vectorization happens at all.
 See [this article for more details](https://pythonspeed.com/articles/faster-cython-simd/).
 
 ## What gets auto-vectorized?
@@ -54,7 +53,7 @@ def add(a, b):
 
 
 ::: {.callout-note}
-While SLP is on by default in Clang, some versions of Numba have disabled SLP due to issues with bad code generation (see the [release notes](https://numba.pydata.org/numba-doc/dev/release-notes.html)).
+While SLP is on by default in Clang, at the time of writing Numba has disabled SLP due to issues with bad code generation.
 This is one of the problems with auto-vectorization: it can stop working unexpectedly due to changes in the compiler, both intentional and unintentional.
 :::
 
