@@ -164,11 +164,15 @@ example1 = random_sample(GENERATOR, INT64)
 example2 = random_sample(GENERATOR, INT8)
 ```
 
-Running `random_sample()` on the `int8` array will be faster, because the data fits in the smaller but faster caches:
+Running `random_sample()` on the `int8` array will be faster, at least in part because the data fits better into the L3 cache:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing --measure=instructions,memory_cache_miss
 random_sample(GENERATOR, INT64)
 random_sample(GENERATOR, INT8)
 ```
+
+### Next steps {.unnumbered}
+
+Having learned about memory caches, the next chapter will discuss the shape of data in memory, and how that can impact performance.

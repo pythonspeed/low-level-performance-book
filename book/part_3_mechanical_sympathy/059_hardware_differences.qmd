@@ -11,8 +11,11 @@ One key question when optimizing your code is how portable the optimizations are
   That means the code the compiler emits will be rather different, which means at least some differences in how optimizations are applied.
 
 If you start optimizing code in ways that strongly rely on implementation details of the CPU, you will have differing outcomes across CPUs.
-However, the mental models in this book are pretty reflective of a broad range of CPU models, because they're tied to how CPUs are designed.
-So applying these techniques will usually result in faster code regardless the CPU model.
+If you need to extract maximum performance, and other approaches have failed, optimizations specific to a CPU model may be worth it.
+
+Much of the time that won't be necessary.
+The mental models in this book are pretty reflective of a broad range of CPU models, because they're tied to how CPUs are designed.
+So applying these techniques will usually result in fast code regardless the CPU model, even if not the absolutely fastest code possible.
 
 ## Benchmark on multiple CPU models
 
@@ -31,3 +34,8 @@ But importantly, almost all the performance optimizations actually worked.
 The one or two exceptions where the code didn't get faster on the M1 were easily fixed, and attempted optimizations never made anything slower.
 
 > TODO This was done earlier in the book's creation, and needs to be revalidated before final release.
+
+### Next steps {.unnumbered}
+
+Now that I've talked about CPU, the next few chapters will discuss the impact on performance of the memory hardware in your computer.
+

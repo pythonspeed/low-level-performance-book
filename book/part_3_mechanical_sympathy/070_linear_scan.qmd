@@ -80,7 +80,7 @@ That's likely because it's being filled by the CPU, automatically.
 
 ### Cache lines
 
-Reading memory linearly can also benefit from the way data is loaded into the memory caches: in small chunks known as "cache lines", typically 64 bytes at a time.
+Reading memory linearly can also benefit from the way data is loaded into the memory caches, and into the CPU's store of individual memory values ("registers"): in small chunks known as "cache lines", typically 64 bytes at a time.
 Each of the values in the example above is an 8-bit integer, i.e. it takes 1 byte.
 So if we're loading 64 bytes at a time, we'll also load the 2nd, 3rd, 4th up to the 63rd consecutive value into the L1 cache.
 
@@ -92,3 +92,75 @@ Comparing our two variations:
   Quite possibly they'll be dropped from the cache before we actually need to see them.
 
 As a result, in the linear scan case the data we need is much more likely to already be in the much-faster L1 cache.
+
+## Scan N-dimensional arrays in a linear fashion
+
+Whether or not you're scanning memory linearly becomes a little less obvious when you're dealing with N-dimensional arrays: the memory address space is linear, so there's different ways to map the different dimensions on.
+Imagine the following array:
+
+```
+  X →
+Y 1, 2, 3
+↓ 4, 5, 6
+```
+
+It could be laid out in memory like this:
+
+```
+1, 2, 3, 4, 5, 6
+```
+
+Or like this:
+
+```
+1, 4, 2, 5, 3, 6
+```
+
+However it's laid out, we want to iterate over the data in a way that matches that layout, because that will be faster.
+In practice, NumPy arrays by default will be laid out so the last dimension is contiguous in memory, so you want to iterate over the dimensions in their listed order, from first to last.
+
+Let's see an example:
+
+```{python}
+#| echo: false
+%load_ext book_magics
+```
+
+```{python}
+import numpy as np
+from numba import jit
+
+two_d = np.ones((2_000, 2_000), dtype=np.int64)
+
+@jit
+def scan_y_first(arr):
+    total = 0
+    for y in range(arr.shape[0]):
+        for x in range(arr.shape[1]):
+            total += arr[y, x]
+    return total
+
+@jit
+def scan_x_first(arr):
+    total = 0
+    for x in range(arr.shape[1]):
+        for y in range(arr.shape[0]):
+            total += arr[y, x]
+    return total
+
+assert scan_x_first(two_d) == scan_y_first(two_d)
+```
+
+Given NumPy's default memory layout, scanning the dimensions in order is faster:
+
+```{python}
+#| echo: false
+%%compare_timing
+scan_y_first(two_d)
+scan_x_first(two_d)
+```
+
+### Next steps {.unnumbered}
+
+In the next chapter, which you can skip on first reading, I dig deeper into NumPy array's memory layout and their impact on performance.
+Or, now that you have some understanding of the Practice of Mechanical Sympathy, you can move on to [The Practice of Parallelism](../part_4/000_what_is.qmd), which allows you to take advantage of multiple CPU cores.

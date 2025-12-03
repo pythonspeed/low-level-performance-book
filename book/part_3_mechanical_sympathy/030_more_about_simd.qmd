@@ -134,3 +134,8 @@ The additional targets are:
 `x86-64-v2` is probably a reasonable choice for anything running in production that doesn't need to support ancient computers.
 If you have some control over your hardware, `x86-64-v3` or `x86-64-v4` are likely to work.
 For example, if you're running on AWS, the [Vantage AWS EC2 instance type page](https://instances.vantage.sh/) lets you filter by instance types that support AVX, AVX2, and AVX-512.
+
+### Next steps {.unnumbered}
+
+The next chapter briefly discusses the impact of specific CPU models on performance.
+On a first reading of the book you may wish to skip this chapters, and jump straight ahead to the chapter on [memory caches](060_memory.qmd), a very different kind of hardware that can impact your code's performance.

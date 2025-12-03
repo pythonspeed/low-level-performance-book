@@ -68,14 +68,14 @@ scan_y_first(two_d)
 scan_x_first(two_d)
 ```
 
-## Avoid memory reads that aren't linear
+## Make sure the compiler can take advantage of contiguous arrays
 
 The number of CPU instructions is much lower in the linear scan.
 Why is that?
 Given an array that is known to be contiguous, and that is being scanned in a way that is known to match how it's laid out in memory, the compiler can use SIMD instructions.
 The compiler isn't going to use SIMD instructions if the multiple data items being operated on aren't contiguous in memory.
 
-So CPU usage is likely part of the reason for the performance difference we saw aabove, but it's not the only reason: memory reads are also in play.
+By default, Numba is smart enough to compile multiple versions of the function for contiguous and non-contiguous inputs, and use the appropriate one to maximize speed.
 We can see this if we force Numba to compile a version of the code that can't take advantage of the knowledge than array is contiguous.
 Keep in mind we're only doing this for educational purposes in the context of this chapter, since the resulting functions will be slower:
 
@@ -104,12 +104,15 @@ def scan_x_first_nc(arr):
 assert scan_x_first_nc(two_d) == scan_y_first_nc(two_d)
 ```
 
-Unlike our previous version, the number of CPU instructions run by our new `scan_y_first_nc()` and `scan_x_first_nc()` are essentially identical.
-Yet there is still a significant performance gap between the two:
+Unlike my previous version, the number of CPU instructions run by the new `scan_y_first_nc()` and `scan_x_first_nc()` are essentially identical.
+There is still a significant performance gap between the two, likely the result of the memory access pattern:
 
 ```{python}
 #| echo: false
-%%compare_timing --measure=instructions
+%%compare_timing --measure=instructions,l1_memory_cache_refs
 scan_y_first_nc(two_d)
 scan_x_first_nc(two_d)
 ```
+
+In other programming languages you will need to explicitly do so if you want to get faster results for contiguous arrays.
+For example, if you're using Cython to interface with NumPy arrays, my [article on Cython auto-vectorization](https://pythonspeed.com/articles/faster-cython-simd/) shows how to support both contiguous and non-contiguous arrays.

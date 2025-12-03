@@ -2,14 +2,14 @@
 
 > {{< var optional >}}
 
-In a previous chapter we saw how linearly traversing memory is faster.
+In the previous chapter you saw how linearly traversing memory is faster.
 This suggests a broader point: you need to understand how data structures structure their memory, in order to get the most performance.
 Put another way, while abstractions are critical to writing software, for the best performance you will need to peer behind the curtain and see how the code really works.
 
 Partially this is because you want to make sure the ways you access data are efficient.
 But it's also because you want to make sure the compiler has all the information it needs to generate efficient code.
 
-In this chapter we'll look at a particular example, NumPy views, but similar issues can potentially apply to any data structure you are using.
+In this chapter I'll look at a particular example, NumPy views, but similar issues can potentially apply to any data structure you are using.
 
 ## NumPy views point at the underlying array's data
 
@@ -40,7 +40,7 @@ view2 = arr[:,0]
 print("view2:", view2)
 ```
 
-If we mutate the underlying array, this change is reflected in both views:
+If I mutate the underlying array, this change is reflected in both views:
 
 ```{python}
 arr[0, 0] = 100
@@ -50,7 +50,7 @@ print("view2:", view2)
 
 ## NumPy views can be contiguous or non-contiguous
 
-The array we're looking at is two dimensional, but memory is best thought of as one dimensional.
+The array I'm looking at is two dimensional, but memory is best thought of as one dimensional.
 With the default mapping from 2-D to 1-D, `view1` is using contiguous memory, but `view2` is not.
 Both views look the same externally thanks to the abstraction provided by NumPy, but internally `view2` is skipping to different parts of the underlying array to get the data.
 
@@ -117,7 +117,7 @@ assert np.array_equal(
 )
 ```
 
-The versions that can assume the array is contiguous are much faster when a congituous array is passed in, because the compiler can optimize better:
+The versions that can assume the array is contiguous are much faster when the caller passes in a contiguous array, because the compiler can optimize better:
 
 ```{python}
 #| echo: false
@@ -135,3 +135,7 @@ For example, here's an article I wrote that shows one way to [handle this in Cyt
 
 More broadly, abstractions like NumPy views are useful, but they can also get in the way of performance.
 So make sure to dig in to the details of your data is actually laid out, and see if there are ways to expose relevant information to the compiler.
+
+### Next steps {.unnumbered}
+
+Now that you have some understanding of the Practice of Mechanical Sympathy, you can move on to [The Practice of Parallelism](../part_4/000_what_is.qmd), which allows you to take advantage of multiple CPU cores.

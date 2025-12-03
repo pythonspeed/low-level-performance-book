@@ -183,7 +183,7 @@ On Numba you can disable auto-vectorization by setting the [environment variable
 Other compilers have their own specific options.
 :::
 
-### Next steps
+### Next steps {.unnumbered}
 
 Different CPUs might support different SIMD instructions.
 This is not a problem for Numba, because compilation happens the first time a function is called.
@@ -192,5 +192,5 @@ Other programming languages are typically compiled in advance, so they can't jus
 
 This and other SIMD difficulties and approaches are discussed in the next chapter.
 The chapter after that briefly discusses the impact of specific CPU models on performance.
-On a first reading of the book you may wish to skip these chapters, and jump straight ahead to the chapter on [memory caches](060_memory.qmd).
+On a first reading of the book you may wish to skip these chapters, and jump straight ahead to the chapter on [memory caches](060_memory.qmd), a very different kind of hardware that can impact your code's performance.
 
