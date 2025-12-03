@@ -1,3 +1,5 @@
+macos: https://github.com/El-Naizin/rust-kperf/tree/main
+
 * Show examples when automatic hoisting by the compiler doesn't work (len()?) and check if it works with Rust because it knows it's immutable?
 * Compiled language faster cause of specialized types
 * ILP: mental model of window of instructions, whose execution order is rearranged?
