@@ -7,10 +7,16 @@
 All other things being equal, faster software is better software.
 It gets you results faster, it uses less resources, it's more efficient: all good qualities to have in a product.
 
-To achieve a faster product you also need to consider your software development processes.
-Why did your software end up slow in the first place?
-How will you measure your software's speed and validate it actually is getting faster?
-How will you keep your software from getting slow again in the future as it continues to evolve?
+But not all questions about your code's speed are about the code itself.
+Consider:
 
-These are all questions not about your code, but about your development process.
+* Why did your software end up slow in the first place?
+* How will you measure your software's speed and validate it actually is getting faster?
+* How will you keep your software from getting slow again in the future as it continues to evolve?
+
+These are not questions about your code, but rather about your development process.
 The Practice of Process covers the processes you use to make your software fast, and to keep it fast.
+
+### Next steps {.unnumbered}
+
+The first process, which I'll discuss in the next chapter, is figuring out _where_ your code is slow, by using a profiler.

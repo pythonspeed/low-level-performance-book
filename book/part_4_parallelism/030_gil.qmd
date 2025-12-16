@@ -1,10 +1,10 @@
 # Release the Global Interpreter Lock (GIL)
 
-In [a previous chapter](020_race_conditions.qmd) I talked about the problems caused by multiple threads accessing the same shared memory.
+In the previous chapter, I talked about the problems caused by multiple threads accessing the same shared memory.
 These problems apply to the CPython interpreter as well, the default implementation of Python you're likely to be using.
 
 To solve the, CPython implemented a single, global lock that controls all access to the CPython internals.
-_Any_ interaction with the interpreter's C APIs, and therefore any interaction with Python objects (dicts, lists, functions, and so on) requires holding on to this Global Intepreter Lock or GIL.
+_Any_ interaction with the interpreter's C APIs, and therefore any interaction with Python objects—dicts, lists, functions, and more—requires holding on to this Global Intepreter Lock or GIL.
 This means that by default, only one Python thread may be running at a given time.
 
 ```{python}
@@ -142,3 +142,7 @@ Beyond library availability, there is also the question of correctness.
 Switching to a threading paradigm where developers need to worry far more about race conditions and cross-thread conflicts will likely involve a long tail of rare, hard-to-reproduce bugs.
 As an early adapter, you can help the community by finding and reporting these bugs.
 Or, you can choose to wait until other people have done this for you.
+
+### Next steps {.unnumbered}
+
+Having discussed the usefulness of thread pools, and how to avoid some issues caused by threading, in the next two chapters I'll cover finetuning your threaded operations so they run even faster.

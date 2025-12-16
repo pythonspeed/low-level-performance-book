@@ -308,3 +308,8 @@ Some approaches to ensuring your parallel logic is actually correct include:
   You still need to worry about whether your implementation matches the formal model.
 * Runtime correctness checks like [ThreadSanitizer](https://github.com/google/sanitizers/wiki/threadsanitizercppmanual), available in gcc and clang.
   Because this only does checks at runtime, and given that race conditions can be hard to reproduce, this won't catch everything.
+
+### Next steps {.unnumbered}
+
+To avoid data races in its internal implementation, Python has traditionally used a global interpreter lock.
+This can reduce parallelism in Python applications, as I discuss in the next chapter.

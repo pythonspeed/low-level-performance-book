@@ -20,7 +20,7 @@ If your code only does computation, the number of available CPU cores is a key b
 Assume your CPU has 10 cores: that means it can run the code in up to 10 threads at the same time.
 
 If you have more than 10 threads in total across your various processes, they will be scheduled to run by the operating system.
-Whenever a running thread that is only doing computation has had sufficient time, that thread is paused and another thread is resumed so it can run on the newly freed up CPU core.
+Whenever a running thread that is only doing computation has had sufficient time, that thread is paused by the operating system and another thread is resumed so it can run on the newly freed up CPU core.
 
 ### If your program is the only one running
 
@@ -28,10 +28,10 @@ As a result, if your program is the only computationally-intensive process runni
 Less than that and some CPU cores will go idle.
 More than that and threads will compete for CPU cores; at best you'll get the same speed, at worst the switching will slow things down.
 
-[^other]: Yes, random required processes and the operating system kernel will need some CPU, but probably not much, so you can ignore them in practice.
+[^other]: There may be some minor processes, as well the operating system kernel itself, and they will need some CPU. But probably not much, so you can ignore them in practice.
 
 On Python you can get the number of CPU cores using [`os.cpu_count()`](https://docs.python.org/3/library/os.html#os.cpu_count).
-You create a single thread pool, with the number of workers limited to the number of CPU cores:
+Here's how you can create a single thread pool, with the number of workers limited to the number of CPU cores:
 
 ```{python}
 import os
@@ -44,18 +44,18 @@ You want a single thread pool because if you create multiple pools, you will hav
 
 A useful feature of `os.cpu_count()` is that you can override its value with the `PYTHON_CPU_COUNT` environment variable, so you get configurability for free.
 
-### More than one computationally-intensive process
+### More than one computationally intensive process
 
-If you have multiple computationally-intensive programs running on the same computer, the available hardware isn't necessarily the best measure of CPU availability.
+If you have multiple computationally intensive programs running on the same computer, the available hardware isn't necessarily the best measure of CPU availability.
 One option is to rely on operating system facilities to assign different processes different amounts of CPU.
 For example, there's CPU affinity: the operating system can limit a process to run only on 3 specific cores.
 In this case, the process should only start 3 threads, but `os.cpu_count()` won't tell you that.
 
-In Python, the [`os.process_cpu_count()`](https://docs.python.org/3/library/os.html#os.process_cpu_count) API is an alternative to `os.cpu_count()` takes into account CPU affinities.
+In Python, the [`os.process_cpu_count()`](https://docs.python.org/3/library/os.html#os.process_cpu_count) API is an alternative to `os.cpu_count()` that takes into account CPU affinities.
 Like `os.cpu_count()`, `os.process_cpu_count()` can be overriden with the `PYTHON_CPU_COUNT` environment variable.
 
 On Linux there is also the ability to limit CPU availability via `cgroups`, the Linux APIs which are the basis for container systems like Docker and Kubernetes.
-The Rust crate [`num_cpus`](https://docs.rs/num_cpus/latest/num_cpus/) allows you to get the number of available CPUs taking into account both affinity and `cgroups`.
+The Rust crate [`num_cpus`](https://docs.rs/num_cpus/latest/num_cpus/) provides an API to retrieve the number of available CPU cores, taking into account both affinity and `cgroups`.
 
 ## When your threads don't just do computation
 
@@ -157,3 +157,8 @@ Given $C$ processes each with $C$ threads, overall you might have $C^2$ differen
 To prevent this from happening, you should make sure any libraries you depend on are configured appropriately to match your application's parallelism strategy.
 If your application will manage the amount of parallelism, set the libraries' thread pool sizes to 1.
 If you want to rely on the libraries' existing parallelism, don't implement parallelism yourself.
+
+### Next steps {.unnumbered}
+
+So far the book has covered ways to change your code to make it faster.
+Next you'll learn about ways to speed up your code—or at least, keep it from getting slower—using the processes surrounding your coding.

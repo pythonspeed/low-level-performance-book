@@ -1,6 +1,6 @@
 # Choose an appropriate chunk size
 
-In some parallelism strategies you will end up taking a single large piece of data, and processing it in chunks in parallel.
+In many parallel applications you will have access to a large amount of data, and process it in chunks in parallel.
 For example, if you have a 123,000,000 row CSV, you may break it up into chunks by handing 1,000 rows at a time to a thread pool, meaning there will be 123,000 chunks.
 Or maybe you want chunks of 123,000 rows, meaning there will only be 1,000 chunks?
 
@@ -121,3 +121,7 @@ parallel_with_chunk_size(DATA, 10_000_000)
 When the chunks are small and there are many chunks, the overhead slows down the operation.
 When chunks are few but large, memory pressure starts slowing things down.
 Peak performance is somewhere in the middle.
+
+### Next steps {.unnumbered}
+
+Having covered choosing the appropriate chunk size, in the next chapter you'll learn how to choose the appropriate number of threads in your thread pool.
