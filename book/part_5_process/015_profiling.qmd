@@ -151,7 +151,23 @@ I have created a sampling profiler specifically for data processing applications
 ## Understand the limitations of profiling for compiled code
 
 For compiled code, profilers have another barrier to finding bottlenecks.
+Your compiler will typically have some option to include debug info that can help the profiler match generated machine code to the original source code.
+But the source code and machine code may not match: the compiler will _optimize_ your code, so the resulting machine code may be a little—or very—different.
+That means that the profiler's suggested lines of source code are approximately correct, but won't necessarily explain why the _machine_ code is slower or faster.
 
-the code you are profiling is not exactly the same
+Some options for dealing with this:
+
+* **Benchmark unoptimized code:** You can tell the compiler to apply fewer optimizations, and benchmark that way.
+  But that means benchmarking code that is different than what you'll be using in practice, and those missing optimizations may massively change your program's speed.
+  So the results can be very misleading.
+* **Read the generated machine code as assembly:** Assembly language is a human-readable version of machine code.
+  You can get the compiler to generate assembly, and then read that to understand more closely what the compiled code is doing.
+  This requires learning a whole new programming language, of course.
+* **Get other measurements:** Using tools like Linux's `perf`, macOS's XCode Instruments, or Intel VTune Profiler, you can get metrics like branch mispredictions, memory references, and other counters straight from the CPU.
+  This can let you get a better sense of _why_ that general area of code is slow, and therefore where in the source code to look.
+  For example, if you see many branch mispredictions, that suggests a branch is the problem.
+  A good book on the subject is _Performance Analysis and Tuning on Modern CPUs_, by [Denis Bakhalov](https://easyperf.net/).
+
+### Next steps {.unnumbered}
 
 TODO

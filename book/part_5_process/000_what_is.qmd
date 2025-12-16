@@ -19,4 +19,4 @@ The Practice of Process covers the processes you use to make your software fast,
 
 ### Next steps {.unnumbered}
 
-The first process, which I'll discuss in the next chapter, is figuring out _where_ your code is slow, by using a profiler.
+The first process, which I'll discuss in the next chapter, is creating a benchmark for your code.

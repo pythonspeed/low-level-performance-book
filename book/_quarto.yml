@@ -72,8 +72,8 @@ book:
     - part: "The Practice of Process"
       chapters:
         - part_5_process/000_what_is.qmd
+        - part_5_process/010_realistic_benchmarks.qmd
         - part_5_process/015_profiling.qmd
-        - part_5_process/020_choosing_a_metric.qmd
         - part_5_process/025_small_improvements.qmd
         - part_5_process/030_microbenchmarking.qmd
         - part_5_process/040_dont_break_your_code.qmd

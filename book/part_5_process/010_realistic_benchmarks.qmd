@@ -1,14 +1,38 @@
----
-title: "Choose an appropriate speed metric for your software"
-essential: true
----
+# Create realistic end-to-end benchmarks
 
-If you're going to make your software faster, you need some way to measure it.
-There are different metrics you can use, depending on your use case, which can lead you in different directions.
+Speed is a property of your whole program: from the moment it starts until the moment it ends.
+If you optimize part of the code that takes up 10% of the time, and make it take 20% less time to run, your overall program's speed is improved by 2%.
+That's not _bad_, but it may not be a good use of your time.
+As a result, before optimizing smaller parts of your program, you need to build a model of performance that matches your program's end-to-end speed.
 
-## An example: Geolocating
+You can use it for multiple purposes:
 
-Imagine you're working on a geocoding service, that turns addresses into latitude/longitude pairs.
+* Identifying _which_ parts of the code are responsible for slowness, so you can focus on those.
+  I'll discuss that in the next chapter on profiling.
+* Measuring the speed of your code over time, so you can notice when things get slower.
+* Measuring the speed of your code for different inputs, in case it's much slower for some kinds of inputs.
+
+## Make sure your benchmark is realistic
+
+The speed you care about is the speed of your code running in the real world.
+So if you're creating a benchmark, you want to make sure it matches the real world as much as possible:
+
+* The same hardware.
+* The same dependency versions.
+* The same configuration.
+* Real-world data.
+
+In practice this may be difficult, so you may need to compromise and do your best.
+
+## Measure in production
+
+If you are already using your code in the real world, you have another option.
+Instead of trying to match the way your code runs, you can just measure speed in those real-world production runs.
+
+## Choose an appropriate speed metric
+
+Once you have a benchmark, you can measure how fast your code is, both over time as the code changes, and for different inputs.
+As an example, imagine you're working on a geocoding service, that turns addresses into latitude/longitude pairs.
 There are two ways to use the service:
 
 * An individual API where a customer sends a single address, and gets back its location.
@@ -17,9 +41,7 @@ There are two ways to use the service:
 To measure these two APIs, you could send a few million requests to the API server as fast as possible, and also create an equivalent CSV file for the batch API and measure its processing time.
 But what metric should you use to summarize the result?
 
-## Metrics you can use
-
-### Elapsed time
+### Metric: Elapsed time
 
 You could measure elapsed time.
 And that's probably fine for individual optimization session, where you repeatedly measure the speed of the same input.
@@ -33,7 +55,7 @@ Imagine you get the following result:
 Is the speed for both files the same?
 You can do some math in your head, but that is error-prone and cumbersome.
 
-### Throughput
+### Metric: Throughput
 
 A better metric for batch processing is throughput, in this case addresses/second.
 If I translate the elapsed time in the two files above to throughput, I get:
@@ -41,7 +63,7 @@ If I translate the elapsed time in the two files above to throughput, I get:
 * 7,000-row CSV: 53,846 addresses/second.
 * 13,000-row CSV: 54,852 addresses/second.
 
-It's much easier to see that both files were processed with the same speed.
+It's much easier to see that both files were processed with the approximately the same speed.
 
 For a server handling individual API requests, throughput is useful but insufficient.
 Imagine that for 1% of addresses, processing is 100× slower than the other 99% of requests.
@@ -49,7 +71,7 @@ For the batch API, this doesn't matter.
 But for the server API, this means 1% of user requests will have super-slow response times, and users might not like that!
 If you just measure addresses/second, these outliers will be invisible.
 
-### Latency
+### Metric: Latency
 
 For an API where you are doing many separate requests each of which needs to be fast, you often want additional metrics, the latency at different percentiles.
 Latency is the time to respond to a request.
@@ -57,3 +79,8 @@ For example, you can calculate 50th, 95th, and 99th percentile latencies.
 
 For a batch API, the latency of an individual address is irrelevant.
 A user won't care how long it took to process any individual address, they just care about how long it takes until the full batch of results comes back.
+
+### Next steps {.unnumbered}
+
+Once you have a benchmark, you can also use it to identify which specific parts of your code are slow.
+I'll discuss that in the next chapter.
