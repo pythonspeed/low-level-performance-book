@@ -270,7 +270,10 @@ from numba import jit
 # This function will be benchmarked in a useful way if called directly:
 @jit
 def calc(a, b, c, d, e, f):
-    return ((a + b + c) ** d / e) + f
+    result = 0.0
+    for i in range(1, 1000):
+        result += (((a + b + c) ** d / e) + f) / i
+    return result
 
 # 😢 This function will be optimized by the compiler into just returning a
 # constant, so benchmarking it won't give us any information about the
@@ -279,7 +282,7 @@ def calc(a, b, c, d, e, f):
 def calc_fixed():
     return calc(1, 2, 3, 7, 6.0, 5)
 
-# All both functions give the same result:
+# Both functions give the same result:
 assert calc_fixed() == calc(1, 2, 3, 7, 6.0, 5)
 ```
 
@@ -293,24 +296,7 @@ calc(1, 2, 3, 7, 6.0, 5)
 calc_fixed()
 ```
 
-`calc_fixed()` is giving us misleading results if our goal is to benchmark the wrapped `calc()`.
-Because of compiler optimizations, it's no different than a function that just returns a constant:
-
-```{python}
-@jit
-def constant():
-    return 1
-
-assert constant() == 1
-```
-
-```{python}
-#| echo: false
-%%compare_timing
-
-calc_fixed()
-constant()
-```
+The measured speed for `calc_fixed()` gives misleading results if the goal is to benchmark the wrapped `calc()`, likely because extra compiler optimizations can be applied for constant inputs.
 
 ## Reduce noise caused by randomness in software
 
