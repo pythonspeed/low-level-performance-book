@@ -3,31 +3,46 @@
 Speed is a property of your whole program: from the moment it starts until the moment it ends.
 If you optimize part of the code that takes up 10% of the time, and make it take 20% less time to run, your overall program's speed is improved by 2%.
 That's not _bad_, but it may not be a good use of your time.
-As a result, before optimizing smaller parts of your program, you need to build a model of performance that matches your program's end-to-end speed.
 
-You can use it for multiple purposes:
+As a result, before optimizing smaller parts of your program, it's useful to create benchmark for measuring performance that matches your program's end-to-end speed.
+That is, run your program with real data, and see how fast it is.
+Given such a benchmark, you can:
 
-* Identifying _which_ parts of the code are responsible for slowness, so you can focus on those.
+* Identify _which_ parts of the code are responsible for slowness, so you can focus on those.
   I'll discuss that in the next chapter on profiling.
-* Measuring the speed of your code over time, so you can notice when things get slower.
-* Measuring the speed of your code for different inputs, in case it's much slower for some kinds of inputs.
+* Measure the speed of your code for different inputs, to see if certain inputs result in worse performance.
+* See how the speed of your code changes over time, as you make changes.
 
 ## Make sure your benchmark is realistic
 
 The speed you care about is the speed of your code running in the real world.
-So if you're creating a benchmark, you want to make sure it matches the real world as much as possible:
+So if you're creating a benchmark, you want to make sure it matches the real world as much as possible.
+In practice this may be difficult, so you may need to compromise and do your best.
+But in so far as possible—or, in your best judgment, relevant—you'll want to use:
 
 * The same hardware.
 * The same dependency versions.
 * The same configuration.
 * Real-world data.
 
-In practice this may be difficult, so you may need to compromise and do your best.
-
 ## Measure in production
 
 If you are already using your code in the real world, you have another option.
-Instead of trying to match the way your code runs, you can just measure speed in those real-world production runs.
+Instead of trying to match the way your code runs in a duplicate setup, you can just measure speed in those real-world production runs.
+This gives you less control, but results that aren't just 100% realistic, but actually real.
+
+Options here include:
+
+* Continuous profiling, i.e. running a profiler in production.
+  The next chapter discusses profiling more broadly, but beyond that there are services that do continuous profiling.
+  Most of these services are designed for web applications, so if you're profiling a batch job they won't give you everything you'd want.
+  [Sciagraph](https://sciagraph.com) is my attempt to make a continuous profiling system for batch jobs like data science or scientific computing..
+* Logging, or even better tracing—a form of logging where you create a tree of messages.
+  [See this article](https://pythonspeed.com/articles/slow-data-analysis-tasks/) for an example.
+
+One thing to keep in mind is whether your hardware is actually consistent across runs.
+In a cloud environment, different virtual machines of the same class might use different CPUs, and therefore have inconsistent performance.
+As a result, changes over time might not be as informative as one might hope.
 
 ## Choose an appropriate speed metric
 
@@ -82,5 +97,5 @@ A user won't care how long it took to process any individual address, they just 
 
 ### Next steps {.unnumbered}
 
-Once you have a benchmark, you can also use it to identify which specific parts of your code are slow.
+Once you have a benchmark, you can use it to identify which specific parts of your code are slow.
 I'll discuss that in the next chapter.

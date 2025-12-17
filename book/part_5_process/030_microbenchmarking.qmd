@@ -3,7 +3,11 @@
 In almost every chapter of this book we compared the timing of different implementations of the same algorithm to see if our changes were faster.
 However, running a function once can give inconsistent timing results.
 
-For example, we can use the `%time` magic in Jupyter or IPython to measure the time of running a function once:
+For example, you can use the `%time` magic in Jupyter or IPython to measure the time of running a function once.
+
+> If you've never used Jupyter: it's a system for creating computational notebooks, combining code and text.
+> This book is in part built using Jupyter notebooks!
+> It also supports special commands like `%time`, known as magics, that transform or control the code in some way, in this case by measuring how long it takes to run.
 
 ```{python}
 %time _ = sum(range(1_000))
@@ -29,7 +33,7 @@ Here's an example of the Jupyter `%timeit` magic:
 
 Microbenchmarking is an important tool in measuring the impact of performance optimizations.
 But while it's seemingly quite simple, it also has the potential for false or misleading results.
-So next we'll go over some of the potential problems and how to avoid them.
+So next I'll go over some potential problems and how to avoid them.
 
 To begin with, no matter how accurate the result, if you measure the wrong thing you won't get useful information.
 
@@ -39,7 +43,7 @@ If the code you are looking at only uses 2% of your program's run time, making i
 That's not very helpful.
 So before you spend any time trying to optimize some code, you should make sure it's actually something worth optimizing.
 
-**What to do:** Before optimizing your code, use a profiler to figure out where the actual bottlenecks are.
+**What to do:** As discussed in the previous chapter, before optimizing your code, use a profiler to figure out where the actual bottlenecks are.
 
 ### Use realistic data
 
@@ -49,7 +53,7 @@ Both the size of your data and its contents should be as realistic as possible:
 * If you benchmark with a blank white image, you may get different speed results with a real image from a microscope.
 
 **What to do:** If possible, use real data.
-If you can't use real data, at least generate some data that is similar to real data.
+If you can't use real data, at least generate something that is similar to real data.
 
 ### Make sure to include Python overhead
 
@@ -77,9 +81,9 @@ Many compilers support different compilation modes or profiles:
   This is what you'll use in production or release to users.
 
 If you benchmark code compiled in debug mode, you might vastly understate your code's performance.
-This is a common problem with Rust; `maturin develop` or `pip install -e .` will result in your code being compiled in Rust's much slower debug profile.
+This is a common problem with Rust; `cargo build`, `maturin develop`, or `pip install -e .` will result in your code being compiled in Rust's much slower debug profile.
 
-**What to do:** Make sure to compile your code in release mode, for example `pip install .` for Rust projects.
+**What to do:** Make sure to compile your code in release mode, for example `cargo build --release` or `pip install .` for Rust projects.
 
 ### Be aware of platform-specific issues
 

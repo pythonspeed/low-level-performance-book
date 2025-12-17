@@ -8,6 +8,7 @@ That means you need some way to identify which part or parts of all this code ar
 
 One common way to identify bottlenecks is using profilers: tools that measure software performance.
 I gave a short example of using a profiler [at the start of the book](../020_relevant.qmd), used for exactly this purpose.
+You can use a profiler on an end-to-end benchmark, as described in the previous chapter, or you can use it on a smaller part of the code once you've identified it as a bottleneck.
 
 Profilers are immensely useful, but suffer from the difficulty of measuring and summarizing performance data.
 As a result, there many different profilers, each with their own benefits and drawbacks, and it's important to understand the limits of whichever one you choose to use.
@@ -170,4 +171,5 @@ Some options for dealing with this:
 
 ### Next steps {.unnumbered}
 
-TODO
+Once you've isolated a specific part of the code as being slow using a profiler, it can be helpful to try various experiments to see which changes actually speed things up.
+Instead of running the whole end-to-end benchmark, it's often better to create a microbenchmark of just that part of the code.
