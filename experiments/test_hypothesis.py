@@ -10,4 +10,4 @@ def my_sum(arr):
 
 @given(arr=arrays(np.uint64, (2, 2)))
 def test_my_sum(arr):
-    assert my_sum(arr) == arr.sum()
+    assert my_sum(arr) == arr.sum(), type(my_sum(arr))

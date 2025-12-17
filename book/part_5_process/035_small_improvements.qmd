@@ -12,3 +12,7 @@ noticing regressions
 
 advanced techniques to work around hardware impacts (interleaving)
 
+
+### Next steps {.unnumbered}
+
+Beyond helping you optimize your code, benchmarks and microbenchmarks can also help you catch speed regressions, as you'll see next.

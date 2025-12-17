@@ -75,3 +75,10 @@ Downsides:
 
 See [this article](https://labs.quansight.org/blog/2021/08/github-actions-benchmarks) for an example of using this technique in the real world.
 The Python `cryptography` package [also uses this technique](https://github.com/pyca/cryptography/blob/main/.github/workflows/benchmark.yml).
+
+### Next steps {.unnumbered}
+
+If you catch a change that is making your code slower, you'll want to fix it so the code stays fast.
+And you may well spend time speeding up your code more broadly.
+But faster code is only helpful if your code continues to be correct.
+So in the next chapter I'll discuss ways to make sure speed optimizations don't break your code.

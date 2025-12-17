@@ -323,3 +323,11 @@ Beyond all the above identifiable reasons you might get different results, there
 
 **What to do:** This is why microbenchmarking usually involves running the code multiple times, to help average out any uncontrolled noise.
 If the noise is tied to specific process runs, you'll need to run the benchmark multiple times.
+
+### Next steps {.unnumbered}
+
+The less noise your microbenchmark has, the more reliably you can see if small optimizations made a difference.
+For example, if you have a ±10% variation in speed, you won't be able to reliably observe a 5% speed improvement, so you might reject a useful optimization to your code.
+
+You will likely start by fixing large performance problems, so a noisy microbenchmark might be fine initially.
+But solving small sources of slowness is also useful, as I'll discuss next, so reducing the noise from microbenchmarks can be very useful in the long run.

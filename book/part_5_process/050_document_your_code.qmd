@@ -38,3 +38,7 @@ Type annotations have multiple benefits:
 * Mypy can catch bugs in your code as part of your automated code testing.
 * Your editor can help auto-complete, and highlight potential errors as you type.
 * The annotations help document your code so its intent is clearer.
+
+### Next steps {.unnumbered}
+
+The final chapter in this book look towards the future: continuing to improve your skills.

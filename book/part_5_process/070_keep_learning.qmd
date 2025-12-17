@@ -5,8 +5,8 @@ There is much more you can learn if you want to optimize your code even more.
 Here are some books I can recommend as a starting point on low-level programming:
 
 * [_Computer Systems: A Programmer's Perspective, 3rd edition_](https://csapp.cs.cmu.edu/), by Bryant and O'Halloran.
-  This textbook covers how CPUs work, focusing on the parts that are relevant to you, someone who writes software.
-* [_Performance Analysis and Tuning on Modern CPUs, 2nd Edition_](https://products.easyperf.net/perf-book-2), by Denis Bakhalov.
+  This textbook covers how CPUs work, but unlike most it focuses only on the parts that are relevant to programmers.
+* [_Performance Analysis and Tuning on Modern CPUs, 2nd Edition_](https://easyperf.net/), by Denis Bakhalov.
   This free book talks about critical tools for measuring performance, and how to interpret their results; I paid for the printed version.
   He also has a [free online course](https://github.com/dendibakh/perf-ninja).
 * [_Algorithms for Modern Hardware_](https://en.algorithmica.org/hpc/), by Sergey Slotin, is a free online book.
@@ -16,7 +16,7 @@ All of these require at least a basic knowledge of the C programming language.
 The following two books cover Python performance more broadly:
 
 * [_High Performance Python, 3rd edition_](https://www.oreilly.com/library/view/high-performance-python/9781098165956/), by Gorelick and Oszvald.
-  Full disclosure: I contributed a tiny section on Rust.
+  I contributed a tiny section on Rust.
 * [_Fast Python_](https://www.manning.com/books/fast-python), by Antao.
 
 And of course by applying the techniques in this book, you will keep learning and improving your skills.

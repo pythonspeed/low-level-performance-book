@@ -10,10 +10,18 @@ You know that $O(n^2)$ algorithms are bad, so why not look for a better algorith
 
 But beyond that, speed should be part of how you design the architecture of your software.
 If you start with speed as a requirement, you may end up with a very different design that would be difficult or impossible to retrofit.
-A particularly impressive example is [`simdjson`](https://arxiv.org/abs/1902.08318), a JSON parsing library whose parsing technique, based on SIMD instructions, is quite different from other JSON parsers.
-As a result, it is far faster.
+For example:
 
+* [`simdjson`](https://arxiv.org/abs/1902.08318) is a JSON parsing library whose parsing technique is based on SIMD instructions, and is quite different from other JSON parsers.
+  As a result, it is far faster.
+* Pandas is a data processing library that for the most part does what you tell it, immediately.
+  If you tell it to load some data, it will do so immediately, and likewise for calculating results or filtering data.
+  Polars is a competing library that [supports lazy execution](https://docs.pola.rs/user-guide/migration/pandas/): you tell it to load, calculate, and filter, and _then_ that you're all done and it should start running.
+  Since Polars in lazy mode knows all the steps in the _before_ they run, it can optimize the query for speed, for example swapping filtering so it happens first, thus reducing how much calculation it needs to do.
+
+All things being equal, faster software is better software.
+I hope this book has helped you on your journey to write faster and better software.
 
 Finally, I'd love to hear from you—[send me an email](mailto:itamar@pythonspeed.com) and share your thoughts.
 
-—Itamar Turner-Trauring, Cambridge MA, USA
+—Itamar Turner-Trauring
